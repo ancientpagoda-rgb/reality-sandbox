@@ -23,11 +23,35 @@ export function createWorld(rng) {
   };
 
   // Spawn some initial agents and resources
-  const AGENT_COUNT = 20;
-  const RESOURCE_COUNT = 40;
+  const AGENT_COUNT = 18;
+  const RESOURCE_COUNT = 35;
+
+  function makeAgent(x, y, baseHue = 200) {
+    const id = ecs.createEntity();
+    ecs.components.position.set(id, { x, y });
+    ecs.components.velocity.set(id, {
+      vx: (rng.float() - 0.5) * 40,
+      vy: (rng.float() - 0.5) * 40,
+    });
+    ecs.components.agent.set(id, {
+      colorHue: baseHue + rng.int(-20, 20),
+      energy: 1.0,
+    });
+    return id;
+  }
+
+  function makeResource(x, y) {
+    const id = ecs.createEntity();
+    ecs.components.position.set(id, { x, y });
+    ecs.components.resource.set(id, {
+      amount: 1,
+      regenTimer: rng.float() * 5,
+    });
+    return id;
+  }
 
   for (let i = 0; i < AGENT_COUNT; i++) {
-    const id = ecs.createEntity();
+    const id = makeAgent(rng.float() * width, rng.float() * height);
     ecs.components.position.set(id, {
       x: rng.float() * width,
       y: rng.float() * height,
@@ -187,7 +211,6 @@ export function createWorld(rng) {
   // Reproduction & death.
   function lifeCycleSystem(dt) {
     const { position, velocity, agent } = ecs.components;
-    const newAgents = [];
 
     for (const [id, ag] of agent.entries()) {
       // Death
@@ -202,20 +225,17 @@ export function createWorld(rng) {
         const parentVel = velocity.get(id);
         if (!parentPos || !parentVel) continue;
 
-        const childId = ecs.createEntity();
         const jitter = () => (rng.float() - 0.5) * 8;
-        position.set(childId, {
-          x: parentPos.x + jitter(),
-          y: parentPos.y + jitter(),
-        });
-        velocity.set(childId, {
-          vx: parentVel.vx + jitter(),
-          vy: parentVel.vy + jitter(),
-        });
-        agent.set(childId, {
-          colorHue: ag.colorHue + rng.int(-8, 8),
-          energy: ag.energy * 0.5,
-        });
+        const childId = makeAgent(
+          parentPos.x + jitter(),
+          parentPos.y + jitter(),
+          ag.colorHue,
+        );
+        const childVel = velocity.get(childId);
+        childVel.vx = parentVel.vx + jitter();
+        childVel.vy = parentVel.vy + jitter();
+        const childAgent = agent.get(childId);
+        childAgent.energy = ag.energy * 0.5;
 
         ag.energy *= 0.5;
         newAgents.push(childId);
@@ -230,6 +250,31 @@ export function createWorld(rng) {
       for (const id of Array.from(agent.keys())) {
         if (i++ >= toCull) break;
         ecs.destroyEntity(id);
+      }
+    }
+  }
+
+  // Apply force fields (attractors/repulsors painted by user).
+  function forceFieldSystem(dt) {
+    const { position, velocity, forceField } = ecs.components;
+    for (const [fid, field] of forceField.entries()) {
+      const fpos = position.get(fid);
+      if (!fpos) continue;
+      const radius2 = field.radius * field.radius;
+      for (const [id, vel] of velocity.entries()) {
+        const pos = position.get(id);
+        if (!pos || pos === fpos) continue;
+        const dx = fpos.x - pos.x;
+        const dy = fpos.y - pos.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 > radius2 || d2 === 0) continue;
+        const dist = Math.sqrt(d2) || 1;
+        const dir = field.strength >= 0 ? 1 : -1;
+        const strength = (1 - dist / field.radius) * Math.abs(field.strength);
+        const ax = (dx / dist) * dir * strength;
+        const ay = (dy / dist) * dir * strength;
+        vel.vx += ax * dt;
+        vel.vy += ay * dt;
       }
     }
   }
@@ -259,6 +304,7 @@ export function createWorld(rng) {
   function step(dt) {
     world.tick++;
     steeringSystem(dt);
+    forceFieldSystem(dt);
     physicsSystem(dt);
     metabolismSystem(dt);
     ecologySystem(dt);

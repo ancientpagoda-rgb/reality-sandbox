@@ -7,8 +7,9 @@ export function createEcs() {
   const components = {
     position: new Map(), // { x, y }
     velocity: new Map(), // { vx, vy }
-    agent: new Map(),    // { colorHue }
-    resource: new Map(), // { amount }
+    agent: new Map(),    // { colorHue, energy }
+    resource: new Map(), // { amount, regenTimer }
+    forceField: new Map(), // { strength, radius }
   };
 
   function createEntity() {

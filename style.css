@@ -37,8 +37,8 @@ h1 {
 }
 
 .controls {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
   align-items: center;
   gap: 1rem;
   padding: 0.75rem 1rem;
@@ -48,6 +48,11 @@ h1 {
 }
 
 .transport {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tools {
   display: flex;
   gap: 0.5rem;
 }
@@ -74,9 +79,16 @@ button {
 }
 
 #pauseButton,
-#stepButton {
+#stepButton,
+#spawnAgentButton,
+#spawnResourceButton,
+#forceBrushButton {
   background: rgba(255, 255, 255, 0.06);
   color: #e4e7ff;
+}
+
+#forceBrushButton.active {
+  background: rgba(160, 120, 255, 0.3);
 }
 
 button:not(:disabled):hover {
@@ -131,6 +143,23 @@ button:not(:disabled):active {
 
 #inspectorEmpty {
   color: #9da5e0;
+}
+
+#inspectorPanel label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+#inspectorPanel input {
+  width: 100%;
+  margin-top: 0.1rem;
+  margin-bottom: 0.35rem;
+  padding: 0.2rem 0.3rem;
+  border-radius: 4px;
+  border: 1px solid rgba(120, 148, 255, 0.5);
+  background: rgba(4, 6, 20, 0.9);
+  color: #f5f7ff;
+  font-size: 0.8rem;
 }
 
 footer {

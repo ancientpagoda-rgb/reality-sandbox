@@ -42,7 +42,7 @@ export function createRenderer(canvas) {
       ctx.stroke();
     }
 
-    const { position, agent, resource } = ecs.components;
+    const { position, agent, resource, forceField } = ecs.components;
 
     // Regime overlay
     if (world.regime === 'storm') {
@@ -58,6 +58,19 @@ export function createRenderer(canvas) {
       ctx.fillStyle = 'rgba(130, 220, 160, 0.85)';
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Draw force fields as translucent circles
+    for (const [id, field] of forceField.entries()) {
+      const pos = position.get(id);
+      if (!pos) continue;
+      const color = field.strength >= 0
+        ? 'rgba(120, 190, 255, 0.18)'
+        : 'rgba(255, 140, 160, 0.18)';
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, field.radius, 0, Math.PI * 2);
       ctx.fill();
     }
 
