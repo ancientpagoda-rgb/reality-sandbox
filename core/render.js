@@ -1,6 +1,8 @@
 export function createRenderer(canvas) {
   const ctx = canvas.getContext('2d');
 
+  let lastWorld = null;
+
   function resize(world) {
     const rect = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
@@ -10,13 +12,14 @@ export function createRenderer(canvas) {
   }
 
   window.addEventListener('resize', () => {
-    // Re-render on resize using last world snapshot
+    if (lastWorld) render(lastWorld);
   });
 
   function render(world) {
+    lastWorld = world;
     resize(world);
 
-    const { width, height, particles } = world;
+    const { width, height, ecs } = world;
     ctx.clearRect(0, 0, width, height);
 
     // Background subtle grid
@@ -39,13 +42,32 @@ export function createRenderer(canvas) {
       ctx.stroke();
     }
 
-    // Particles (placeholder for entities)
-    for (const p of particles) {
-      const hue = 200 + (p.id % 40);
-      ctx.fillStyle = `hsl(${hue}, 70%, 70%)`;
+    const { position, agent, resource } = ecs.components;
+
+    // Draw resources as soft green circles
+    for (const [id, res] of resource.entries()) {
+      const pos = position.get(id);
+      if (!pos) continue;
+      const radius = 3 + res.amount * 2;
+      ctx.fillStyle = 'rgba(130, 220, 160, 0.85)';
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // Draw agents as colored blobs with outline
+    for (const [id, ag] of agent.entries()) {
+      const pos = position.get(id);
+      if (!pos) continue;
+      const hue = ag.colorHue;
+      const radius = 5;
+      ctx.fillStyle = `hsla(${hue}, 75%, 65%, 0.95)`;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `hsla(${hue}, 90%, 40%, 0.9)`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
   }
 
