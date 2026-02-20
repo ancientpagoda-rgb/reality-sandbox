@@ -13,6 +13,13 @@ export function createWorld(rng) {
     width,
     height,
     ecs,
+    regime: 'calm',
+    globals: {
+      fertility: 0.6,
+      metabolism: 1.0,
+      storminess: 0.0,
+      reproductionThreshold: 1.6,
+    },
   };
 
   // Spawn some initial agents and resources
@@ -138,7 +145,7 @@ export function createWorld(rng) {
   function metabolismSystem(dt) {
     const { position, agent, resource } = ecs.components;
     const eatRadius = 10;
-    const baseDrain = 0.03; // per second
+    const baseDrain = 0.03 * world.globals.metabolism; // per second, modulated by regime
 
     for (const [id, ag] of agent.entries()) {
       ag.energy -= baseDrain * dt;
@@ -166,14 +173,87 @@ export function createWorld(rng) {
   // Ecology: resources regrow over time when depleted.
   function ecologySystem(dt) {
     const { resource } = ecs.components;
+    const fertility = world.globals.fertility;
     for (const res of resource.values()) {
       if (res.amount > 0.99) continue;
-      res.regenTimer -= dt;
+      res.regenTimer -= dt * (0.6 + fertility * 0.8);
       if (res.regenTimer <= 0) {
         res.amount = 1;
         res.regenTimer = 8 + Math.random() * 6; // slow, staggered regrowth
       }
     }
+  }
+
+  // Reproduction & death.
+  function lifeCycleSystem(dt) {
+    const { position, velocity, agent } = ecs.components;
+    const newAgents = [];
+
+    for (const [id, ag] of agent.entries()) {
+      // Death
+      if (ag.energy <= 0) {
+        ecs.destroyEntity(id);
+        continue;
+      }
+
+      // Reproduction
+      if (ag.energy >= world.globals.reproductionThreshold) {
+        const parentPos = position.get(id);
+        const parentVel = velocity.get(id);
+        if (!parentPos || !parentVel) continue;
+
+        const childId = ecs.createEntity();
+        const jitter = () => (rng.float() - 0.5) * 8;
+        position.set(childId, {
+          x: parentPos.x + jitter(),
+          y: parentPos.y + jitter(),
+        });
+        velocity.set(childId, {
+          vx: parentVel.vx + jitter(),
+          vy: parentVel.vy + jitter(),
+        });
+        agent.set(childId, {
+          colorHue: ag.colorHue + rng.int(-8, 8),
+          energy: ag.energy * 0.5,
+        });
+
+        ag.energy *= 0.5;
+        newAgents.push(childId);
+      }
+    }
+
+    // Cap population to avoid explosions
+    const maxAgents = 120;
+    if (agent.size > maxAgents) {
+      const toCull = agent.size - maxAgents;
+      let i = 0;
+      for (const id of Array.from(agent.keys())) {
+        if (i++ >= toCull) break;
+        ecs.destroyEntity(id);
+      }
+    }
+  }
+
+  // Regime system: calm vs storm based on population & resource scarcity.
+  function regimeSystem(dt) {
+    const { agent, resource } = ecs.components;
+    const pop = agent.size;
+    let totalRes = 0;
+    for (const r of resource.values()) totalRes += r.amount;
+    const avgRes = resource.size ? totalRes / resource.size : 0;
+
+    // Simple heuristic: low resources + high population increases storminess.
+    const scarcity = avgRes < 0.5 ? (0.5 - avgRes) * 2 : 0;
+    const pressure = pop / 80;
+    const targetStorm = Math.max(0, Math.min(1, scarcity * 0.7 + pressure * 0.3));
+
+    // Smooth toward target.
+    world.globals.storminess += (targetStorm - world.globals.storminess) * 0.05;
+
+    // Map storminess to metabolism and regime label.
+    const s = world.globals.storminess;
+    world.globals.metabolism = 1 + s * 1.5; // faster drain in storm
+    world.regime = s > 0.55 ? 'storm' : 'calm';
   }
 
   function step(dt) {
@@ -182,6 +262,8 @@ export function createWorld(rng) {
     physicsSystem(dt);
     metabolismSystem(dt);
     ecologySystem(dt);
+    lifeCycleSystem(dt);
+    regimeSystem(dt);
   }
 
   world.step = step;

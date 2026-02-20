@@ -44,6 +44,12 @@ export function createRenderer(canvas) {
 
     const { position, agent, resource } = ecs.components;
 
+    // Regime overlay
+    if (world.regime === 'storm') {
+      ctx.fillStyle = 'rgba(180, 80, 160, 0.05)';
+      ctx.fillRect(0, 0, width, height);
+    }
+
     // Draw resources as soft green circles
     for (const [id, res] of resource.entries()) {
       const pos = position.get(id);
