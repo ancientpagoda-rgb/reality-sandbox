@@ -20,7 +20,20 @@ export function createRenderer(canvas) {
     resize(world);
 
     const { width, height, ecs } = world;
-    ctx.clearRect(0, 0, width, height);
+
+    // Global trippy time phase and regime-based color twist
+    const t = world.tick * 0.01;
+    const wobbleHue = Math.sin(t) * 18;              // ±18° global hue wobble
+    const wobbleSat = 4 + Math.cos(t * 0.7) * 3;     // small global saturation wobble
+    const wobbleLight = 3 * Math.sin(t * 0.5);       // small brightness wobble
+    const isStorm = world.regime === 'storm';
+    const stormHueShift = isStorm ? 70 : 0;          // twist into purple/blue in storms
+    const stormSatBoost = isStorm ? 10 : 0;
+    const stormLightShift = isStorm ? 5 : 0;
+
+    // Trails: soft fade instead of hard clear
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+    ctx.fillRect(0, 0, width, height);
 
     // Background "fog" gradient instead of grid
     const fog = ctx.createRadialGradient(
@@ -31,9 +44,9 @@ export function createRenderer(canvas) {
       height * 0.7,
       Math.max(width, height) * 0.9,
     );
-    fog.addColorStop(0, 'rgba(30, 42, 90, 0.9)');
-    fog.addColorStop(0.5, 'rgba(8, 10, 30, 0.9)');
-    fog.addColorStop(1, 'rgba(0, 0, 0, 1)');
+    fog.addColorStop(0, 'rgba(30, 42, 90, 0.6)');
+    fog.addColorStop(0.5, 'rgba(8, 10, 30, 0.7)');
+    fog.addColorStop(1, 'rgba(0, 0, 0, 0.9)');
     ctx.fillStyle = fog;
     ctx.fillRect(0, 0, width, height);
 
@@ -84,10 +97,14 @@ export function createRenderer(canvas) {
       const baseG = isPod ? 210 : 220;
       const baseB = isPod ? 200 : 160;
       const baseR = isPod ? 150 : 130;
-      const shade = baseR - phase * 18; // subtle darkening over full phase
-      const g = baseG - phase * 13.5;
-      const b = baseB - phase * 9;
+      let shade = baseR - phase * 18; // subtle darkening over full phase
+      let g = baseG - phase * 13.5;
+      let b = baseB - phase * 9;
       const alpha = (0.75 + phase * 0.15) * depthFade;
+      // Apply global light wobble
+      shade = Math.min(255, Math.max(0, shade + wobbleLight));
+      g = Math.min(255, Math.max(0, g + wobbleLight));
+      b = Math.min(255, Math.max(0, b + wobbleLight));
       const color = `rgba(${shade}, ${g}, ${b}, ${alpha})`;
 
       // Fake perspective: treat plants as rising "up" out of the board.
@@ -193,29 +210,43 @@ export function createRenderer(canvas) {
       }
     }
 
-    // Draw burst particles (from apex explosions)
+    // Draw burst particles (from apex explosions and absorbs)
     for (const [id, p] of burst.entries()) {
       const pos = position.get(id);
       if (!pos) continue;
       const life = Math.max(0, Math.min(1, p.life));
-      const hue = p.hue ?? 45;
+      const hue = (p.hue ?? 45) + wobbleHue;
       const radius = 2.5 + life * 3;
-      ctx.fillStyle = `hsla(${hue}, 90%, ${65 + life * 10}%, ${0.25 + life * 0.45})`;
+      ctx.fillStyle = `hsla(${hue}, 90%, ${65 + life * 10 + wobbleLight}%, ${0.25 + life * 0.45})`;
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
       ctx.fill();
+
+      // Heat ripple ring
+      const rippleR = radius * 3;
+      const rippleAlpha = 0.15 * life;
+      const rippleHue = (hue + 40) % 360;
+      ctx.strokeStyle = `hsla(${rippleHue}, 80%, 70%, ${rippleAlpha})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, rippleR, 0, Math.PI * 2);
+      ctx.stroke();
     }
 
-    // Draw force fields as translucent circles
+    // Draw force fields as translucent, pulsing circles
     for (const [id, field] of forceField.entries()) {
       const pos = position.get(id);
       if (!pos) continue;
-      const color = field.strength >= 0
-        ? 'rgba(120, 190, 255, 0.18)'
-        : 'rgba(255, 140, 160, 0.18)';
-      ctx.fillStyle = color;
+      const tField = world.tick * 0.08 + id * 0.5;
+      const pulse = 0.8 + 0.3 * Math.sin(tField);
+      const drawRadius = field.radius * pulse;
+      const baseColor = field.strength >= 0
+        ? { h: 200, s: 80, l: 60 }
+        : { h: 340, s: 85, l: 65 };
+      const alpha = 0.12 + 0.1 * (pulse - 0.8);
+      ctx.fillStyle = `hsla(${baseColor.h + wobbleHue}, ${baseColor.s}%, ${baseColor.l + wobbleLight}%, ${alpha})`;
       ctx.beginPath();
-      ctx.arc(pos.x, pos.y, field.radius, 0, Math.PI * 2);
+      ctx.arc(pos.x, pos.y, drawRadius, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -240,12 +271,13 @@ export function createRenderer(canvas) {
         + dna.hueShift * 0.7            // inherit family tint
         + speedNorm * 60               // fast → red/orange
         + senseNorm * 40               // perceptive → magenta
-        - metaNorm * 30;               // high metabolism → pull back toward yellow
+        - metaNorm * 30                // high metabolism → pull back toward yellow
+        + wobbleHue + stormHueShift;   // global + storm twist
       baseHue = ((baseHue % 360) + 360) % 360; // normalize
       const hue = baseHue;
 
-      const saturation = 65 + speedNorm * 30;           // fast hunters more vivid
-      const lightness = 48 + (1 - metaNorm) * 10;       // low metabolism → brighter
+      const saturation = 65 + speedNorm * 30 + wobbleSat + stormSatBoost; // vivid + wobble
+      const lightness = 48 + (1 - metaNorm) * 10 + wobbleLight + stormLightShift;
       const outlineAlpha = 0.65 + senseNorm * 0.35;     // high sense → stronger outline
 
       ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, 0.95)`;
@@ -310,8 +342,8 @@ export function createRenderer(canvas) {
       const radius = age > 20 ? radiusBase * 1.2 : radiusBase;
       const hue = ap.colorHue;
 
-      ctx.fillStyle = `hsla(${hue}, 70%, 60%, 0.85)`;
-      ctx.strokeStyle = `hsla(${hue}, 95%, 35%, 0.95)`;
+      ctx.fillStyle = `hsla(${hue + wobbleHue + stormHueShift}, 70%, ${60 + wobbleLight + stormLightShift}%, 0.85)`;
+      ctx.strokeStyle = `hsla(${hue + wobbleHue + stormHueShift}, 95%, 35%, 0.95)`;
       ctx.lineWidth = 1.6;
 
       // Soft, wobbly blob instead of perfect hexagon
