@@ -109,18 +109,36 @@ export function createWorld(rng) {
     return id;
   }
 
-  function makeApex(x, y) {
+  function makeApex(x, y, parentDna) {
     const id = ecs.createEntity();
     ecs.components.position.set(id, { x, y });
+
+    const dna = parentDna
+      ? {
+          speed: clamp(parentDna.speed + (rng.float() - 0.5) * 0.08, 0.5, 1.4),
+          sense: clamp(parentDna.sense + (rng.float() - 0.5) * 0.08, 0.7, 1.8),
+          metabolism: clamp(parentDna.metabolism + (rng.float() - 0.5) * 0.08, 0.5, 1.6),
+          hueShift: clamp(parentDna.hueShift + rng.int(-3, 3), -30, 30),
+        }
+      : {
+          speed: 0.8 + rng.float() * 0.3,
+          sense: 1.1 + rng.float() * 0.4,
+          metabolism: 0.8 + rng.float() * 0.3,
+          hueShift: rng.int(-15, 15),
+        };
+
+    const speed = 35 * dna.speed;
+
     ecs.components.velocity.set(id, {
-      vx: (rng.float() - 0.5) * 25,
-      vy: (rng.float() - 0.5) * 25,
+      vx: (rng.float() - 0.5) * speed,
+      vy: (rng.float() - 0.5) * speed,
     });
     ecs.components.apex.set(id, {
-      colorHue: 200 + rng.int(-10, 10),
+      colorHue: 200 + dna.hueShift,
       energy: 3.0,
       age: 0,
       rest: 0,
+      dna,
     });
     return id;
   }
@@ -400,11 +418,12 @@ export function createWorld(rng) {
     const apexEatRadius = 11;
     const apexDrain = baseDrain * 1.4;
     for (const [aid, ap] of apex.entries()) {
+      const dna = ap.dna || { speed: 1, sense: 1, metabolism: 1, hueShift: 0 };
       ap.rest = Math.max(0, (ap.rest || 0) - dt);
       ap.age = (ap.age || 0) + dt;
 
       const restFactor = ap.rest > 0 ? 0.3 : 1.0;
-      ap.energy -= apexDrain * dt * restFactor;
+      ap.energy -= apexDrain * dna.metabolism * dt * restFactor;
       if (ap.energy < 0) ap.energy = 0;
 
       const apos = position.get(aid);
