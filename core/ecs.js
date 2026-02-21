@@ -8,8 +8,9 @@ export function createEcs() {
     position: new Map(), // { x, y }
     velocity: new Map(), // { vx, vy }
     agent: new Map(),    // { colorHue, energy, dna, ... }
-    predator: new Map(), // { colorHue, energy }
-    resource: new Map(), // { kind, amount, regenTimer, age, seedTimer }
+    predator: new Map(), // { colorHue, energy, age, dna, rest }
+    apex: new Map(),     // { colorHue, energy, age }
+    resource: new Map(), // { kind, amount, regenTimer, age, cycles, seedTimer }
     forceField: new Map(), // { strength, radius }
   };
 

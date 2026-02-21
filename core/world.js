@@ -25,6 +25,7 @@ export function createWorld(rng) {
   // Spawn some initial agents and resources
   const AGENT_COUNT = 18;
   const PREDATOR_COUNT = 5;
+  const APEX_COUNT = 2;
   const RESOURCE_COUNT = 70;
 
   function clamp(value, min, max) {
@@ -108,6 +109,22 @@ export function createWorld(rng) {
     return id;
   }
 
+  function makeApex(x, y) {
+    const id = ecs.createEntity();
+    ecs.components.position.set(id, { x, y });
+    ecs.components.velocity.set(id, {
+      vx: (rng.float() - 0.5) * 25,
+      vy: (rng.float() - 0.5) * 25,
+    });
+    ecs.components.apex.set(id, {
+      colorHue: 200 + rng.int(-10, 10),
+      energy: 3.0,
+      age: 0,
+      rest: 0,
+    });
+    return id;
+  }
+
   function makeResource(x, y, kind = 'plant') {
     const id = ecs.createEntity();
     ecs.components.position.set(id, { x, y });
@@ -138,6 +155,10 @@ export function createWorld(rng) {
     makePredator(rng.float() * width, rng.float() * height);
   }
 
+  for (let i = 0; i < APEX_COUNT; i++) {
+    makeApex(rng.float() * width, rng.float() * height);
+  }
+
   for (let i = 0; i < RESOURCE_COUNT; i++) {
     const kind = rng.float() < 0.2 ? 'pod' : 'plant';
     makeResource(rng.float() * width, rng.float() * height, kind);
@@ -164,7 +185,7 @@ export function createWorld(rng) {
 
   // Steering: agents seek nearest resource and gently adjust velocity.
   function steeringSystem(dt) {
-    const { position, velocity, agent, predator, resource } = ecs.components;
+    const { position, velocity, agent, predator, apex, resource } = ecs.components;
     const avoidRadius = 18;
 
     // Build resource positions list once per tick
@@ -272,11 +293,48 @@ export function createWorld(rng) {
       }
     }
 
+    // Apex hunters seek predators only (top of chain)
+    const apexSeekRadius = 260;
+    for (const [id, ap] of apex.entries()) {
+      const pos = position.get(id);
+      const vel = velocity.get(id);
+      if (!pos || !vel) continue;
+
+      // Resting apex drift but do not aggressively seek
+      if (ap.rest && ap.rest > 0) continue;
+
+      let target = null;
+      let targetDist2 = Infinity;
+      for (const [pid] of predator.entries()) {
+        const ppos = position.get(pid);
+        if (!ppos) continue;
+        const dx = ppos.x - pos.x;
+        const dy = ppos.y - pos.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < targetDist2 && d2 < apexSeekRadius * apexSeekRadius) {
+          targetDist2 = d2;
+          target = ppos;
+        }
+      }
+
+      if (target) {
+        const dx = target.x - pos.x;
+        const dy = target.y - pos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const desiredSpeed = 40; // slower, deliberate
+        const desiredVx = (dx / dist) * desiredSpeed;
+        const desiredVy = (dy / dist) * desiredSpeed;
+        const blend = 0.85;
+        vel.vx = vel.vx * blend + desiredVx * (1 - blend);
+        vel.vy = vel.vy * blend + desiredVy * (1 - blend);
+      }
+    }
+
   }
 
   // Metabolism & eating: agents lose energy over time, gain by consuming resources.
   function metabolismSystem(dt) {
-    const { position, agent, predator, resource } = ecs.components;
+    const { position, agent, predator, apex, resource } = ecs.components;
     const eatRadius = 10;
     const baseDrain = 0.03 * world.globals.metabolism; // per second, modulated by regime
 
@@ -333,6 +391,38 @@ export function createWorld(rng) {
           ecs.destroyEntity(aid);
           pred.energy = Math.min(3.5, pred.energy + 1.0);
           pred.rest = 4 + rng.float() * 3; // 4–7s rest after a kill
+          break;
+        }
+      }
+    }
+
+    // Apex metabolism and eating predators
+    const apexEatRadius = 11;
+    const apexDrain = baseDrain * 1.4;
+    for (const [aid, ap] of apex.entries()) {
+      ap.rest = Math.max(0, (ap.rest || 0) - dt);
+      ap.age = (ap.age || 0) + dt;
+
+      const restFactor = ap.rest > 0 ? 0.3 : 1.0;
+      ap.energy -= apexDrain * dt * restFactor;
+      if (ap.energy < 0) ap.energy = 0;
+
+      const apos = position.get(aid);
+      if (!apos) continue;
+
+      // Skip hunting while resting
+      if (ap.rest > 0) continue;
+
+      for (const [pid, pred] of Array.from(predator.entries())) {
+        const ppos = position.get(pid);
+        if (!ppos) continue;
+        const dx = ppos.x - apos.x;
+        const dy = ppos.y - apos.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < apexEatRadius * apexEatRadius) {
+          ecs.destroyEntity(pid);
+          ap.energy = Math.min(5.0, ap.energy + 1.5);
+          ap.rest = 6 + rng.float() * 4; // longer rest after eating a predator
           break;
         }
       }
@@ -409,7 +499,7 @@ export function createWorld(rng) {
 
   // Reproduction & growth.
   function lifeCycleSystem(dt) {
-    const { position, velocity, agent, predator } = ecs.components;
+    const { position, velocity, agent, predator, apex } = ecs.components;
 
     // Herbivore lifecycle
     for (const [id, ag] of Array.from(agent.entries())) {
@@ -467,6 +557,13 @@ export function createWorld(rng) {
 
       if (pred.energy <= 0) {
         ecs.destroyEntity(pid);
+      }
+    }
+
+    // Apex death when fully starved
+    for (const [id, ap] of Array.from(apex.entries())) {
+      if (ap.energy <= 0) {
+        ecs.destroyEntity(id);
       }
     }
 

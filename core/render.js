@@ -37,7 +37,7 @@ export function createRenderer(canvas) {
     ctx.fillStyle = fog;
     ctx.fillRect(0, 0, width, height);
 
-    const { position, agent, predator, resource, forceField } = ecs.components;
+    const { position, agent, predator, apex, resource, forceField } = ecs.components;
 
     // Regime overlay
     if (world.regime === 'storm') {
@@ -185,6 +185,35 @@ export function createRenderer(canvas) {
       ctx.beginPath();
       for (let i = 0; i < 3; i++) {
         const a = angle + (i * (Math.PI * 2 / 3));
+        const x = pos.x + Math.cos(a) * radius;
+        const y = pos.y + Math.sin(a) * radius;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Draw apex hunters as larger hexagons behind everything
+    for (const [id, ap] of apex.entries()) {
+      const pos = position.get(id);
+      if (!pos) continue;
+      const energy = ap.energy ?? 3;
+      const age = ap.age ?? 0;
+      const radiusBase = 9 + Math.min(6, energy * 2);
+      const radius = age > 20 ? radiusBase * 1.2 : radiusBase;
+      const hue = ap.colorHue;
+
+      ctx.fillStyle = `hsla(${hue}, 70%, 60%, 0.85)`;
+      ctx.strokeStyle = `hsla(${hue}, 95%, 35%, 0.95)`;
+      ctx.lineWidth = 1.6;
+
+      const angle = (id * 0.4 + world.tick * 0.01) % (Math.PI * 2);
+      ctx.beginPath();
+      const sides = 6;
+      for (let i = 0; i < sides; i++) {
+        const a = angle + (i * (Math.PI * 2 / sides));
         const x = pos.x + Math.cos(a) * radius;
         const y = pos.y + Math.sin(a) * radius;
         if (i === 0) ctx.moveTo(x, y);
