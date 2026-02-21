@@ -169,8 +169,3 @@ function init() {
 
 window.addEventListener('DOMContentLoaded', init);
 
-  // Initial render (paused)
-  renderer.render(world);
-}
-
-window.addEventListener('DOMContentLoaded', init);
