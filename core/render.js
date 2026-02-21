@@ -50,15 +50,16 @@ export function createRenderer(canvas) {
       const pos = position.get(id);
       if (!pos) continue;
       const age = res.age ?? 0;
+      const cycles = res.cycles ?? 0;
 
-      // Map age into a 0–1 growth phase for color/branch timing
+      // Map age into a 0–1 growth phase for color/branch timing within a cycle
       const maxAge = 3 * 9; // reference scale ≈ 27s
       const phase = Math.max(0, Math.min(1, age / maxAge));
       const stage = Math.floor(phase * 9); // 0–9 for discrete styling when needed
 
-      // Growth factor: base smooth growth + slow, unbounded thickening over time
-      const baseGrowth = 0.5 + phase * 0.7; // 0.5 → 1.2 as before
-      const extraGrowth = 1 + 0.4 * Math.log1p(age / maxAge); // slowly increases without hard cap
+      // Growth factor: base smooth growth + slow, unbounded thickening over cycles
+      const baseGrowth = 0.5 + phase * 0.7; // 0.5 → 1.2 within a cycle
+      const extraGrowth = 1 + 0.4 * Math.log1p(cycles); // slowly increases per completed cycle
       const growthFactor = baseGrowth * extraGrowth;
 
       // Base radius from how eaten it is, then scaled by growth
@@ -105,15 +106,15 @@ export function createRenderer(canvas) {
           { x: 0, y: -1 },
         ];
 
-        // Number of arms increases slowly with age (more branches over time)
+        // Number of arms increases with growth cycles (more branches each cycle)
         const baseArms = 2 + (id % 2); // 2–3
-        const extraArms = Math.min(5, Math.floor(age / 25)); // +1 arm every ~25s, up to +5
+        const extraArms = Math.min(6, cycles); // +1 arm per cycle, up to +6
         const arms = baseArms + extraArms;
 
         for (let i = 0; i < arms; i++) {
-          // Steps per arm also increase with age
+          // Steps per arm also increase with cycles
           const baseSteps = 2 + ((id + i) % 2); // 2–3
-          const extraSteps = Math.min(3, Math.floor(age / 30)); // up to +3 segments over time
+          const extraSteps = Math.min(4, cycles); // up to +4 extra segments over many cycles
           const steps = baseSteps + extraSteps;
 
           let cx = pos.x;
