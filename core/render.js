@@ -51,13 +51,15 @@ export function createRenderer(canvas) {
       if (!pos) continue;
       const age = res.age ?? 0;
 
-      // Map age into a 0–1 growth phase, conceptually split into 10 stages
-      const maxAge = 3 * 9; // 9 intervals of 3s ≈ 27s to "fully mature"
+      // Map age into a 0–1 growth phase for color/branch timing
+      const maxAge = 3 * 9; // reference scale ≈ 27s
       const phase = Math.max(0, Math.min(1, age / maxAge));
       const stage = Math.floor(phase * 9); // 0–9 for discrete styling when needed
 
-      // Growth factor: starts small, grows smoothly toward full size
-      const growthFactor = 0.5 + phase * 0.7; // 0.5 → 1.2
+      // Growth factor: base smooth growth + slow, unbounded thickening over time
+      const baseGrowth = 0.5 + phase * 0.7; // 0.5 → 1.2 as before
+      const extraGrowth = 1 + 0.4 * Math.log1p(age / maxAge); // slowly increases without hard cap
+      const growthFactor = baseGrowth * extraGrowth;
 
       // Base radius from how eaten it is, then scaled by growth
       const baseRadius = 2 + res.amount * 3;
