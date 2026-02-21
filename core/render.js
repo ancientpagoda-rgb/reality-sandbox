@@ -135,10 +135,24 @@ export function createRenderer(canvas) {
 
             const dir = dirs[dirIndex];
             const segLen = baseLen * (0.4 + (s + 1) / (steps + 1) * 0.8); // longer segments later
+            const prevX = cx;
+            const prevY = cy;
             cx += dir.x * segLen;
             cy += dir.y * segLen;
 
             ctx.lineTo(cx, cy);
+
+            // Side branches: small offshoots that make the structure more plant-like
+            if (s > 0 && s < steps - 1 && (s + i + id) % 2 === 0) {
+              const branchLen = segLen * 0.45;
+              // perpendicular directions
+              const off1 = { x: -dir.y, y: dir.x };
+              const bx = cx + off1.x * branchLen;
+              const by = cy + off1.y * branchLen;
+              ctx.moveTo(cx, cy);
+              ctx.lineTo(bx, by);
+              ctx.moveTo(cx, cy);
+            }
           }
 
           ctx.stroke();
