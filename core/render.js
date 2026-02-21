@@ -45,9 +45,8 @@ export function createRenderer(canvas) {
       ctx.fillRect(0, 0, width, height);
     }
 
-    // Draw resources as soft green circles (only when amount > 0)
+    // Draw resources as soft green circles
     for (const [id, res] of resource.entries()) {
-      if (res.amount <= 0) continue; // empty patches invisible until regrowth
       const pos = position.get(id);
       if (!pos) continue;
       const radius = 2 + res.amount * 3;

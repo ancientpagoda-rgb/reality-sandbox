@@ -178,7 +178,7 @@ export function createWorld(rng) {
   // Metabolism & eating: agents lose energy over time, gain by consuming resources.
   function metabolismSystem(dt) {
     const { position, agent, resource } = ecs.components;
-    const eatRadius = 12;
+    const eatRadius = 10;
     const baseDrain = 0.03 * world.globals.metabolism; // per second, modulated by regime
 
     for (const [id, ag] of agent.entries()) {
