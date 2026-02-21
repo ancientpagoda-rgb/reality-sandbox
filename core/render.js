@@ -78,29 +78,56 @@ export function createRenderer(canvas) {
       ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
       ctx.fill();
 
-      // Tentacles: elder stages sprout softly animated branches
+      // Circuitboard-style branches: mature stages sprout orthogonal traces
       if (stage >= 5) {
         const arms = 3 + (id % 3); // 3–5 arms based on id
-        const baseAngle = (id * 0.7) % (Math.PI * 2);
         const t = world.tick * 0.01;
-        const maxLen = radius * (1.8 + stage / 10);
+        const baseLen = radius * (1.1 + stage / 15);
 
-        ctx.strokeStyle = `rgba(${shade}, ${g}, ${b}, 0.4)`;
-        ctx.lineWidth = 0.6;
+        ctx.strokeStyle = `rgba(${shade}, ${g}, ${b}, 0.45)`;
+        ctx.lineWidth = 0.7;
+
+        const dirs = [
+          { x: 1, y: 0 },
+          { x: -1, y: 0 },
+          { x: 0, y: 1 },
+          { x: 0, y: -1 },
+        ];
 
         for (let i = 0; i < arms; i++) {
-          const angle = baseAngle + (i * (Math.PI * 2 / arms)) + Math.sin(t + id * 0.13) * 0.15;
-          const len = maxLen * (0.6 + Math.sin(t * 1.2 + i + id * 0.31) * 0.2);
-
-          const x1 = pos.x + Math.cos(angle) * radius;
-          const y1 = pos.y + Math.sin(angle) * radius;
-          const x2 = pos.x + Math.cos(angle) * len;
-          const y2 = pos.y + Math.sin(angle) * len;
+          const steps = 2 + ((id + i) % 3); // 2–4 segments
+          let cx = pos.x;
+          let cy = pos.y;
 
           ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
+          ctx.moveTo(cx, cy);
+
+          // Pick a primary direction per arm
+          let dirIndex = (id + i) % dirs.length;
+
+          for (let s = 0; s < steps; s++) {
+            // Occasionally turn 90° to form right angles
+            const turnChance = 0.4;
+            if (Math.sin(t * 0.7 + id * 0.13 + s) > 1 - turnChance) {
+              dirIndex = (dirIndex + 1 + ((id + s) % 2) * 2) % dirs.length; // turn left or right
+            }
+
+            const dir = dirs[dirIndex];
+            const segLen = baseLen * (0.5 + (s / (steps + 1)) * 0.8);
+            cx += dir.x * segLen;
+            cy += dir.y * segLen;
+
+            ctx.lineTo(cx, cy);
+          }
+
           ctx.stroke();
+
+          // Small pad at the end of the trace
+          const pad = radius * 0.18;
+          ctx.fillStyle = `rgba(${shade}, ${g}, ${b}, 0.7)`;
+          ctx.beginPath();
+          ctx.rect(cx - pad / 2, cy - pad / 2, pad, pad);
+          ctx.fill();
         }
       }
     }
