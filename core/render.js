@@ -204,27 +204,32 @@ export function createRenderer(canvas) {
       const dna = pred.dna || { speed: 1, sense: 1, metabolism: 1, hueShift: 0 };
       const hue = pred.colorHue;
 
-      // Map DNA traits into visual differences
-      const speedNorm = Math.max(0, Math.min(1, (dna.speed - 0.7) / 0.7));       // 0–1
-      const senseNorm = Math.max(0, Math.min(1, (dna.sense - 0.7) / 0.7));       // 0–1
-      const metaNorm  = Math.max(0, Math.min(1, (dna.metabolism - 0.7) / 0.8));  // 0–1
+      // Map DNA traits into visual & behavioral differences
+      const speedNorm = Math.max(0, Math.min(1, (dna.speed - 0.6) / 0.9));       // 0–1
+      const senseNorm = Math.max(0, Math.min(1, (dna.sense - 0.6) / 0.9));       // 0–1
+      const metaNorm  = Math.max(0, Math.min(1, (dna.metabolism - 0.6) / 1.0));  // 0–1
+      const aggression = Math.max(0, Math.min(1, dna.speed + dna.sense - dna.metabolism));
 
-      const saturation = 70 + speedNorm * 25;           // fast hunters more vivid
-      const lightness = 50 + (1 - metaNorm) * 8;        // low metabolism → slightly brighter
-      const outlineAlpha = 0.7 + senseNorm * 0.3;       // high sense → stronger outline
+      const saturation = 65 + speedNorm * 30;           // fast hunters more vivid
+      const lightness = 48 + (1 - metaNorm) * 10;       // low metabolism → brighter
+      const outlineAlpha = 0.65 + senseNorm * 0.35;     // high sense → stronger outline
 
       ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, 0.95)`;
       ctx.strokeStyle = `hsla(${hue}, 95%, 35%, ${outlineAlpha})`;
-      ctx.lineWidth = 1.4 + speedNorm * 0.4;
+      ctx.lineWidth = 1.2 + speedNorm * 0.6;
 
-      // Draw a rotated triangle (spin rate tied to speed)
-      const baseSpin = 0.015 + speedNorm * 0.02;
+      // Shape variation: more aggressive → narrower, longer triangles
+      const aspect = 0.7 + aggression * 0.6; // 0.7 (stubby) – 1.3 (narrow)
+
+      // Draw a rotated triangle (spin rate tied to speed & aggression)
+      const baseSpin = 0.012 + speedNorm * 0.018 + aggression * 0.01;
       const angle = (id * 0.7 + world.tick * baseSpin) % (Math.PI * 2);
       ctx.beginPath();
       for (let i = 0; i < 3; i++) {
         const a = angle + (i * (Math.PI * 2 / 3));
-        const x = pos.x + Math.cos(a) * radius;
-        const y = pos.y + Math.sin(a) * radius;
+        const dir = (i === 0) ? 1.0 * aspect : 0.7 / aspect;
+        const x = pos.x + Math.cos(a) * radius * dir;
+        const y = pos.y + Math.sin(a) * radius * dir;
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }

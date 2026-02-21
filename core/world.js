@@ -82,16 +82,16 @@ export function createWorld(rng) {
 
     const dna = parentDna
       ? {
-          speed: clamp(parentDna.speed + (rng.float() - 0.5) * 0.18, 0.5, 1.8),
-          sense: clamp(parentDna.sense + (rng.float() - 0.5) * 0.18, 0.4, 1.9),
-          metabolism: clamp(parentDna.metabolism + (rng.float() - 0.5) * 0.18, 0.5, 2.0),
-          hueShift: clamp(parentDna.hueShift + rng.int(-6, 6), -60, 60),
+          speed:      clamp(parentDna.speed      + (rng.float() - 0.5) * 0.22, 0.45, 2.0),
+          sense:      clamp(parentDna.sense      + (rng.float() - 0.5) * 0.22, 0.35, 2.1),
+          metabolism: clamp(parentDna.metabolism + (rng.float() - 0.5) * 0.22, 0.4, 2.2),
+          hueShift:   clamp(parentDna.hueShift   + rng.int(-8, 8), -80, 80),
         }
       : {
-          speed: 0.7 + rng.float() * 0.7,      // 0.7–1.4
-          sense: 0.7 + rng.float() * 0.7,      // 0.7–1.4
-          metabolism: 0.7 + rng.float() * 0.8, // 0.7–1.5
-          hueShift: rng.int(-35, 35),
+          speed:      0.6 + rng.float() * 0.9,      // 0.6–1.5
+          sense:      0.6 + rng.float() * 0.9,      // 0.6–1.5
+          metabolism: 0.6 + rng.float() * 1.0,      // 0.6–1.6
+          hueShift:   rng.int(-45, 45),
         };
 
     const speed = 55 * dna.speed;
@@ -101,7 +101,7 @@ export function createWorld(rng) {
       vy: (rng.float() - 0.5) * speed,
     });
     ecs.components.predator.set(id, {
-      colorHue: 10 + dna.hueShift,
+      colorHue: 5 + dna.hueShift,
       energy: 2.0,
       age: 0,
       dna,
@@ -372,6 +372,9 @@ export function createWorld(rng) {
       const dna = pred.dna || { speed: 1, sense: 1, metabolism: 1, hueShift: 0 };
       const seekRadius = predatorSeekRadius * dna.sense;
 
+      // Aggression index: how hard they commit to targets
+      const aggression = Math.max(0.2, Math.min(1.4, dna.speed + dna.sense - dna.metabolism));
+
       let target = null;
       let targetDist2 = Infinity;
       for (const [aid] of agent.entries()) {
@@ -390,10 +393,10 @@ export function createWorld(rng) {
         const dx = target.x - pos.x;
         const dy = target.y - pos.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const desiredSpeed = 60 * dna.speed;
+        const desiredSpeed = 60 * dna.speed * (0.8 + aggression * 0.25);
         const desiredVx = (dx / dist) * desiredSpeed;
         const desiredVy = (dy / dist) * desiredSpeed;
-        const blend = 0.75;
+        const blend = 0.65 + aggression * 0.1; // more aggressive → more steering override
         vel.vx = vel.vx * blend + desiredVx * (1 - blend);
         vel.vy = vel.vy * blend + desiredVy * (1 - blend);
       }
@@ -475,13 +478,14 @@ export function createWorld(rng) {
     const predDrain = baseDrain * 1.9;
     for (const [pid, pred] of predator.entries()) {
       const dna = pred.dna || { speed: 1, sense: 1, metabolism: 1, hueShift: 0 };
+      const aggression = Math.max(0.2, Math.min(1.4, dna.speed + dna.sense - dna.metabolism));
 
       // Rest timer after a successful hunt
       pred.rest = Math.max(0, (pred.rest || 0) - dt);
 
       // Only drain energy when not resting as much
       const restFactor = pred.rest > 0 ? 0.4 : 1.0;
-      pred.energy -= predDrain * dna.metabolism * dt * restFactor;
+      pred.energy -= predDrain * dna.metabolism * (0.7 + aggression * 0.4) * dt * restFactor;
       if (pred.energy < 0) pred.energy = 0;
 
       const ppos = position.get(pid);
