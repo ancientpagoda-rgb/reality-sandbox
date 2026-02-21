@@ -22,25 +22,20 @@ export function createRenderer(canvas) {
     const { width, height, ecs } = world;
     ctx.clearRect(0, 0, width, height);
 
-    // Background subtle grid
-    ctx.fillStyle = 'rgba(10, 13, 30, 0.85)';
+    // Background "fog" gradient instead of grid
+    const fog = ctx.createRadialGradient(
+      width * 0.5,
+      height * 0.4,
+      20,
+      width * 0.5,
+      height * 0.7,
+      Math.max(width, height) * 0.9,
+    );
+    fog.addColorStop(0, 'rgba(30, 42, 90, 0.9)');
+    fog.addColorStop(0.5, 'rgba(8, 10, 30, 0.9)');
+    fog.addColorStop(1, 'rgba(0, 0, 0, 1)');
+    ctx.fillStyle = fog;
     ctx.fillRect(0, 0, width, height);
-
-    ctx.strokeStyle = 'rgba(70, 90, 180, 0.35)';
-    ctx.lineWidth = 0.5;
-    const grid = 80;
-    for (let x = 0; x < width; x += grid) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-    }
-    for (let y = 0; y < height; y += grid) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-    }
 
     const { position, agent, resource, forceField } = ecs.components;
 
