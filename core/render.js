@@ -76,13 +76,28 @@ export function createRenderer(canvas) {
       const hue = ag.colorHue;
       const energy = ag.energy ?? 1;
       const radius = 4 + Math.min(2.5, energy * 2);
-      ctx.fillStyle = `hsla(${hue}, 75%, 65%, 0.95)`;
+
+      const evolved = ag.evolved;
+      const fillAlpha = evolved ? 1.0 : 0.95;
+      const strokeAlpha = evolved ? 1.0 : 0.9;
+      const lightness = evolved ? 72 : 65;
+
+      ctx.fillStyle = `hsla(${hue}, 78%, ${lightness}%, ${fillAlpha})`;
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = `hsla(${hue}, 90%, 40%, 0.9)`;
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = `hsla(${hue}, 95%, 40%, ${strokeAlpha})`;
+      ctx.lineWidth = evolved ? 1.5 : 1;
       ctx.stroke();
+
+      // Small halo for evolved forms
+      if (evolved) {
+        ctx.strokeStyle = `hsla(${hue}, 90%, 80%, 0.5)`;
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, radius + 2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
   }
 

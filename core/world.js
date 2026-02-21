@@ -54,10 +54,14 @@ export function createWorld(rng) {
       vx: (rng.float() - 0.5) * speed,
       vy: (rng.float() - 0.5) * speed,
     });
+    const evolvedScore = dna.speed + dna.sense + (2 - dna.metabolism);
+    const evolved = evolvedScore > 3.5; // simple heuristic for "advanced" forms
+
     ecs.components.agent.set(id, {
       colorHue: baseHue + dna.hueShift,
       energy: 1.0,
       dna,
+      evolved,
     });
     return id;
   }
