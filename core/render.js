@@ -218,6 +218,22 @@ export function createRenderer(canvas) {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
+
+      // Show "stomachs" – little prey dots inside based on energy
+      const preyCount = Math.max(0, Math.floor(energy));
+      if (preyCount > 0) {
+        const innerR = radius * 0.55;
+        const dotR = Math.max(1.2, radius * 0.12);
+        ctx.fillStyle = 'rgba(255, 245, 230, 0.8)';
+        for (let k = 0; k < preyCount; k++) {
+          const a = angle + (id * 0.3 + k * (Math.PI * 2 / preyCount));
+          const x = pos.x + Math.cos(a) * innerR * 0.6;
+          const y = pos.y + Math.sin(a) * innerR * 0.6;
+          ctx.beginPath();
+          ctx.arc(x, y, dotR, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
     }
 
     // Draw apex hunters as larger hexagons behind everything
@@ -247,6 +263,22 @@ export function createRenderer(canvas) {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
+
+      // Show predators eaten inside apex as orbiting dots based on energy
+      const preyCount = Math.max(0, Math.floor(energy));
+      if (preyCount > 0) {
+        const innerR = radius * 0.6;
+        const dotR = Math.max(1.4, radius * 0.13);
+        ctx.fillStyle = 'rgba(255, 250, 235, 0.85)';
+        for (let k = 0; k < preyCount; k++) {
+          const a = angle + (id * 0.25 + k * (Math.PI * 2 / preyCount));
+          const x = pos.x + Math.cos(a) * innerR * 0.5;
+          const y = pos.y + Math.sin(a) * innerR * 0.5;
+          ctx.beginPath();
+          ctx.arc(x, y, dotR, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
     }
 
     // Draw agents as colored blobs with outline, radius maps to energy
