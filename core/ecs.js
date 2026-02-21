@@ -7,8 +7,9 @@ export function createEcs() {
   const components = {
     position: new Map(), // { x, y }
     velocity: new Map(), // { vx, vy }
-    agent: new Map(),    // { colorHue, energy }
-    resource: new Map(), // { amount, regenTimer }
+    agent: new Map(),    // { colorHue, energy, dna, ... }
+    predator: new Map(), // { colorHue, energy }
+    resource: new Map(), // { kind, amount, regenTimer, age, seedTimer }
     forceField: new Map(), // { strength, radius }
   };
 

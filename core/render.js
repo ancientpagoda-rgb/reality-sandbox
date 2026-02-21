@@ -37,7 +37,7 @@ export function createRenderer(canvas) {
     ctx.fillStyle = fog;
     ctx.fillRect(0, 0, width, height);
 
-    const { position, agent, resource, forceField } = ecs.components;
+    const { position, agent, predator, resource, forceField } = ecs.components;
 
     // Regime overlay
     if (world.regime === 'storm') {
@@ -154,6 +154,33 @@ export function createRenderer(canvas) {
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, field.radius, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // Draw predators as sharp shapes behind agents
+    for (const [id, pred] of predator.entries()) {
+      const pos = position.get(id);
+      if (!pos) continue;
+      const energy = pred.energy ?? 1.5;
+      const radius = 6 + Math.min(4, energy * 2.5);
+      const hue = pred.colorHue;
+
+      ctx.fillStyle = `hsla(${hue}, 85%, 55%, 0.95)`;
+      ctx.strokeStyle = `hsla(${hue}, 95%, 35%, 1)`;
+      ctx.lineWidth = 1.4;
+
+      // Draw a rotated triangle
+      const angle = (id * 0.7 + world.tick * 0.03) % (Math.PI * 2);
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = angle + (i * (Math.PI * 2 / 3));
+        const x = pos.x + Math.cos(a) * radius;
+        const y = pos.y + Math.sin(a) * radius;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
     }
 
     // Draw agents as colored blobs with outline, radius maps to energy
