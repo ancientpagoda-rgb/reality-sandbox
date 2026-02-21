@@ -52,37 +52,6 @@ export function createRenderer(canvas) {
       const age = res.age ?? 0;
       const cycles = res.cycles ?? 0;
 
-      // Special case: vine type draws as a wiggling line
-      if (res.kind === 'vine') {
-        const maxAgeV = 3 * 9;
-        const phaseV = Math.max(0, Math.min(1, age / maxAgeV));
-        const segs = 8 + Math.min(12, cycles * 2); // more segments with cycles
-        const baseLen = 10 + 18 * phaseV;
-        const amplitude = 4 + 6 * phaseV;
-        const angle = (id * 0.6) % (Math.PI * 2);
-        const t = world.tick * 0.03;
-
-        ctx.strokeStyle = 'rgba(160, 230, 180, 0.8)';
-        ctx.lineWidth = 1;
-
-        let x = pos.x;
-        let y = pos.y;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        for (let s = 0; s < segs; s++) {
-          const jitter = Math.sin(t + id * 0.2 + s * 0.6) * amplitude;
-          const dx = Math.cos(angle) * baseLen;
-          const dy = Math.sin(angle) * baseLen;
-          const nx = x + dx - Math.sin(angle) * jitter;
-          const ny = y + dy + Math.cos(angle) * jitter;
-          ctx.lineTo(nx, ny);
-          x = nx;
-          y = ny;
-        }
-        ctx.stroke();
-        continue;
-      }
-
       // Map age into a 0–1 growth phase for color/branch timing within a cycle
       const maxAge = 3 * 9; // reference scale ≈ 27s
       const phase = Math.max(0, Math.min(1, age / maxAge));

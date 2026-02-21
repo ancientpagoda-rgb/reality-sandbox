@@ -112,7 +112,7 @@ export function createWorld(rng) {
     const id = ecs.createEntity();
     ecs.components.position.set(id, { x, y });
     ecs.components.resource.set(id, {
-      kind, // 'plant', 'pod', or 'vine'
+      kind, // 'plant' or 'pod'
       amount: 1,
       regenTimer: rng.float() * 5,
       age: 0,
@@ -130,10 +130,6 @@ export function createWorld(rng) {
     return makeResource(x, y, 'pod');
   }
 
-  function makeVine(x, y) {
-    return makeResource(x, y, 'vine');
-  }
-
   for (let i = 0; i < AGENT_COUNT; i++) {
     makeAgent(rng.float() * width, rng.float() * height);
   }
@@ -143,8 +139,7 @@ export function createWorld(rng) {
   }
 
   for (let i = 0; i < RESOURCE_COUNT; i++) {
-    const r = rng.float();
-    const kind = r < 0.2 ? 'pod' : r < 0.45 ? 'vine' : 'plant';
+    const kind = rng.float() < 0.2 ? 'pod' : 'plant';
     makeResource(rng.float() * width, rng.float() * height, kind);
   }
 
