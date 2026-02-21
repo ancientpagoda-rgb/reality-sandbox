@@ -188,14 +188,25 @@ export function createRenderer(canvas) {
       const age = pred.age ?? 0;
       const radiusBase = 6 + Math.min(4, energy * 2.5);
       const radius = age > 12 ? radiusBase * 1.15 : radiusBase;
+      const dna = pred.dna || { speed: 1, sense: 1, metabolism: 1, hueShift: 0 };
       const hue = pred.colorHue;
 
-      ctx.fillStyle = `hsla(${hue}, 85%, 55%, 0.95)`;
-      ctx.strokeStyle = `hsla(${hue}, 95%, 35%, 1)`;
-      ctx.lineWidth = 1.4;
+      // Map DNA traits into visual differences
+      const speedNorm = Math.max(0, Math.min(1, (dna.speed - 0.7) / 0.7));       // 0–1
+      const senseNorm = Math.max(0, Math.min(1, (dna.sense - 0.7) / 0.7));       // 0–1
+      const metaNorm  = Math.max(0, Math.min(1, (dna.metabolism - 0.7) / 0.8));  // 0–1
 
-      // Draw a rotated triangle (slow spin)
-      const angle = (id * 0.7 + world.tick * 0.02) % (Math.PI * 2);
+      const saturation = 70 + speedNorm * 25;           // fast hunters more vivid
+      const lightness = 50 + (1 - metaNorm) * 8;        // low metabolism → slightly brighter
+      const outlineAlpha = 0.7 + senseNorm * 0.3;       // high sense → stronger outline
+
+      ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, 0.95)`;
+      ctx.strokeStyle = `hsla(${hue}, 95%, 35%, ${outlineAlpha})`;
+      ctx.lineWidth = 1.4 + speedNorm * 0.4;
+
+      // Draw a rotated triangle (spin rate tied to speed)
+      const baseSpin = 0.015 + speedNorm * 0.02;
+      const angle = (id * 0.7 + world.tick * baseSpin) % (Math.PI * 2);
       ctx.beginPath();
       for (let i = 0; i < 3; i++) {
         const a = angle + (i * (Math.PI * 2 / 3));

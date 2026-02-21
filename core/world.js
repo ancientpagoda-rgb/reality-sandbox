@@ -82,16 +82,16 @@ export function createWorld(rng) {
 
     const dna = parentDna
       ? {
-          speed: clamp(parentDna.speed + (rng.float() - 0.5) * 0.12, 0.6, 1.5),
-          sense: clamp(parentDna.sense + (rng.float() - 0.5) * 0.12, 0.6, 1.6),
-          metabolism: clamp(parentDna.metabolism + (rng.float() - 0.5) * 0.12, 0.6, 1.8),
-          hueShift: clamp(parentDna.hueShift + rng.int(-4, 4), -40, 40),
+          speed: clamp(parentDna.speed + (rng.float() - 0.5) * 0.18, 0.5, 1.8),
+          sense: clamp(parentDna.sense + (rng.float() - 0.5) * 0.18, 0.4, 1.9),
+          metabolism: clamp(parentDna.metabolism + (rng.float() - 0.5) * 0.18, 0.5, 2.0),
+          hueShift: clamp(parentDna.hueShift + rng.int(-6, 6), -60, 60),
         }
       : {
-          speed: 0.9 + rng.float() * 0.4,
-          sense: 0.9 + rng.float() * 0.4,
-          metabolism: 1.0 + rng.float() * 0.4,
-          hueShift: rng.int(-20, 20),
+          speed: 0.7 + rng.float() * 0.7,      // 0.7–1.4
+          sense: 0.7 + rng.float() * 0.7,      // 0.7–1.4
+          metabolism: 0.7 + rng.float() * 0.8, // 0.7–1.5
+          hueShift: rng.int(-35, 35),
         };
 
     const speed = 55 * dna.speed;
@@ -101,7 +101,7 @@ export function createWorld(rng) {
       vy: (rng.float() - 0.5) * speed,
     });
     ecs.components.predator.set(id, {
-      colorHue: 15 + dna.hueShift,
+      colorHue: 10 + dna.hueShift,
       energy: 2.0,
       age: 0,
       dna,
