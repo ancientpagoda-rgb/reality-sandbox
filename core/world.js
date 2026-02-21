@@ -75,16 +75,35 @@ export function createWorld(rng) {
     return id;
   }
 
-  function makePredator(x, y) {
+  function makePredator(x, y, parentDna) {
     const id = ecs.createEntity();
     ecs.components.position.set(id, { x, y });
+
+    const dna = parentDna
+      ? {
+          speed: clamp(parentDna.speed + (rng.float() - 0.5) * 0.12, 0.6, 1.5),
+          sense: clamp(parentDna.sense + (rng.float() - 0.5) * 0.12, 0.6, 1.6),
+          metabolism: clamp(parentDna.metabolism + (rng.float() - 0.5) * 0.12, 0.6, 1.8),
+          hueShift: clamp(parentDna.hueShift + rng.int(-4, 4), -40, 40),
+        }
+      : {
+          speed: 0.9 + rng.float() * 0.4,
+          sense: 0.9 + rng.float() * 0.4,
+          metabolism: 1.0 + rng.float() * 0.4,
+          hueShift: rng.int(-20, 20),
+        };
+
+    const speed = 55 * dna.speed;
+
     ecs.components.velocity.set(id, {
-      vx: (rng.float() - 0.5) * 55,
-      vy: (rng.float() - 0.5) * 55,
+      vx: (rng.float() - 0.5) * speed,
+      vy: (rng.float() - 0.5) * speed,
     });
     ecs.components.predator.set(id, {
-      colorHue: 15 + rng.int(-10, 10),
+      colorHue: 15 + dna.hueShift,
       energy: 2.0,
+      age: 0,
+      dna,
     });
     return id;
   }
@@ -219,6 +238,9 @@ export function createWorld(rng) {
       const vel = velocity.get(id);
       if (!pos || !vel) continue;
 
+      const dna = pred.dna || { speed: 1, sense: 1, metabolism: 1, hueShift: 0 };
+      const seekRadius = predatorSeekRadius * dna.sense;
+
       let target = null;
       let targetDist2 = Infinity;
       for (const [aid] of agent.entries()) {
@@ -227,7 +249,7 @@ export function createWorld(rng) {
         const dx = apos.x - pos.x;
         const dy = apos.y - pos.y;
         const d2 = dx * dx + dy * dy;
-        if (d2 < targetDist2 && d2 < predatorSeekRadius * predatorSeekRadius) {
+        if (d2 < targetDist2 && d2 < seekRadius * seekRadius) {
           targetDist2 = d2;
           target = apos;
         }
@@ -237,7 +259,7 @@ export function createWorld(rng) {
         const dx = target.x - pos.x;
         const dy = target.y - pos.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const desiredSpeed = 60;
+        const desiredSpeed = 60 * dna.speed;
         const desiredVx = (dx / dist) * desiredSpeed;
         const desiredVy = (dy / dist) * desiredSpeed;
         const blend = 0.75;
@@ -281,7 +303,8 @@ export function createWorld(rng) {
     const predEatRadius = 9;
     const predDrain = baseDrain * 1.9;
     for (const [pid, pred] of predator.entries()) {
-      pred.energy -= predDrain * dt;
+      const dna = pred.dna || { speed: 1, sense: 1, metabolism: 1, hueShift: 0 };
+      pred.energy -= predDrain * dna.metabolism * dt;
       if (pred.energy < 0) pred.energy = 0;
 
       const ppos = position.get(pid);
@@ -330,7 +353,8 @@ export function createWorld(rng) {
             if (ny < 0) ny += height;
             if (ny >= height) ny -= height;
 
-            makePlant(nx, ny);
+            // Seed pods create more pods, forming clustered groves
+            makeSeedPod(nx, ny);
           }
         }
         // Pod partially depletes and starts a new seed timer
@@ -386,8 +410,27 @@ export function createWorld(rng) {
       }
     }
 
-    // Predator lifecycle: simple death when fully starved
+    // Predator lifecycle: age + reproduction + death when fully starved
     for (const [pid, pred] of Array.from(predator.entries())) {
+      pred.age = (pred.age || 0) + dt;
+
+      if (pred.energy >= 2.8 && pred.age > 10) {
+        const pos = position.get(pid);
+        const vel = velocity.get(pid);
+        if (pos && vel) {
+          const jitter = () => (rng.float() - 0.5) * 10;
+          const childId = makePredator(
+            pos.x + jitter(),
+            pos.y + jitter(),
+            pred.dna,
+          );
+          const childVel = velocity.get(childId);
+          childVel.vx = vel.vx + jitter();
+          childVel.vy = vel.vy + jitter();
+          pred.energy *= 0.5;
+        }
+      }
+
       if (pred.energy <= 0) {
         ecs.destroyEntity(pid);
       }

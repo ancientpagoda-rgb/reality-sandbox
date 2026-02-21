@@ -160,15 +160,17 @@ export function createRenderer(canvas) {
       const pos = position.get(id);
       if (!pos) continue;
       const energy = pred.energy ?? 1.5;
-      const radius = 6 + Math.min(4, energy * 2.5);
+      const age = pred.age ?? 0;
+      const radiusBase = 6 + Math.min(4, energy * 2.5);
+      const radius = age > 12 ? radiusBase * 1.15 : radiusBase;
       const hue = pred.colorHue;
 
       ctx.fillStyle = `hsla(${hue}, 85%, 55%, 0.95)`;
       ctx.strokeStyle = `hsla(${hue}, 95%, 35%, 1)`;
       ctx.lineWidth = 1.4;
 
-      // Draw a rotated triangle
-      const angle = (id * 0.7 + world.tick * 0.03) % (Math.PI * 2);
+      // Draw a rotated triangle (slow spin)
+      const angle = (id * 0.7 + world.tick * 0.02) % (Math.PI * 2);
       ctx.beginPath();
       for (let i = 0; i < 3; i++) {
         const a = angle + (i * (Math.PI * 2 / 3));
