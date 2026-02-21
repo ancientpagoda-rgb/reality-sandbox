@@ -146,6 +146,21 @@ export function createWorld(rng) {
   function makeResource(x, y, kind = 'plant') {
     const id = ecs.createEntity();
     ecs.components.position.set(id, { x, y });
+
+    let dna = null;
+    if (kind === 'plant') {
+      // Per-plant "genetics" including pseudo-3D depth traits
+      dna = {
+        branchCount: 2 + rng.int(0, 4),                 // 2–6 primary arms
+        branchAngle: 0.4 + rng.float() * 0.8,           // spread of branches
+        curvature:  0.2 + rng.float() * 0.6,            // how much arms bend
+        segmentLength: 10 + rng.float() * 12,           // base step length
+        thickness: 0.6 + rng.float() * 0.8,             // line width factor
+        depth: 0.2 + rng.float() * 0.7,                 // 0.2–0.9 depth layer
+        lean: (rng.float() - 0.5) * 0.6,                // slight tilt left/right
+      };
+    }
+
     ecs.components.resource.set(id, {
       kind, // 'plant' or 'pod'
       amount: 1,
@@ -153,6 +168,7 @@ export function createWorld(rng) {
       age: 0,
       cycles: 0, // growth cycles completed
       seedTimer: kind === 'pod' ? 10 + rng.float() * 12 : null,
+      dna,
     });
     return id;
   }

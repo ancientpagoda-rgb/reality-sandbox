@@ -46,6 +46,7 @@ export function createRenderer(canvas) {
     }
 
     // Draw resources with continuous 10-stage growth (size + color change)
+    // For plants, add per-plant depth and a simple perspective warp so they feel 3D-ish.
     for (const [id, res] of resource.entries()) {
       const pos = position.get(id);
       if (!pos) continue;
@@ -62,9 +63,14 @@ export function createRenderer(canvas) {
       const extraGrowth = 1 + 0.4 * Math.log1p(cycles); // slowly increases per completed cycle
       const growthFactor = baseGrowth * extraGrowth;
 
-      // Base radius from how eaten it is, then scaled by growth
+      const dna = res.dna;
+      const depth = dna?.depth ?? 0.5;
+      const depthScale = 0.65 + depth * 0.7;      // 0.65–1.35
+      const depthFade = 0.55 + depth * 0.45;      // 0.55–1.0
+
+      // Base radius from how eaten it is, then scaled by growth and depth
       const baseRadius = 2 + res.amount * 3;
-      const radius = baseRadius * growthFactor;
+      const radius = baseRadius * growthFactor * depthScale;
 
       // Color shifts smoothly with phase and kind
       const isPod = res.kind === 'pod';
@@ -74,13 +80,21 @@ export function createRenderer(canvas) {
       const shade = baseR - phase * 18; // subtle darkening over full phase
       const g = baseG - phase * 13.5;
       const b = baseB - phase * 9;
-      const alpha = 0.75 + phase * 0.15;
+      const alpha = (0.75 + phase * 0.15) * depthFade;
       const color = `rgba(${shade}, ${g}, ${b}, ${alpha})`;
 
-      // Core patch
+      // Fake perspective: treat plants as rising "up" out of the board.
+      const camTilt = 0.35;
+      const height = (6 + cycles * 4) * (0.3 + phase * 0.8); // virtual height
+      const rootX = pos.x;
+      const rootY = pos.y;
+      const trunkTopX = rootX;
+      const trunkTopY = rootY - height * camTilt;
+
+      // Core patch at root (ground contact)
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+      ctx.arc(rootX, rootY, radius, 0, Math.PI * 2);
       ctx.fill();
 
       // Seed pods get a distinct outline
@@ -93,11 +107,11 @@ export function createRenderer(canvas) {
       }
 
       // Circuitboard-style branches: later growth phases sprout orthogonal traces
-      if (phase >= 0.5) {
+      if (phase >= 0.5 && res.kind === 'plant') {
         const baseLen = radius * (0.8 + phase * 0.7);
 
         ctx.strokeStyle = `rgba(${shade}, ${g}, ${b}, 0.45)`;
-        ctx.lineWidth = 0.7;
+        ctx.lineWidth = (res.dna?.thickness ?? 0.9);
 
         const dirs = [
           { x: 1, y: 0 },
@@ -106,8 +120,11 @@ export function createRenderer(canvas) {
           { x: 0, y: -1 },
         ];
 
+        const depth = res.dna?.depth ?? 0.5;
+        const lean = res.dna?.lean ?? 0;
+
         // Number of arms increases with growth cycles (more branches each cycle)
-        const baseArms = 2 + (id % 2); // 2–3
+        const baseArms = res.dna?.branchCount ?? (2 + (id % 2));
         const extraArms = Math.min(6, cycles); // +1 arm per cycle, up to +6
         const arms = baseArms + extraArms;
 
@@ -117,8 +134,8 @@ export function createRenderer(canvas) {
           const extraSteps = Math.min(4, cycles); // up to +4 extra segments over many cycles
           const steps = baseSteps + extraSteps;
 
-          let cx = pos.x;
-          let cy = pos.y;
+          let cx = trunkTopX;
+          let cy = trunkTopY;
 
           ctx.beginPath();
           ctx.moveTo(cx, cy);
@@ -135,10 +152,12 @@ export function createRenderer(canvas) {
 
             const dir = dirs[dirIndex];
             const segLen = baseLen * (0.4 + (s + 1) / (steps + 1) * 0.8); // longer segments later
-            const prevX = cx;
-            const prevY = cy;
-            cx += dir.x * segLen;
-            cy += dir.y * segLen;
+            const t = (s + 1) / (steps + 1); // 0–1 along the branch
+
+            // Grow upwards and lean slightly based on depth and DNA
+            cx += dir.x * segLen * (0.8 + depth * 0.4);
+            cy += dir.y * segLen * (0.6 + depth * 0.4) - t * 3 * depth;
+            cx += lean * t * 8;
 
             ctx.lineTo(cx, cy);
 
@@ -147,8 +166,8 @@ export function createRenderer(canvas) {
               const branchLen = segLen * 0.45;
               // perpendicular directions
               const off1 = { x: -dir.y, y: dir.x };
-              const bx = cx + off1.x * branchLen;
-              const by = cy + off1.y * branchLen;
+              const bx = cx + off1.x * branchLen * (0.7 + depth * 0.5);
+              const by = cy + off1.y * branchLen * (0.6 + depth * 0.4);
               ctx.moveTo(cx, cy);
               ctx.lineTo(bx, by);
               ctx.moveTo(cx, cy);
