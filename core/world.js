@@ -342,10 +342,10 @@ export function createWorld(rng) {
         const dx = target.x - pos.x;
         const dy = target.y - pos.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const desiredSpeed = 40 * dna.speed; // slower baseline, scaled by DNA
+        const desiredSpeed = 55 * dna.speed; // more assertive hunters
         const desiredVx = (dx / dist) * desiredSpeed;
         const desiredVy = (dy / dist) * desiredSpeed;
-        const blend = 0.85;
+        const blend = 0.8;
         vel.vx = vel.vx * blend + desiredVx * (1 - blend);
         vel.vy = vel.vy * blend + desiredVy * (1 - blend);
       }
@@ -418,8 +418,8 @@ export function createWorld(rng) {
     }
 
     // Apex metabolism and eating predators
-    const apexEatRadius = 11;
-    const apexDrain = baseDrain * 1.4;
+    const apexEatRadius = 12;
+    const apexDrain = baseDrain * 1.1;
     for (const [aid, ap] of apex.entries()) {
       const dna = ap.dna || { speed: 1, sense: 1, metabolism: 1, hueShift: 0 };
       ap.rest = Math.max(0, (ap.rest || 0) - dt);
@@ -444,7 +444,7 @@ export function createWorld(rng) {
         if (d2 < apexEatRadius * apexEatRadius) {
           ecs.destroyEntity(pid);
           ap.energy = Math.min(5.0, ap.energy + 1.5);
-          ap.rest = 6 + rng.float() * 4; // longer rest after eating a predator
+          ap.rest = 4 + rng.float() * 2; // 4–6s rest after eating a predator
           break;
         }
       }
