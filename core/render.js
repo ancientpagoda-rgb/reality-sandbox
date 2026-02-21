@@ -72,10 +72,37 @@ export function createRenderer(canvas) {
       const alpha = 0.75 + (stage / 9) * 0.15;
       const color = `rgba(${shade}, ${g}, ${b}, ${alpha})`;
 
+      // Core patch
       ctx.fillStyle = color;
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
       ctx.fill();
+
+      // Tentacles: elder stages sprout softly animated branches
+      if (stage >= 5) {
+        const arms = 3 + (id % 3); // 3–5 arms based on id
+        const baseAngle = (id * 0.7) % (Math.PI * 2);
+        const t = world.tick * 0.01;
+        const maxLen = radius * (1.8 + stage / 10);
+
+        ctx.strokeStyle = `rgba(${shade}, ${g}, ${b}, 0.4)`;
+        ctx.lineWidth = 0.6;
+
+        for (let i = 0; i < arms; i++) {
+          const angle = baseAngle + (i * (Math.PI * 2 / arms)) + Math.sin(t + id * 0.13) * 0.15;
+          const len = maxLen * (0.6 + Math.sin(t * 1.2 + i + id * 0.31) * 0.2);
+
+          const x1 = pos.x + Math.cos(angle) * radius;
+          const y1 = pos.y + Math.sin(angle) * radius;
+          const x2 = pos.x + Math.cos(angle) * len;
+          const y2 = pos.y + Math.sin(angle) * len;
+
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        }
+      }
     }
 
     // Draw force fields as translucent circles
