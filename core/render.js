@@ -92,8 +92,7 @@ export function createRenderer(canvas) {
       // Circuitboard-style branches: later growth phases sprout orthogonal traces
       if (phase >= 0.5) {
         const arms = 3 + (id % 3); // 3–5 arms based on id
-        const t = world.tick * 0.01;
-        const baseLen = radius * (1.1 + phase * 0.6);
+        const baseLen = radius * (0.8 + phase * 0.7);
 
         ctx.strokeStyle = `rgba(${shade}, ${g}, ${b}, 0.45)`;
         ctx.lineWidth = 0.7;
@@ -113,18 +112,18 @@ export function createRenderer(canvas) {
           ctx.beginPath();
           ctx.moveTo(cx, cy);
 
-          // Pick a primary direction per arm
+          // Pick a primary direction per arm (stable per id/arm)
           let dirIndex = (id + i) % dirs.length;
 
           for (let s = 0; s < steps; s++) {
-            // Occasionally turn 90° to form right angles
-            const turnChance = 0.4;
-            if (Math.sin(t * 0.7 + id * 0.13 + s) > 1 - turnChance) {
-              dirIndex = (dirIndex + 1 + ((id + s) % 2) * 2) % dirs.length; // turn left or right
+            // Deterministic right-angle turns: every other segment, turn left/right
+            if (s > 0 && (s % 2 === 0)) {
+              const turn = ((id + s) % 2) === 0 ? 1 : -1;
+              dirIndex = (dirIndex + turn + dirs.length) % dirs.length;
             }
 
             const dir = dirs[dirIndex];
-            const segLen = baseLen * (0.5 + (s / (steps + 1)) * 0.8);
+            const segLen = baseLen * (0.4 + (s + 1) / (steps + 1) * 0.8); // longer segments later
             cx += dir.x * segLen;
             cy += dir.y * segLen;
 
