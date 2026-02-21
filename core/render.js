@@ -37,7 +37,7 @@ export function createRenderer(canvas) {
     ctx.fillStyle = fog;
     ctx.fillRect(0, 0, width, height);
 
-    const { position, agent, predator, apex, resource, forceField } = ecs.components;
+    const { position, agent, predator, apex, burst, resource, forceField } = ecs.components;
 
     // Regime overlay
     if (world.regime === 'storm') {
@@ -165,6 +165,19 @@ export function createRenderer(canvas) {
           ctx.fill();
         }
       }
+    }
+
+    // Draw burst particles (from apex explosions)
+    for (const [id, p] of burst.entries()) {
+      const pos = position.get(id);
+      if (!pos) continue;
+      const life = Math.max(0, Math.min(1, p.life));
+      const hue = p.hue ?? 45;
+      const radius = 2.5 + life * 3;
+      ctx.fillStyle = `hsla(${hue}, 90%, ${65 + life * 10}%, ${0.25 + life * 0.45})`;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     // Draw force fields as translucent circles

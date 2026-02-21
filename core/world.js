@@ -165,6 +165,24 @@ export function createWorld(rng) {
     return makeResource(x, y, 'pod');
   }
 
+  function spawnApexBurst(x, y, baseHue, count, energy) {
+    const { position, burst } = ecs.components;
+    const particles = count || 8;
+    const speedBase = 40 + energy * 12;
+    for (let i = 0; i < particles; i++) {
+      const id = ecs.createEntity();
+      const angle = rng.float() * Math.PI * 2;
+      const speed = speedBase * (0.6 + rng.float() * 0.8);
+      position.set(id, { x, y });
+      burst.set(id, {
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1.4 + rng.float() * 0.6,
+        hue: baseHue,
+      });
+    }
+  }
+
   for (let i = 0; i < AGENT_COUNT; i++) {
     makeAgent(rng.float() * width, rng.float() * height);
   }
@@ -183,7 +201,7 @@ export function createWorld(rng) {
   }
 
   function physicsSystem(dt) {
-    const { position, velocity } = ecs.components;
+    const { position, velocity, burst } = ecs.components;
     const w = world.width;
     const h = world.height;
 
@@ -194,6 +212,18 @@ export function createWorld(rng) {
       pos.y += vel.vy * dt;
 
       // Wrap bounds
+      if (pos.x < 0) pos.x += w;
+      if (pos.x >= w) pos.x -= w;
+      if (pos.y < 0) pos.y += h;
+      if (pos.y >= h) pos.y -= h;
+    }
+
+    // Integrate burst particles and wrap them as well
+    for (const [id, p] of burst.entries()) {
+      const pos = position.get(id);
+      if (!pos) continue;
+      pos.x += p.vx * dt;
+      pos.y += p.vy * dt;
       if (pos.x < 0) pos.x += w;
       if (pos.x >= w) pos.x -= w;
       if (pos.y < 0) pos.y += h;
@@ -502,6 +532,12 @@ export function createWorld(rng) {
         if (d2 < apexEatRadius * apexEatRadius) {
           ecs.destroyEntity(pid);
           ap.energy = Math.min(5.0, ap.energy + 1.5);
+
+          // Occasionally burst when very full
+          if (ap.energy > 3.5 && rng.float() < 0.45) {
+            spawnApexBurst(apos.x, apos.y, ap.colorHue, 10, ap.energy);
+          }
+
           ap.rest = 4 + rng.float() * 2; // 4–6s rest after eating a predator
           break;
         }
@@ -579,7 +615,7 @@ export function createWorld(rng) {
 
   // Reproduction & growth.
   function lifeCycleSystem(dt) {
-    const { position, velocity, agent, predator, apex } = ecs.components;
+    const { position, velocity, agent, predator, apex, burst } = ecs.components;
 
     // Herbivore lifecycle
     for (const [id, ag] of Array.from(agent.entries())) {
@@ -660,6 +696,14 @@ export function createWorld(rng) {
       }
 
       if (ap.energy <= 0) {
+        ecs.destroyEntity(id);
+      }
+    }
+
+    // Fade and clean up burst particles
+    for (const [id, p] of Array.from(burst.entries())) {
+      p.life -= dt;
+      if (p.life <= 0) {
         ecs.destroyEntity(id);
       }
     }
