@@ -536,6 +536,36 @@ export function createWorld(rng) {
           // Occasionally burst when very full
           if (ap.energy > 3.5 && rng.float() < 0.45) {
             spawnApexBurst(apos.x, apos.y, ap.colorHue, 10, ap.energy);
+
+            // Shockwave: push nearby creatures away
+            const shockRadius = 160;
+            const shockRadius2 = shockRadius * shockRadius;
+            const maxImpulse = 120 + ap.energy * 40;
+            const { velocity } = ecs.components;
+
+            const pushEntity = (map) => {
+              for (const [eid] of map.entries()) {
+                if (eid === aid) continue;
+                const pos = position.get(eid);
+                const vel = velocity.get(eid);
+                if (!pos || !vel) continue;
+                const dx2 = pos.x - apos.x;
+                const dy2 = pos.y - apos.y;
+                const d2 = dx2 * dx2 + dy2 * dy2;
+                if (d2 === 0 || d2 > shockRadius2) continue;
+                const dist = Math.sqrt(d2) || 1;
+                const falloff = 1 - dist / shockRadius;
+                const impulse = maxImpulse * falloff;
+                const nx = dx2 / dist;
+                const ny = dy2 / dist;
+                vel.vx += nx * impulse * dt;
+                vel.vy += ny * impulse * dt;
+              }
+            };
+
+            pushEntity(agent);
+            pushEntity(predator);
+            pushEntity(apex);
           }
 
           ap.rest = 4 + rng.float() * 2; // 4–6s rest after eating a predator
