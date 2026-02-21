@@ -467,7 +467,7 @@ export function createWorld(rng) {
 
   // Metabolism & eating: agents lose energy over time, gain by consuming resources.
   function metabolismSystem(dt) {
-    const { position, agent, predator, apex, resource } = ecs.components;
+    const { position, agent, predator, apex, resource, burst } = ecs.components;
     const eatRadius = 10;
     const baseDrain = 0.03 * world.globals.metabolism; // per second, modulated by regime
 
@@ -522,6 +522,24 @@ export function createWorld(rng) {
         const dy = apos.y - ppos.y;
         const d2 = dx * dx + dy * dy;
         if (d2 < predEatRadius * predEatRadius) {
+          // Spawn small "absorption" particles from prey toward predator
+          const particles = 4;
+          const hue = pred.colorHue ?? 30;
+          const baseSpeed = 70;
+          for (let i = 0; i < particles; i++) {
+            const id = ecs.createEntity();
+            const posId = id;
+            position.set(posId, { x: apos.x, y: apos.y });
+            const vx = (ppos.x - apos.x) * (0.8 + rng.float() * 0.5);
+            const vy = (ppos.y - apos.y) * (0.8 + rng.float() * 0.5);
+            burst.set(id, {
+              vx: vx * (baseSpeed / (Math.hypot(vx, vy) || 1)),
+              vy: vy * (baseSpeed / (Math.hypot(vx, vy) || 1)),
+              life: 0.5 + rng.float() * 0.3,
+              hue,
+            });
+          }
+
           ecs.destroyEntity(aid);
           pred.energy = Math.min(3.5, pred.energy + 1.0);
           pred.rest = 4 + rng.float() * 3; // 4–7s rest after a kill
