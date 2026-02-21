@@ -80,6 +80,7 @@ export function createWorld(rng) {
     ecs.components.resource.set(id, {
       amount: 1,
       regenTimer: rng.float() * 5,
+      age: 0,
     });
     return id;
   }
@@ -218,11 +219,14 @@ export function createWorld(rng) {
     const { resource } = ecs.components;
     const fertility = world.globals.fertility;
     for (const res of resource.values()) {
+      // Age tracks time since last regrowth
+      res.age = (res.age || 0) + dt;
       if (res.amount > 0.99) continue;
       res.regenTimer -= dt * (0.8 + fertility * 1.2);
       if (res.regenTimer <= 0) {
         res.amount = 1;
         res.regenTimer = 6 + Math.random() * 4; // slightly faster, staggered regrowth
+        res.age = 0; // new growth cycle
       }
     }
   }
