@@ -74,15 +74,25 @@ export function createWorld(rng) {
     return id;
   }
 
-  function makeResource(x, y) {
+  function makeResource(x, y, kind = 'plant') {
     const id = ecs.createEntity();
     ecs.components.position.set(id, { x, y });
     ecs.components.resource.set(id, {
+      kind, // 'plant' or 'pod'
       amount: 1,
       regenTimer: rng.float() * 5,
       age: 0,
+      seedTimer: kind === 'pod' ? 10 + rng.float() * 12 : null,
     });
     return id;
+  }
+
+  function makePlant(x, y) {
+    return makeResource(x, y, 'plant');
+  }
+
+  function makeSeedPod(x, y) {
+    return makeResource(x, y, 'pod');
   }
 
   for (let i = 0; i < AGENT_COUNT; i++) {
@@ -90,7 +100,8 @@ export function createWorld(rng) {
   }
 
   for (let i = 0; i < RESOURCE_COUNT; i++) {
-    makeResource(rng.float() * width, rng.float() * height);
+    const kind = rng.float() < 0.25 ? 'pod' : 'plant';
+    makeResource(rng.float() * width, rng.float() * height, kind);
   }
 
   function physicsSystem(dt) {
@@ -214,13 +225,44 @@ export function createWorld(rng) {
     }
   }
 
-  // Ecology: resources regrow over time when depleted.
+  // Ecology: resources regrow over time when depleted and pods seed new plants.
   function ecologySystem(dt) {
-    const { resource } = ecs.components;
+    const { resource, position } = ecs.components;
     const fertility = world.globals.fertility;
-    for (const res of resource.values()) {
+
+    for (const [id, res] of resource.entries()) {
       // Age tracks time since last regrowth
       res.age = (res.age || 0) + dt;
+
+      // Seed pod explosion: when mature and still fairly full
+      if (res.kind === 'pod' && res.seedTimer != null && res.age > res.seedTimer && res.amount > 0.6) {
+        const pos = position.get(id);
+        if (pos) {
+          const seeds = 4 + (id % 4); // 4–7 new plants
+          const baseAngle = (id * 0.6) % (Math.PI * 2);
+          const baseDist = 18 + res.amount * 10;
+
+          for (let i = 0; i < seeds; i++) {
+            const angle = baseAngle + (i * (Math.PI * 2 / seeds)) + (rng.float() - 0.5) * 0.3;
+            const dist = baseDist * (0.7 + rng.float() * 0.6);
+            let nx = pos.x + Math.cos(angle) * dist;
+            let ny = pos.y + Math.sin(angle) * dist;
+
+            // Wrap positions into world bounds
+            if (nx < 0) nx += width;
+            if (nx >= width) nx -= width;
+            if (ny < 0) ny += height;
+            if (ny >= height) ny -= height;
+
+            makePlant(nx, ny);
+          }
+        }
+        // Pod partially depletes and starts a new seed timer
+        res.amount = 0.3;
+        res.age = 0;
+        res.seedTimer = 10 + rng.float() * 12;
+      }
+
       if (res.amount > 0.99) continue;
       res.regenTimer -= dt * (0.8 + fertility * 1.2);
       if (res.regenTimer <= 0) {
