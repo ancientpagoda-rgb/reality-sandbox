@@ -77,9 +77,25 @@ jobs:
                 } catch {}
               }
             }
+            const normalizedFailure = failure.replace(/^Error:\s*/i, '').replace(/\s+/g, ' ');
             const description = ok
               ? 'Unified Pixi, Howler, Astronomy, REBOUND, and V6.9 compatibility verified live'
-              : failure.replace(/^Error:\s*/i, '').replace(/\s+/g, ' ').slice(0, 140);
+              : normalizedFailure.slice(0, 140);
+            if (!ok) {
+              const errorSlug = normalizedFailure
+                .replace(/[^A-Za-z0-9_.:-]+/g, '_')
+                .replace(/^_+|_+$/g, '')
+                .slice(0, 180) || 'unknown';
+              await github.rest.repos.createCommitStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                sha,
+                state: 'success',
+                context: `pages/unified-error/${errorSlug}`,
+                description: 'Diagnostic mirror of the live unified failure',
+                target_url: `https://ancientpagoda-rgb.github.io/reality-sandbox/?verify=${sha}`,
+              });
+            }
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
