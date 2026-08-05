@@ -59,33 +59,67 @@ requireText('index.html', 'single deterministic lo-fi pixel living world', 'simp
 requireText('index.html', 'unified-runtime.css', 'living-world presentation stylesheet');
 forbidText('index.html', 'reality-v6-9-audio-volume', 'root audio preference bootstrap');
 
-requireText('app.js', "import { createPhase8Engine }", 'Phase 8 runtime import');
-requireText('app.js', "import { createPhase9Engine }", 'Phase 9 runtime import');
-requireText('app.js', "import { createPhase10Engine }", 'Phase 10 runtime import');
-requireText('app.js', "import { createPhase11Engine }", 'Phase 11 runtime import');
-requireText('app.js', "import { createLofiLivingRuntime }", 'lo-fi living runtime import');
-requireText('app.js', 'installUnifiedDebugExtension', 'unified debug bridge extension');
-requireText('app.js', 'window.realitySandboxUnified', 'living runtime exposure');
-requireText('app.js', 'window.realitySandboxFactories', 'deterministic factory exposure');
+for (const [marker, description] of [
+  ["import { createHeadlessGroundLevel }", 'headless ground import'],
+  ["import { createHeadlessEvolution }", 'headless evolution import'],
+  ["import { createHeadlessCivilizationEngine }", 'headless civilization import'],
+  ["import { createPhase8Engine }", 'Phase 8 runtime import'],
+  ["import { createPhase9Engine }", 'Phase 9 runtime import'],
+  ["import { createPhase10Engine }", 'Phase 10 runtime import'],
+  ["import { createPhase11Engine }", 'Phase 11 runtime import'],
+  ["import { createLofiLivingRuntime }", 'lo-fi living runtime import'],
+  ['installUnifiedDebugExtension', 'unified debug bridge extension'],
+  ['window.realitySandboxUnified', 'living runtime exposure'],
+  ['window.realitySandboxFactories', 'deterministic factory exposure'],
+]) requireText('app.js', marker, description);
+
+for (const [marker, description] of [
+  ['globe-render-v4.js', 'root globe renderer import'],
+  ['galaxy-render-layer.js', 'root galaxy renderer import'],
+  ['ground-level-phase.js', 'root 3D ground import'],
+  ['origin-surface-visuals.js', 'root origin visual import'],
+  ['embodied-evolution.js', 'root 3D evolution import'],
+  ['civilization-engine.js', 'root 3D civilization import'],
+  ['surface-character.js', 'root character renderer import'],
+  ['closeup-polish.js', 'root close-up renderer import'],
+  ["from 'three'", 'root Three.js import'],
+  ['createGlobeRenderer', 'root globe construction'],
+  ['createGalaxyRenderLayer', 'root galaxy render construction'],
+  ['render.three', 'root Three.js module registration'],
+]) forbidText('app.js', marker, description);
+
 requireOrder('app.js', [
+  'moduleHost.register(groundLevelPhase)',
+  'moduleHost.register(embodiedEvolution)',
+  'moduleHost.register(civilizationEngine)',
   'moduleHost.register(phase8Engine)',
   'moduleHost.register(phase9Engine)',
   'moduleHost.register(phase10Module)',
   'moduleHost.register(phase11Module)',
   'moduleHost.register(unifiedRuntime)',
-], 'Phase 8 → 11 → living runtime registration order');
+], 'headless evolution → civilization → Phase 8–11 → living runtime registration order');
+
+requireText('integrations/runtime.js', 'if (systems.globe)', 'conditional legacy Three.js registration');
 
 requireText('core/module-host.js', 'topologicalOrder', 'capability dependency ordering');
 requireText('core/module-host.js', 'module.save?.()', 'module save support');
 requireText('core/module-host.js', 'module.load?.(', 'module load/migration support');
 
 for (const [file, id] of [
+  ['core/headless-ground-level.js', 'terrain.headless-surface'],
+  ['core/headless-evolution.js', 'evolution.headless-lineages'],
+  ['core/headless-civilization-engine.js', 'civilization.emergent-graphology'],
   ['core/phase8-engine.js', 'civilization.phase8-institutions-industry-spaceflight'],
   ['core/phase9-engine.js', 'civilization.phase9-multiworld-ai-contact'],
   ['core/phase10-engine.js', 'civilization.phase10-relativistic-deep-time'],
   ['core/phase11-engine.js', 'civilization.phase11-cosmological-evolution'],
   ['core/lofi-living-runtime.js', 'runtime.lofi-living-world'],
 ]) requireText(file, id, `${id} module id`);
+
+for (const file of ['core/headless-ground-level.js', 'core/headless-evolution.js', 'core/headless-civilization-engine.js']) {
+  forbidText(file, "from 'three'", `${file} Three.js import`);
+  forbidText(file, 'WebGLRenderer', `${file} WebGL renderer`);
+}
 
 requireText('core/lofi-living-runtime.js', "from 'pixi.js'", 'root PixiJS presentation');
 requireText('core/lofi-living-runtime.js', 'ReboundWasmSystem', 'hidden REBOUND verification client');
@@ -94,15 +128,20 @@ requireText('core/lofi-living-runtime.js', "availableViews: ['living']", 'one-vi
 requireText('core/lofi-living-runtime.js', 'audioEnabled: false', 'audio disabled contract');
 requireText('core/lofi-living-runtime.js', 'controls: 0', 'zero-control contract');
 forbidText('core/lofi-living-runtime.js', "from 'howler'", 'root Howler import');
+forbidText('core/lofi-living-runtime.js', "from 'three'", 'root Three.js import');
 requireText('unified-runtime.css', '#lofiLivingCanvas', 'lo-fi root canvas styling');
-requireText('unified-runtime.css', 'image-rendering: pixelated', 'pixelated scaling');
+requireText('unified-runtime.css', 'image-rendering: pixelated !important', 'forced pixelated scaling');
+forbidText('unified-runtime.css', 'image-rendering: crisp-edges', 'crisp-edges override');
 requireText('unified-runtime.css', '#unifiedRuntimePanel', 'legacy controls hidden');
 
 requireText('core/unified-debug-extension.js', 'seedUnifiedScenario', 'living runtime debug scenarios');
 requireText('scripts/unified-smoke.cjs', "seedUnifiedScenario('shared-clock')", 'shared-clock browser scenario');
 requireText('scripts/unified-smoke.cjs', "seedUnifiedScenario('scene')", 'simplified scene browser scenario');
 requireText('scripts/unified-smoke.cjs', "seedUnifiedScenario('rebound')", 'REBOUND browser scenario');
-requireText('scripts/unified-smoke.cjs', "initial.controls === 0", 'zero visible controls assertion');
+requireText('scripts/unified-smoke.cjs', "!initial.modules.includes('render.three')", 'browser Three.js module exclusion');
+requireText('scripts/unified-smoke.cjs', 'initial.forbiddenResources.length === 0', 'browser Three.js resource exclusion');
+requireText('scripts/unified-smoke.cjs', 'initial.visibleCanvases.length === 1', 'single visible canvas assertion');
+requireText('scripts/unified-smoke.cjs', 'initial.controls === 0', 'zero visible controls assertion');
 requireText('scripts/unified-smoke.cjs', 'initial.unified.audio.enabled === false', 'audio absence assertion');
 requireText('.github/workflows/unified-live.yml', 'REALITY_REQUIRE_REBOUND: "1"', 'live REBOUND requirement');
 
@@ -118,6 +157,7 @@ requireText('reality-engine-v6-9.html', 'audioToggle', 'V6.9 sound controls');
 requireText('core/reality-v6-9/soundscape.js', "from 'howler'", 'V6.9 Howler.js integration');
 requireText('core/reality-v6-8/pixi-presentation.js', "from 'pixi.js'", 'V6.9 PixiJS integration');
 requireText('core/reality-v6-5/orbit-climate.js', 'astronomy-engine@2.1.19', 'V6.9 Astronomy Engine integration');
+requireText('core/globe-render-v4.js', "from 'three'", 'legacy Three.js globe retained');
 requireText('scripts/build-rebound-wasm.sh', 'REBOUND_REF="${REBOUND_REF:-5.0.0}"', 'pinned REBOUND source');
 requireText('scripts/build-rebound-wasm.sh', 'rebound.wasm', 'REBOUND WebAssembly output');
 requireText('integrations/rebound-adapter.js', 'orbit.rebound', 'REBOUND fallback adapter');
@@ -130,6 +170,7 @@ for (const notice of ['Three.js', 'PixiJS', 'Howler.js', 'Astronomy Engine', 'Ra
 
 requireText('README.md', '# Reality Sandbox', 'project overview');
 requireText('README.md', 'Lo-fi living root', 'simplified root overview');
+requireText('README.md', 'Three.js stays available on the standalone', 'documented legacy Three.js boundary');
 requireText('README.md', 'npm run audit:integration', 'documented integration audit');
 requireText('package.json', '"audit:integration"', 'integration audit npm script');
 requireText('.github/workflows/browser-smoke.yml', 'node scripts/unified-smoke.cjs', 'living runtime CI browser step');
