@@ -15,18 +15,19 @@ The root experience is deliberately small and quiet:
 - one low-resolution PixiJS canvas, rendered at no more than 256×144 pixels and scaled with hard pixel edges;
 - no sound;
 - no view selector, settings panel, volume control, status feed, palette switcher, or orbital buttons;
+- no Three.js renderer, globe, ground explorer, 3D creature scene, or 3D civilization layer;
 - no private presentation ticker or second simulation clock.
 
-The deeper simulation still runs underneath the simple scene. Weather, water, ecology, embodied evolution, cultures, settlements, institutions, economies, colonies, machine lineages, relativistic missions, galaxies, gravitational waves, and FLRW cosmology remain part of the deterministic world state. They no longer compete for screen space.
+The deeper simulation still runs underneath the simple scene. Weather, water, ecology, natural selection, cultures, settlements, institutions, economies, colonies, machine lineages, relativistic missions, galaxies, gravitational waves, and FLRW cosmology remain part of the deterministic world state. Headless adapters preserve those systems without creating additional renderers or interfaces.
 
-The root module order remains:
+The root module order is:
 
 ```text
-galaxy → orbital system → origin → scientific and physics adapters
+galaxy → orbital system → cosmic and biological origin
 → hydrology, ecology, and planet dynamics
-→ embodied evolution → civilizations
+→ headless surface → headless evolution → headless civilizations
 → Phase 8 → Phase 9 → Phase 10 → Phase 11
-→ lo-fi living presentation
+→ lo-fi PixiJS living presentation
 ```
 
 The module host is the only authoritative simulation clock. PixiJS renders manually from the root render hook with `autoStart: false` and `sharedTicker: false`.
@@ -34,6 +35,8 @@ The module host is the only authoritative simulation clock. PixiJS renders manua
 REBOUND 5.0.0 remains available as a hidden same-origin WebAssembly verification backend. It is not exposed as another visible view or control.
 
 ## Reality Engine V6.9 compatibility
+
+Three.js stays available on the standalone V6.9 and legacy laboratory pages; it is not loaded by the root entry.
 
 The standalone V6.9 page remains independently deployable and tested. It preserves the larger experimental interface, including:
 
@@ -71,9 +74,15 @@ Each module follows this general contract:
 
 The root presentation lives in `core/lofi-living-runtime.js`. It draws a deterministic coarse terrain field, weather cells, resources, organisms, predators, and apex life as small pixel blocks.
 
+The renderer-free simulation adapters are:
+
+- `core/headless-ground-level.js` — geological and hydrological surface sampling;
+- `core/headless-evolution.js` — lineages, natural selection, culture, and settlement formation;
+- `core/headless-civilization-engine.js` — communities, languages, cultures, routes, technology, and history.
+
 ### Save state
 
-The root stores the world tick, camera state, and module states under `reality-sandbox-globe-v1`. The lo-fi presentation stores only its fixed-clock counters; there are no root view, palette, or audio settings.
+The root stores the world tick and module states under `reality-sandbox-globe-v1`. The lo-fi presentation stores only its fixed-clock counters; there are no root camera, view, palette, or audio settings.
 
 ### Level of detail
 
@@ -81,7 +90,7 @@ The root stores the world tick, camera state, and module states under `reality-s
 - Mobile presentation: 160×90 logical pixels.
 - Entity and weather samples are capped.
 - Expensive scientific systems retain deterministic statistical or analytic LOD when not directly inspected.
-- Cesium remains confined to the standalone V6.9 page.
+- Three.js and Cesium remain confined to standalone compatibility and laboratory pages.
 
 ## Debugging and inspection
 
@@ -131,7 +140,8 @@ The permanent audit verifies:
 - one authoritative fixed clock;
 - the single-view and zero-control root contract;
 - audio absence on the root;
-- low-resolution pixel scaling;
+- no Three.js import, module, or resource in the root runtime;
+- exactly one visible low-resolution pixel canvas;
 - standalone V6.9 compatibility;
 - pinned REBOUND source and deployed WebAssembly verification;
 - dependency notices and CI hooks.
