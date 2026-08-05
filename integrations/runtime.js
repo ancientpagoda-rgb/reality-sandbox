@@ -4,14 +4,16 @@ import { createReboundAdapter } from './rebound-adapter.js';
 export function registerCurrentModules(host, systems) {
   const catalog = new Map(integrationCatalog.map(item => [item.id, item]));
 
-  host.register(moduleFromCatalog(catalog.get('render.three'), {
-    provides: ['rendering.globe', 'rendering.webgl', 'rendering.galaxy'],
-    initialize({ provideCapability }) {
-      provideCapability('rendering.globe', systems.globe);
-      provideCapability('rendering.webgl', systems.globe);
-      if (systems.galaxyLayer) provideCapability('rendering.galaxy', systems.galaxyLayer);
-    },
-  }));
+  if (systems.globe) {
+    host.register(moduleFromCatalog(catalog.get('render.three'), {
+      provides: ['rendering.globe', 'rendering.webgl', 'rendering.galaxy'],
+      initialize({ provideCapability }) {
+        provideCapability('rendering.globe', systems.globe);
+        provideCapability('rendering.webgl', systems.globe);
+        if (systems.galaxyLayer) provideCapability('rendering.galaxy', systems.galaxyLayer);
+      },
+    }));
+  }
 
   host.register(createLazyRapierModule());
   host.register(createReboundAdapter({ endpoint: systems.reboundEndpoint || null }));
