@@ -1,6 +1,6 @@
 const MOBILE_QUERY = '(max-width: 720px), (pointer: coarse)';
-const BASE_FRAME_INTERVAL_MS = 50;
-const SLOW_FRAME_INTERVAL_MS = 67;
+const INTERACTION_FRAME_INTERVAL_MS = 67;
+const IDLE_FRAME_INTERVAL_MS = 400;
 let attempts = 0;
 
 function bootIPhonePerformanceMode() {
@@ -35,7 +35,7 @@ function bootIPhonePerformanceMode() {
   const originalUnifiedRender = unified.render.bind(unified);
   unified.render = frame => {
     const now = frame?.timestamp ?? performance.now();
-    const interval = targetInterval();
+    const interval = pointers.size ? INTERACTION_FRAME_INTERVAL_MS : IDLE_FRAME_INTERVAL_MS;
     if (now - lastVisualAt < interval) return;
     lastVisualAt = now;
     originalUnifiedRender(frame);
@@ -51,21 +51,16 @@ function bootIPhonePerformanceMode() {
   window.realitySandboxIPhonePerformance = {
     ready: true,
     active: true,
-    mode: 'balanced-20fps',
+    mode: 'idle-2.5fps-touch-15fps',
     getState: () => ({
       ready: true,
       active: true,
-      mode: 'balanced-20fps',
-      targetIntervalMs: targetInterval(),
+      mode: 'idle-2.5fps-touch-15fps',
+      targetIntervalMs: pointers.size ? INTERACTION_FRAME_INTERVAL_MS : IDLE_FRAME_INTERVAL_MS,
       lastRenderMs: hifi.getState?.().lastRenderMs ?? null,
       pointerCount: pointers.size,
     }),
   };
-
-  function targetInterval() {
-    const renderMs = Number(hifi.getState?.().lastRenderMs) || 0;
-    return renderMs > 42 ? SLOW_FRAME_INTERVAL_MS : BASE_FRAME_INTERVAL_MS;
-  }
 
   function consume(event) {
     event.preventDefault();
@@ -172,7 +167,7 @@ function bootIPhonePerformanceMode() {
     scheduledCamera = camera;
     if (cameraTimer || cameraFrame) return;
 
-    const delay = Math.max(0, targetInterval() - (performance.now() - lastCameraAt));
+    const delay = Math.max(0, INTERACTION_FRAME_INTERVAL_MS - (performance.now() - lastCameraAt));
     cameraTimer = window.setTimeout(() => {
       cameraTimer = 0;
       cameraFrame = requestAnimationFrame(() => {
