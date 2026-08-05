@@ -147,7 +147,7 @@ async function init() {
     originSystem = createCosmicOrigin(world, galaxySystem, orbitalSystem, { seed: 20260804 });
     originSystem.prepare();
 
-    placeExistingEntitiesOnBiomes(world, Math.random);
+    placeExistingEntitiesOnBiomes(world, rng);
     stepSphere = createSphericalStepper(world);
     const living = createLivingSystems(world);
     const biosphere = createBiosphere(world);
