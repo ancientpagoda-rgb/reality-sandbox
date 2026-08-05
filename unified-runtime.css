@@ -13,18 +13,22 @@ body {
 }
 
 #lofiLivingCanvas {
-  position: fixed;
-  left: 50%;
-  top: 50%;
+  position: fixed !important;
+  inset: auto !important;
+  left: 50% !important;
+  top: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
   z-index: 60;
   display: block;
-  width: min(200vw, 177.7778vh);
-  width: min(200vw, 177.7778dvh);
-  height: auto;
-  aspect-ratio: 16 / 9;
-  max-width: none;
-  max-height: none;
-  transform: translate(-50%, -50%);
+  width: min(200vw, 177.7778vh) !important;
+  height: min(112.5vw, 100vh) !important;
+  width: min(200vw, 177.7778dvh) !important;
+  height: min(112.5vw, 100dvh) !important;
+  aspect-ratio: 16 / 9 !important;
+  max-width: none !important;
+  max-height: none !important;
+  transform: translate(-50%, -50%) !important;
   transform-origin: center;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
