@@ -6,15 +6,16 @@ let attempts = 0;
 function bootIPhonePerformanceMode() {
   if (window.realitySandboxIPhonePerformance?.ready) return;
 
+  const mobile = matchMedia(MOBILE_QUERY).matches;
   const unified = window.realitySandboxUnified;
   const hifi = window.realitySandboxHifi;
+  const upscaleReady = !mobile || window.realitySandboxMobileUpscale?.ready;
   const canvas = document.getElementById('lofiLivingCanvas');
-  if (!unified || !hifi?.ready || !canvas) {
+  if (!unified || !hifi?.ready || !upscaleReady || !canvas) {
     if (attempts++ < 240) setTimeout(bootIPhonePerformanceMode, 50);
     return;
   }
 
-  const mobile = matchMedia(MOBILE_QUERY).matches;
   if (!mobile) {
     window.realitySandboxIPhonePerformance = { ready: true, active: false };
     return;
