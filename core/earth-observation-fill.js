@@ -14,17 +14,19 @@ function bootEarthObservationFill() {
 
   const context = canvas.getContext('2d');
   const mobile = matchMedia(MOBILE_QUERY).matches;
+  let lastSignature = '';
 
   const originalUnifiedRender = unified.render.bind(unified);
   unified.render = frame => {
     originalUnifiedRender(frame);
-    drawObservationFill();
+    drawWhenFresh();
   };
 
   const originalHifiRender = hifi.render.bind(hifi);
   hifi.render = () => {
     originalHifiRender();
     drawObservationFill();
+    rememberSignature();
   };
 
   const originalSnapshot = unified.getSnapshot.bind(unified);
@@ -41,10 +43,35 @@ function bootEarthObservationFill() {
   window.realitySandboxEarthObservationFill = {
     ready: true,
     mode: 'ambient-atmospheric-scattering',
-    render: drawObservationFill,
+    render: () => {
+      drawObservationFill();
+      rememberSignature();
+    },
   };
 
   drawObservationFill();
+  rememberSignature();
+
+  function currentSignature() {
+    const camera = unified.getCamera();
+    return [
+      Math.floor(Date.now() / 60000),
+      camera.zoom.toFixed(4),
+      camera.centerX.toFixed(5),
+      camera.centerY.toFixed(5),
+    ].join(':');
+  }
+
+  function rememberSignature() {
+    lastSignature = currentSignature();
+  }
+
+  function drawWhenFresh() {
+    const signature = currentSignature();
+    if (signature === lastSignature) return;
+    lastSignature = signature;
+    drawObservationFill();
+  }
 
   function drawObservationFill() {
     const { cx, cy, radius, baseRadius } = hifi.getViewGeometry();
