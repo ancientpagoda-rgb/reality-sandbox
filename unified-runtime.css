@@ -19,8 +19,7 @@ body {
   display: block;
   width: 100vw;
   height: 100vh;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
+  image-rendering: pixelated !important;
   pointer-events: none;
   background: #101820;
 }
