@@ -30,23 +30,31 @@ fs.mkdirSync(artifactDir, { recursive: true });
     await page.waitForTimeout(1200);
 
     const initial = await page.evaluate(() => {
+      const isVisible = element => {
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.display !== 'none'
+          && style.visibility !== 'hidden'
+          && Number(style.opacity) > 0
+          && rect.width > 0
+          && rect.height > 0;
+      };
       const controls = [...document.querySelectorAll('button, select, input, output, [data-unified-sound]')]
-        .filter(element => {
-          const style = getComputedStyle(element);
-          const rect = element.getBoundingClientRect();
-          return style.display !== 'none'
-            && style.visibility !== 'hidden'
-            && Number(style.opacity) > 0
-            && rect.width > 0
-            && rect.height > 0;
-        }).length;
+        .filter(isVisible).length;
+      const visibleCanvases = [...document.querySelectorAll('canvas')]
+        .filter(isVisible)
+        .map(element => ({ id: element.id, className: element.className, width: element.width, height: element.height }));
       const canvas = document.getElementById('lofiLivingCanvas');
+      const resources = performance.getEntriesByType('resource').map(entry => entry.name);
+      const forbiddenResources = resources.filter(name => /(?:three\.module|globe-render|galaxy-render-layer|embodied-evolution|civilization-visuals|ground-level-phase|creature-body-3d)/i.test(name));
       return {
         diagnostics: window.realitySandboxDebug.diagnostics(),
         unified: window.realitySandboxUnified.getSnapshot(),
         modules: window.realitySandboxModules.list().map(module => module.id),
         panel: Boolean(document.getElementById('unifiedRuntimePanel')),
         controls,
+        visibleCanvases,
+        forbiddenResources,
         canvas: canvas ? {
           connected: canvas.isConnected,
           imageRendering: getComputedStyle(canvas).imageRendering,
@@ -56,12 +64,17 @@ fs.mkdirSync(artifactDir, { recursive: true });
     writeJson('initial.json', initial);
     assert(initial.diagnostics.ok, `Initial diagnostics failed: ${initial.diagnostics.failures.join(', ')}`);
     assert(initial.modules.includes('runtime.lofi-living-world'), 'The lo-fi living-world runtime was not registered.');
+    assert(!initial.modules.includes('render.three'), 'The root still registered the Three.js renderer module.');
+    assert(initial.modules.includes('terrain.headless-surface'), 'The headless surface module was not registered.');
+    assert(initial.modules.includes('evolution.headless-lineages'), 'The headless evolution module was not registered.');
+    assert(initial.forbiddenResources.length === 0, `The root loaded retired Three.js resources: ${initial.forbiddenResources.join(', ')}`);
     assert(initial.unified.mode === 'lofi-living-world', 'The root did not use the distilled living-world mode.');
     assert(initial.unified.view === 'living' && initial.unified.availableViews.length === 1, 'The root exposed more than one view.');
     assert(initial.unified.audio.enabled === false && initial.unified.audio.started === false, 'Audio remained enabled in the simplified root.');
     assert(initial.unified.interface.controls === 0 && !initial.panel && initial.controls === 0, 'Runtime controls or informational panels remained visible.');
     assert(initial.canvas?.connected, 'The lo-fi living-world canvas is missing.');
-    assert(initial.canvas.imageRendering === 'pixelated' || initial.canvas.imageRendering === 'crisp-edges', 'The root canvas is not pixelated.');
+    assert(initial.canvas.imageRendering === 'pixelated', `The root canvas is not using pixelated scaling: ${initial.canvas.imageRendering || 'unset'}`);
+    assert(initial.visibleCanvases.length === 1 && initial.visibleCanvases[0].id === 'lofiLivingCanvas', `Expected one visible Pixi canvas, found ${JSON.stringify(initial.visibleCanvases)}`);
     assert(initial.unified.presentation.logicalWidth <= 256 && initial.unified.presentation.logicalHeight <= 144, 'The presentation is not low resolution.');
     assert(initial.unified.presentation.tickerStarted === false, 'PixiJS started an independent ticker.');
 
