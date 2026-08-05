@@ -7,7 +7,7 @@ import { createOrbitalSystem } from './core/orbital-system.js';
 import { createCosmicOrigin } from './core/cosmic-origin.js';
 import { createHeadlessGroundLevel } from './core/headless-ground-level.js';
 import { createHeadlessEvolution } from './core/headless-evolution.js';
-import { createHeadlessCivilizationEngine } from './core/headless-civilization-engine.js';
+import { createHeadlessCivilizationEngine } from './core/headless-societies.js';
 import { createPhase8Engine } from './core/phase8-engine.js';
 import { createPhase9Engine } from './core/phase9-engine.js';
 import { createPhase10Engine } from './core/phase10-engine.js';
