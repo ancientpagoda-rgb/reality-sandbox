@@ -14,11 +14,18 @@ body {
 
 #lofiLivingCanvas {
   position: fixed;
-  inset: 0;
+  left: 50%;
+  top: 50%;
   z-index: 60;
   display: block;
-  width: 100vw;
-  height: 100vh;
+  width: min(200vw, 177.7778vh);
+  width: min(200vw, 177.7778dvh);
+  height: auto;
+  aspect-ratio: 16 / 9;
+  max-width: none;
+  max-height: none;
+  transform: translate(-50%, -50%);
+  transform-origin: center;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   pointer-events: auto;
