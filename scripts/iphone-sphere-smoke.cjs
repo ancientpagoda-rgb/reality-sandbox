@@ -42,6 +42,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
         after: window.realitySandboxUnified.getSnapshot().selectedRegion,
       };
     });
+    fs.writeFileSync(path.join(artifactDir, 'iphone-living-planet.json'), JSON.stringify({ ok: null, viewport, metrics, pageErrors }, null, 2));
     const bitmapAspect = metrics.canvas.bitmapWidth / metrics.canvas.bitmapHeight;
     const cssAspect = metrics.canvas.cssWidth / metrics.canvas.cssHeight;
     assert(Math.abs(bitmapAspect - cssAspect) < 0.03, `Canvas aspect mismatch: ${bitmapAspect} vs ${cssAspect}.`);

@@ -328,8 +328,7 @@ select { font: inherit; }
     padding: 9px 10px;
   }
   .planet-title { font-size: 18px; }
-  .planet-subtitle { max-width: 32rem; }
-  .planet-masthead [data-planet-event] { display: none; }
+  .planet-masthead .planet-subtitle { display: none; }
   .planet-inspector {
     top: max(94px, calc(env(safe-area-inset-top) + 88px));
     width: calc(100vw - 20px);
