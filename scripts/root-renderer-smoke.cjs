@@ -39,6 +39,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
       };
     });
     fs.writeFileSync(path.join(artifactDir, 'root-renderer.json'), JSON.stringify(result, null, 2));
+    await page.evaluate(() => window.realitySandboxDebug.pause());
+    await page.waitForTimeout(120);
     await page.screenshot({ path: path.join(artifactDir, 'single-pixi-root.png'), fullPage: true });
     assert(result.diagnostics.ok, `Root diagnostics failed: ${result.diagnostics.failures.join(', ')}`);
     assert(result.visibleCanvases.length === 1 && result.visibleCanvases[0].id === 'lofiLivingCanvas', `Expected one visible root canvas: ${JSON.stringify(result.visibleCanvases)}`);

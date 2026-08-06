@@ -105,6 +105,8 @@ requireText('.github/workflows/browser-smoke.yml', 'node scripts/iphone-sphere-s
 
 requireText('scripts/unified-smoke.cjs', "seedScenario('coupling')", 'terrain-water-inspector coupling scenario');
 requireText('scripts/unified-smoke.cjs', 'statDefinitions === 8', 'defined statistic browser assertion');
+requireText('scripts/unified-smoke.cjs', '[title][tabindex="0"]', 'keyboard-inspectable statistic assertion');
+requireText('scripts/iphone-sphere-smoke.cjs', 'masthead.bottom <= metrics.inspector.top', 'mobile panel overlap assertion');
 requireText('scripts/root-renderer-smoke.cjs', 'visibleCanvases.length === 1', 'single visible canvas browser assertion');
 
 requireText('reality-engine-v6-9.html', 'ENGINE V6.9 · HOWLER.JS SOUNDSCAPE', 'archived V6.9 compatibility page');

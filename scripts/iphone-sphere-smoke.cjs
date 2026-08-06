@@ -30,12 +30,14 @@ fs.mkdirSync(artifactDir, { recursive: true });
       const canvasRect = canvas.getBoundingClientRect();
       const dashboard = document.querySelector('.planet-dashboard').getBoundingClientRect();
       const inspector = document.querySelector('.planet-inspector').getBoundingClientRect();
+      const masthead = document.querySelector('.planet-masthead').getBoundingClientRect();
       return {
         canvas: { bitmapWidth: canvas.width, bitmapHeight: canvas.height, cssWidth: canvasRect.width, cssHeight: canvasRect.height },
         dashboard: { left: dashboard.left, right: dashboard.right, top: dashboard.top, bottom: dashboard.bottom },
         inspector: { left: inspector.left, right: inspector.right, top: inspector.top, bottom: inspector.bottom },
+        masthead: { left: masthead.left, right: masthead.right, top: masthead.top, bottom: masthead.bottom },
         visibleCanvasCount: [...document.querySelectorAll('canvas')].filter(node => getComputedStyle(node).display !== 'none').length,
-        statDefinitions: document.querySelectorAll('.planet-stat[title]').length,
+        statDefinitions: document.querySelectorAll('.planet-stat[title][tabindex="0"]').length,
         snapshot: window.realitySandboxUnified.getSnapshot(),
         after: window.realitySandboxUnified.getSnapshot().selectedRegion,
       };
@@ -47,6 +49,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(metrics.visibleCanvasCount === 1 && metrics.snapshot.presentation.renderer === 'pixi-single-canvas', 'Mobile must use one integrated renderer.');
     assert(metrics.dashboard.left >= 0 && metrics.dashboard.right <= viewport.width && metrics.dashboard.bottom <= viewport.height, 'Dashboard overflows the iPhone viewport.');
     assert(metrics.inspector.left >= 0 && metrics.inspector.right <= viewport.width && metrics.inspector.bottom <= viewport.height, 'Inspector overflows the iPhone viewport.');
+    assert(metrics.masthead.bottom <= metrics.inspector.top, 'Inspector overlaps the iPhone masthead.');
     assert(metrics.statDefinitions === 8, 'Mobile statistics lost their definitions.');
     assert(Math.abs(metrics.after.longitude - before.longitude) > 0.5 || Math.abs(metrics.after.latitude - before.latitude) > 0.5, 'Touch inspection did not select a region.');
     assert(metrics.snapshot.presentation.drawnEntities > 0 && pageErrors.length === 0, `Mobile scene is empty or errored: ${pageErrors.join(' | ')}`);

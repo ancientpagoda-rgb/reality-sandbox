@@ -568,7 +568,10 @@ export function createLofiLivingRuntime(world, dependencies, options = {}) {
       life: `${life.plants}P · ${life.grazers}G · ${life.predators + life.apex}C`,
     };
     for (const [key, value] of Object.entries(values)) {
-      if (interfaceNodes.readings[key]) interfaceNodes.readings[key].textContent = value;
+      if (interfaceNodes.readings[key]) {
+        interfaceNodes.readings[key].textContent = value;
+        interfaceNodes.readings[key].title = value;
+      }
     }
   }
 
@@ -735,7 +738,7 @@ export function createLofiLivingRuntime(world, dependencies, options = {}) {
 }
 
 function statMarkup(key, label, definition) {
-  return `<div class="planet-stat" title="${escapeHtml(definition)}"><dt>${escapeHtml(label)}</dt><dd data-stat="${key}">—</dd></div>`;
+  return `<div class="planet-stat" tabindex="0" title="${escapeHtml(definition)}" aria-label="${escapeHtml(`${label}. ${definition}`)}"><dt>${escapeHtml(label)}</dt><dd data-stat="${key}">—</dd></div>`;
 }
 
 function readingMarkup(key, label) {

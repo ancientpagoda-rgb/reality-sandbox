@@ -43,7 +43,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
         modules: window.realitySandboxModules.list().map(module => module.id),
         visibleCanvases: [...document.querySelectorAll('canvas')].filter(visible).length,
         visibleControls: [...document.querySelectorAll('.planet-dashboard button, .planet-dashboard select')].filter(visible).length,
-        statDefinitions: document.querySelectorAll('.planet-stat[title]').length,
+        statDefinitions: document.querySelectorAll('.planet-stat[title][tabindex="0"]').length,
         statValues: [...document.querySelectorAll('[data-stat]')].map(node => node.textContent.trim()),
         inspector: Boolean(document.querySelector('.planet-inspector')),
         canvas: canvas ? { width: canvas.width, height: canvas.height, imageRendering: getComputedStyle(canvas).imageRendering } : null,
@@ -89,6 +89,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
     const regionAfter = await page.evaluate(() => window.realitySandboxUnified.getSnapshot().selectedRegion);
     assert(Math.abs(regionAfter.longitude - regionBefore.longitude) > 0.5 || Math.abs(regionAfter.latitude - regionBefore.latitude) > 0.5, 'Clicking the globe did not select a new simulated region.');
     assert(Number.isFinite(regionAfter.temperature) && Number.isFinite(regionAfter.soilMoisture), 'The selected region lacks climate or water readings.');
+    assert(await page.locator('[data-reading="water"]').getAttribute('title'), 'A regional reading is not inspectable in full.');
 
     await page.evaluate(() => window.realitySandboxDebug.pause());
     const clock = await page.evaluate(() => {
