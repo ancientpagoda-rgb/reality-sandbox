@@ -25,11 +25,13 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxSurfaceCpuRelief?.installed &&
       window.realitySandboxSurfaceIdleSchedulerV34?.installed &&
       window.realitySandboxSurfaceLightHookV36?.installed &&
+      window.realitySandboxSurfaceWaterStabilityV38b?.installed &&
       window.realitySandboxSurfaceFlightV38?.installed &&
       window.realitySandboxSurfaceSphereV37?.installed &&
       window.realitySandboxSurfaceCelestialsV38?.installed &&
       window.realitySandboxSurfaceSolarLightingV36?.installed &&
       window.realitySandboxSurfaceVegetationV38?.installed &&
+      window.realitySandboxSurfaceVegetationStabilityV38b?.installed &&
       window.realitySandboxSurfaceHorizonV38?.installed &&
       window.realitySandboxSurfaceGpuBackend?.installed &&
       document.getElementById('enterSurfaceMode') &&
@@ -51,12 +53,15 @@ fs.mkdirSync(artifactDir, { recursive: true });
     ), null, { timeout: 60000 });
 
     await page.waitForFunction(() => window.realitySandboxSurfaceVegetationV38?.getStats?.().buildsCompleted >= 1, null, { timeout: 120000 });
+    await page.waitForFunction(() => window.realitySandboxSurfaceWaterStabilityV38b?.getStats?.().meshesProcessed >= 1, null, { timeout: 60000 });
 
     const stable = await page.evaluate(() => ({
       player: window.realitySandboxSurfaceMode.getPlayer(),
       surface: window.realitySandboxSurfaceSphereV37.getStats(),
       sky: window.realitySandboxSurfaceCelestialsV38.getStats(),
       vegetation: window.realitySandboxSurfaceVegetationV38.getStats(),
+      waterStability: window.realitySandboxSurfaceWaterStabilityV38b.getStats(),
+      vegetationStability: window.realitySandboxSurfaceVegetationStabilityV38b.getStats(),
       diagnostics: window.realitySandboxPresentationDiagnostics(),
     }));
 
@@ -80,9 +85,9 @@ fs.mkdirSync(artifactDir, { recursive: true });
     await page.waitForFunction(() => window.realitySandboxSurfaceHorizonV38?.getStats?.().buildsCompleted >= 1, null, { timeout: 120000 });
 
     await page.keyboard.down('w');
-    await page.waitForTimeout(420);
+    await page.waitForTimeout(2200);
     await page.keyboard.up('w');
-    await page.waitForTimeout(220);
+    await page.waitForTimeout(600);
 
     const after = await page.evaluate(() => ({
       player: window.realitySandboxSurfaceMode.getPlayer(),
@@ -92,6 +97,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
       solar: window.realitySandboxSurfaceSolarLightingV36.getStats(),
       flight: window.realitySandboxSurfaceFlightV38.getStats(),
       vegetation: window.realitySandboxSurfaceVegetationV38.getStats(),
+      vegetationStability: window.realitySandboxSurfaceVegetationStabilityV38b.getStats(),
+      waterStability: window.realitySandboxSurfaceWaterStabilityV38b.getStats(),
       horizon: window.realitySandboxSurfaceHorizonV38.getStats(),
       scheduler: window.realitySandboxSurfaceIdleSchedulerV34.getStats(),
       controller: window.realitySandboxSurfaceMode.getStats?.(),
@@ -99,12 +106,12 @@ fs.mkdirSync(artifactDir, { recursive: true });
       surfaceBuild: window.realitySandboxSurfaceBuild,
     }));
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v38-flight-vegetation.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v38b-water-plants-stability.png'), fullPage: true });
     fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ stable, fastSky, after, pageErrors }, null, 2));
 
     const moved = Math.hypot(after.player.x - stable.player.x, after.player.y - stable.player.y);
     assert(after.active, 'Surface mode did not remain active.');
-    assert(after.surfaceBuild === 'surface-v38-flight-timelapse-vegetation', `Unexpected surface build: ${after.surfaceBuild}`);
+    assert(after.surfaceBuild === 'surface-v38b-water-plants-stability', `Unexpected surface build: ${after.surfaceBuild}`);
     assert(after.controller?.topology === 'sphere' && after.controller?.extendedFlight === true, 'Extended spherical flight controller is not active.');
     assert(after.controller.maxAltitude >= 400 && after.player.altitude > 100, `High flight did not extend altitude (${after.player.altitude}).`);
     assert(after.flight.extendedFlight === true && after.flight.cameraFar >= 2500, 'High-flight far plane extension is not active.');
@@ -118,11 +125,19 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(after.surface.viewPriorityEnabled === true && after.surface.bestAvailableRefinement === true, 'v37 view-priority terrain behavior regressed.');
     assert(after.surface.waterEnabled === true && after.surface.waterOpaque === true && after.surface.sphereCurvatureEnabled === true, 'Sphere/water baseline regressed.');
 
+    assert(after.waterStability.geometryWaves === false && after.waterStability.fragmentWaves === true, 'Water geometry is still being displaced into polygonal waves.');
+    assert(after.waterStability.wetDryBridgeTrianglesRemoved === true && after.waterStability.steepInlandWaterRejected === true, 'Steep wet/dry water bridging is not blocked.');
+    assert(after.waterStability.frontFacesOnly === true && after.waterStability.waterOpaque === true, 'Water face/depth stability regressed.');
+    assert(after.waterStability.meshesProcessed >= 1 && after.waterStability.trianglesRemoved > 0, 'Water stabilizer did not process and trim wet/dry geometry.');
+
     assert(after.vegetation.vegetationEnabled === true && after.vegetation.gpuInstancing === true, 'GPU vegetation is not enabled.');
     assert(after.vegetation.biomeDriven === true && after.vegetation.hydrologyFiltered === true && after.vegetation.distanceLod === true, 'Vegetation is not environment/LOD driven.');
     assert(after.vegetation.globalDisplayCap === false, 'A global vegetation display cap was introduced.');
     assert(after.vegetation.buildsCompleted >= 1 && after.vegetation.terrainSamples > 100 && after.vegetation.waterSamples > 100, 'Vegetation idle build did not sample real environment data.');
     assert(after.vegetation.renderLoopProceduralSamples === 0, 'Vegetation performs procedural samples in the render loop.');
+    assert(after.vegetationStability.preservesOldVegetationDuringRebuild === true, 'Vegetation does not remain visible during chunk rebuild handoff.');
+    assert(after.vegetationStability.anchorRegistered === true && after.vegetationStability.instancedFrustumCullingDisabled === true, 'Vegetation anchor/culling stability is not active.');
+    assert(after.vegetationStability.cullingDisabledMeshes >= 1, 'Instanced vegetation culling was not corrected.');
 
     assert(after.horizon.buildsCompleted >= 1 && after.horizon.mergedSingleMesh === true, 'High-altitude merged horizon ring was not built.');
     assert(after.horizon.ring === 3 && after.horizon.vertices >= 500 && after.horizon.renderLoopProceduralSamples === 0, 'High-altitude horizon contract failed.');
@@ -131,7 +146,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(after.scheduler.policy === 'near-first-interaction-debounced-distant', 'Idle scheduling policy regressed.');
     assert(after.diagnostics.surfaceGpu?.gpuPrimary === true && after.diagnostics.surfaceGpu?.rendererInfo?.triangles > 100, 'GPU surface renderer is not healthy.');
     assert(after.diagnostics.surfaceGpuBackend?.renderer, 'WebGL backend renderer string is missing.');
-    assert(moved > 0.5, `WASD movement did not move enough (${moved}).`);
+    assert(moved > 20, `Long WASD movement did not move enough to exercise tile handoff (${moved}).`);
     assert(pageErrors.length === 0, `Surface mode produced browser errors: ${pageErrors.join(' | ')}`);
 
     await page.evaluate(() => window.realitySandboxSurfaceMode.exit());
