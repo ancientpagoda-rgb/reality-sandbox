@@ -19,10 +19,19 @@ fs.mkdirSync(artifactDir, { recursive: true });
 
   try {
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 120000 });
-    await page.waitForFunction(() => Boolean(window.realitySandboxSurfaceMode && document.getElementById('enterSurfaceMode')), null, { timeout: 120000 });
+    await page.waitForFunction(() => Boolean(
+      window.realitySandboxSurfaceMode &&
+      window.realitySandboxSurfaceGpu?.installed &&
+      document.getElementById('enterSurfaceMode') &&
+      document.getElementById('surfaceGpuCanvas')
+    ), null, { timeout: 120000 });
     await page.click('#enterSurfaceMode');
-    await page.waitForFunction(() => document.documentElement.dataset.surfaceMode === 'active', null, { timeout: 30000 });
-    await page.waitForTimeout(220);
+    await page.waitForFunction(() => (
+      document.documentElement.dataset.surfaceMode === 'active' &&
+      document.documentElement.dataset.surfaceGpu === 'active' &&
+      window.realitySandboxSurfaceGpu?.isPresenting?.()
+    ), null, { timeout: 30000 });
+    await page.waitForTimeout(320);
 
     const before = await page.evaluate(() => ({
       player: window.realitySandboxSurfaceMode.getPlayer(),
@@ -32,28 +41,37 @@ fs.mkdirSync(artifactDir, { recursive: true });
     await page.keyboard.down('w');
     await page.waitForTimeout(420);
     await page.keyboard.up('w');
-    await page.waitForTimeout(120);
+    await page.waitForTimeout(180);
 
     const after = await page.evaluate(() => ({
       player: window.realitySandboxSurfaceMode.getPlayer(),
       diagnostics: window.realitySandboxPresentationDiagnostics(),
       active: window.realitySandboxSurfaceMode.isActive(),
-      canvasVisible: (() => {
-        const canvas = document.getElementById('surfaceModeCanvas');
+      inputCanvasPresent: Boolean(document.getElementById('surfaceModeCanvas')),
+      gpuCanvasVisible: (() => {
+        const canvas = document.getElementById('surfaceGpuCanvas');
         if (!canvas) return false;
         const style = getComputedStyle(canvas);
         const rect = canvas.getBoundingClientRect();
         return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
       })(),
+      surfaceBuild: window.realitySandboxSurfaceBuild,
     }));
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-gpu.png'), fullPage: true });
     fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ before, after, pageErrors }, null, 2));
 
     const moved = Math.hypot(after.player.x - before.player.x, after.player.y - before.player.y);
     assert(before.diagnostics.surfaceModeReady === true, 'Surface mode diagnostics never became ready.');
-    assert(after.active && after.canvasVisible, 'Surface mode did not remain active with a visible surface canvas.');
-    assert(after.diagnostics.surfaceMode === 'active' && after.diagnostics.surfaceModeCanvasPresent, 'Surface mode diagnostics do not report an active presentation.');
+    assert(after.active && after.inputCanvasPresent && after.gpuCanvasVisible, 'GPU surface mode did not remain active with a visible WebGL canvas.');
+    assert(after.surfaceBuild === 'surface-v25-gpu-only', `Unexpected surface build: ${after.surfaceBuild}`);
+    assert(after.diagnostics.surfaceMode === 'active', 'Surface mode diagnostics do not report an active presentation.');
+    assert(after.diagnostics.surfaceModeRenderer === 'gpu-controller-no-cpu-raycaster', `CPU raycaster still appears active: ${after.diagnostics.surfaceModeRenderer}`);
+    assert(after.diagnostics.surfaceGpu?.gpuPrimary === true, 'GPU surface diagnostics do not report the WebGL renderer as primary.');
+    assert(after.diagnostics.surfaceGpu?.active === true, 'GPU surface diagnostics do not report active rendering.');
+    assert(after.diagnostics.surfaceGpu?.renderer === 'WebGLRenderer', `Unexpected GPU renderer: ${after.diagnostics.surfaceGpu?.renderer}`);
+    assert(after.diagnostics.surfaceGpu?.rendererInfo?.calls > 0, 'GPU renderer produced no draw calls.');
+    assert(after.diagnostics.surfaceGpu?.rendererInfo?.triangles > 0, 'GPU renderer produced no triangles.');
     assert(moved > 0.5, `WASD movement did not move the player enough (${moved}).`);
     assert(pageErrors.length === 0, `Surface mode produced browser errors: ${pageErrors.join(' | ')}`);
 
