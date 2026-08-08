@@ -24,6 +24,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxSurfaceGpu?.installed &&
       window.realitySandboxSurfaceCpuRelief?.installed &&
       window.realitySandboxSurfaceSimulationBudget?.installed &&
+      window.realitySandboxSurfaceCreatureIsolation?.installed &&
       window.realitySandboxSurfaceGpuBackend?.installed &&
       document.getElementById('enterSurfaceMode') &&
       document.getElementById('surfaceGpuCanvas')
@@ -67,7 +68,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
     const moved = Math.hypot(after.player.x - before.player.x, after.player.y - before.player.y);
     assert(before.diagnostics.surfaceModeReady === true, 'Surface mode diagnostics never became ready.');
     assert(after.active && after.inputCanvasPresent && after.gpuCanvasVisible, 'GPU surface mode did not remain active with a visible WebGL canvas.');
-    assert(after.surfaceBuild === 'surface-v27-adaptive-sim-budget', `Unexpected surface build: ${after.surfaceBuild}`);
+    assert(after.surfaceBuild === 'surface-v28-no-creatures-diagnostic', `Unexpected surface build: ${after.surfaceBuild}`);
     assert(after.diagnostics.surfaceMode === 'active', 'Surface mode diagnostics do not report an active presentation.');
     assert(after.diagnostics.surfaceModeRenderer === 'gpu-controller-no-cpu-raycaster', `CPU raycaster still appears active: ${after.diagnostics.surfaceModeRenderer}`);
     assert(after.diagnostics.surfaceGpu?.gpuPrimary === true, 'GPU surface diagnostics do not report the WebGL renderer as primary.');
@@ -80,6 +81,12 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(after.diagnostics.surfaceSimulationBudget?.skippedWorldSteps > 0, 'Adaptive surface budget did not skip any expensive world ticks.');
     assert(after.diagnostics.surfaceSimulationBudget?.skippedModuleSteps > 0, 'Adaptive surface budget did not skip any module ticks.');
     assert(after.diagnostics.surfaceSimulationBudget?.worldStepExecutionRatio < 0.8, `Surface simulation budget did not reduce world-step frequency enough: ${after.diagnostics.surfaceSimulationBudget?.worldStepExecutionRatio}`);
+    assert(after.diagnostics.surfaceCreatureIsolation?.surfaceActive === true, 'Temporary no-creatures diagnostic did not activate.');
+    assert(after.diagnostics.surfaceCreatureIsolation?.destructive === false, 'No-creatures diagnostic must remain non-destructive.');
+    assert(after.diagnostics.surfaceCreatureIsolation?.creaturesPresented === 0, 'Creature presentation was not fully suppressed.');
+    assert(after.diagnostics.surfaceCreatureIsolation?.worldStepsSuppressed > 0, 'Creature/world physics was not suppressed.');
+    assert(after.diagnostics.surfaceCreatureIsolation?.livingStepsSuppressed > 0, 'Living-system creature stepping was not suppressed.');
+    assert(after.diagnostics.surfaceCreatureIsolation?.biosphereStepsSuppressed > 0, 'Biosphere creature stepping was not suppressed.');
     assert(after.diagnostics.surfaceGpuBackend?.renderer, 'WebGL backend diagnostics did not expose a renderer string.');
     assert(moved > 0.5, `WASD movement did not move the player enough (${moved}).`);
     assert(pageErrors.length === 0, `Surface mode produced browser errors: ${pageErrors.join(' | ')}`);
