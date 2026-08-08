@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('playwright');
 
-// Diagnostic PR trigger: keep assertions identical to main v26.
+// Diagnostic PR retrigger after README audit repair; assertions match main v26.
 const baseUrl = process.env.REALITY_BASE_URL || 'http://127.0.0.1:4173/';
 const artifactDir = process.env.REALITY_SURFACE_MODE_ARTIFACT_DIR || path.join(process.cwd(), 'artifacts', 'surface-mode-smoke');
 fs.mkdirSync(artifactDir, { recursive: true });
