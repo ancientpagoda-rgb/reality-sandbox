@@ -46,8 +46,6 @@ fs.mkdirSync(artifactDir, { recursive: true });
       terrain: window.realitySandboxSurfaceTerrainV31.getStats(),
     }));
 
-    // Let many render frames pass without changing chunks. Procedural sample
-    // count must stay fixed after the cached terrain mesh has completed.
     await page.waitForTimeout(700);
     const afterIdle = await page.evaluate(() => window.realitySandboxSurfaceTerrainV31.getStats());
 
@@ -77,7 +75,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
     const moved = Math.hypot(after.player.x - settled.player.x, after.player.y - settled.player.y);
     assert(settled.diagnostics.surfaceModeReady === true, 'Surface mode diagnostics never became ready.');
     assert(after.active && after.gpuCanvasVisible, 'Cached terrain GPU surface did not remain active.');
-    assert(after.surfaceBuild === 'surface-v31-cached-terrain-only', `Unexpected surface build: ${after.surfaceBuild}`);
+    assert(after.surfaceBuild === 'surface-v31b-cached-terrain-only', `Unexpected surface build: ${after.surfaceBuild}`);
     assert(after.diagnostics.surfaceGpu?.gpuPrimary === true, 'WebGL renderer is not primary.');
     assert(after.diagnostics.surfaceGpu?.diagnosticScene === 'cached-terrain-only', 'Unexpected v31 scene.');
     assert(after.diagnostics.surfaceGpu?.rendererInfo?.calls > 0, 'GPU renderer produced no draw calls.');
