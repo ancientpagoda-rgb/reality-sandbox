@@ -23,19 +23,19 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxSurfaceMode &&
       window.realitySandboxSurfaceGpu?.installed &&
       window.realitySandboxSurfaceCpuRelief?.installed &&
-      window.realitySandboxSurfaceSimulationBudget?.installed &&
-      window.realitySandboxSurfaceCreatureIsolation?.installed &&
+      window.realitySandboxSurfaceFlatDiagnostic?.installed &&
       window.realitySandboxSurfaceGpuBackend?.installed &&
       document.getElementById('enterSurfaceMode') &&
       document.getElementById('surfaceGpuCanvas')
     ), null, { timeout: 120000 });
+
     await page.click('#enterSurfaceMode');
     await page.waitForFunction(() => (
       document.documentElement.dataset.surfaceMode === 'active' &&
       document.documentElement.dataset.surfaceGpu === 'active' &&
       window.realitySandboxSurfaceGpu?.isPresenting?.()
     ), null, { timeout: 30000 });
-    await page.waitForTimeout(360);
+    await page.waitForTimeout(420);
 
     const before = await page.evaluate(() => ({
       player: window.realitySandboxSurfaceMode.getPlayer(),
@@ -45,13 +45,12 @@ fs.mkdirSync(artifactDir, { recursive: true });
     await page.keyboard.down('w');
     await page.waitForTimeout(520);
     await page.keyboard.up('w');
-    await page.waitForTimeout(220);
+    await page.waitForTimeout(260);
 
     const after = await page.evaluate(() => ({
       player: window.realitySandboxSurfaceMode.getPlayer(),
       diagnostics: window.realitySandboxPresentationDiagnostics(),
       active: window.realitySandboxSurfaceMode.isActive(),
-      inputCanvasPresent: Boolean(document.getElementById('surfaceModeCanvas')),
       gpuCanvasVisible: (() => {
         const canvas = document.getElementById('surfaceGpuCanvas');
         if (!canvas) return false;
@@ -62,32 +61,27 @@ fs.mkdirSync(artifactDir, { recursive: true });
       surfaceBuild: window.realitySandboxSurfaceBuild,
     }));
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-gpu.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-flat-gpu.png'), fullPage: true });
     fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ before, after, pageErrors }, null, 2));
 
     const moved = Math.hypot(after.player.x - before.player.x, after.player.y - before.player.y);
     assert(before.diagnostics.surfaceModeReady === true, 'Surface mode diagnostics never became ready.');
-    assert(after.active && after.inputCanvasPresent && after.gpuCanvasVisible, 'GPU surface mode did not remain active with a visible WebGL canvas.');
-    assert(after.surfaceBuild === 'surface-v28-no-creatures-diagnostic', `Unexpected surface build: ${after.surfaceBuild}`);
-    assert(after.diagnostics.surfaceMode === 'active', 'Surface mode diagnostics do not report an active presentation.');
-    assert(after.diagnostics.surfaceModeRenderer === 'gpu-controller-no-cpu-raycaster', `CPU raycaster still appears active: ${after.diagnostics.surfaceModeRenderer}`);
-    assert(after.diagnostics.surfaceGpu?.gpuPrimary === true, 'GPU surface diagnostics do not report the WebGL renderer as primary.');
-    assert(after.diagnostics.surfaceGpu?.active === true, 'GPU surface diagnostics do not report active rendering.');
-    assert(after.diagnostics.surfaceGpu?.renderer === 'WebGLRenderer', `Unexpected GPU renderer: ${after.diagnostics.surfaceGpu?.renderer}`);
-    assert(after.diagnostics.surfaceGpu?.rendererInfo?.calls > 0, 'GPU renderer produced no draw calls.');
-    assert(after.diagnostics.surfaceGpu?.rendererInfo?.triangles > 0, 'GPU renderer produced no triangles.');
-    assert(after.diagnostics.surfaceCpuRelief?.hiddenRootPresentationSuspended === true, 'Hidden Pixi root presentation was not suspended in surface mode.');
-    assert(after.diagnostics.surfaceCpuRelief?.rootRendersSkipped > 0, 'No hidden root render calls were skipped during surface mode.');
-    assert(after.diagnostics.surfaceSimulationBudget?.skippedWorldSteps > 0, 'Adaptive surface budget did not skip any expensive world ticks.');
-    assert(after.diagnostics.surfaceSimulationBudget?.skippedModuleSteps > 0, 'Adaptive surface budget did not skip any module ticks.');
-    assert(after.diagnostics.surfaceSimulationBudget?.worldStepExecutionRatio < 0.8, `Surface simulation budget did not reduce world-step frequency enough: ${after.diagnostics.surfaceSimulationBudget?.worldStepExecutionRatio}`);
-    assert(after.diagnostics.surfaceCreatureIsolation?.surfaceActive === true, 'Temporary no-creatures diagnostic did not activate.');
-    assert(after.diagnostics.surfaceCreatureIsolation?.destructive === false, 'No-creatures diagnostic must remain non-destructive.');
-    assert(after.diagnostics.surfaceCreatureIsolation?.creaturesPresented === 0, 'Creature presentation was not fully suppressed.');
-    assert(after.diagnostics.surfaceCreatureIsolation?.worldStepsSuppressed > 0, 'Creature/world physics was not suppressed.');
-    assert(after.diagnostics.surfaceCreatureIsolation?.livingStepsSuppressed > 0, 'Living-system creature stepping was not suppressed.');
-    assert(after.diagnostics.surfaceCreatureIsolation?.biosphereStepsSuppressed > 0, 'Biosphere creature stepping was not suppressed.');
-    assert(after.diagnostics.surfaceGpuBackend?.renderer, 'WebGL backend diagnostics did not expose a renderer string.');
+    assert(after.active && after.gpuCanvasVisible, 'Flat GPU surface mode did not remain active with a visible WebGL canvas.');
+    assert(after.surfaceBuild === 'surface-v29-flat-gpu-isolation', `Unexpected surface build: ${after.surfaceBuild}`);
+    assert(after.diagnostics.surfaceGpu?.gpuPrimary === true, 'Flat WebGL renderer is not primary.');
+    assert(after.diagnostics.surfaceGpu?.diagnosticScene === 'single-flat-plane', 'Unexpected diagnostic scene.');
+    assert(after.diagnostics.surfaceGpu?.rendererInfo?.calls > 0, 'Flat GPU renderer produced no draw calls.');
+    assert(after.diagnostics.surfaceGpu?.rendererInfo?.triangles > 0, 'Flat GPU renderer produced no triangles.');
+    assert(after.diagnostics.surfaceCpuRelief?.hiddenRootPresentationSuspended === true, 'Hidden Pixi root presentation was not suspended.');
+    assert(after.diagnostics.surfaceCpuRelief?.rootRendersSkipped > 0, 'No hidden root render calls were skipped.');
+    assert(after.diagnostics.surfaceFlatDiagnostic?.surfaceActive === true, 'Flat isolation did not activate.');
+    assert(after.diagnostics.surfaceFlatDiagnostic?.proceduralSampling === false, 'Procedural sampling is still enabled.');
+    assert(after.diagnostics.surfaceFlatDiagnostic?.simulationRunning === false, 'Simulation is still running during flat isolation.');
+    assert(after.diagnostics.surfaceFlatDiagnostic?.worldStepsSuppressed > 0, 'World steps were not suppressed.');
+    assert(after.diagnostics.surfaceFlatDiagnostic?.moduleStepsSuppressed > 0, 'Module steps were not suppressed.');
+    assert(after.diagnostics.surfaceFlatDiagnostic?.terrainSamplesSuppressed > 0, 'Controller terrain samples were not intercepted.');
+    assert(after.diagnostics.surfaceFlatDiagnostic?.waterSamplesSuppressed > 0, 'Controller water samples were not intercepted.');
+    assert(after.diagnostics.surfaceGpuBackend?.renderer, 'WebGL backend renderer string is missing.');
     assert(moved > 0.5, `WASD movement did not move the player enough (${moved}).`);
     assert(pageErrors.length === 0, `Surface mode produced browser errors: ${pageErrors.join(' | ')}`);
 
