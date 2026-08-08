@@ -68,6 +68,9 @@ function installSurfaceMode({ runtime, planet, sourceCanvas }) {
   let lastTerrainRender = -Infinity;
   let surfaceFrame = 0;
   let visibleCreatures = 0;
+  let culledVegetationCandidates = 0;
+  let culledCreatureCandidates = 0;
+  let hiddenWaterSamplesSkipped = 0;
   let dragLook = false;
   let dragX = 0;
   let dragY = 0;
@@ -221,6 +224,16 @@ function installSurfaceMode({ runtime, planet, sourceCanvas }) {
     return waterCycle.sample(wrap(x, world.width), clamp(y, 0, world.height));
   }
 
+  function pointLikelyVisible(wx, wy, width, maxDepth) {
+    const dx = shortestWrappedDelta(wx, player.x, world.width);
+    const dy = wy - player.y;
+    const forward = dx * Math.cos(player.yaw) + dy * Math.sin(player.yaw);
+    if (forward <= 0.5 || forward > maxDepth) return false;
+    const side = -dx * Math.sin(player.yaw) + dy * Math.cos(player.yaw);
+    const horizontalLimit = Math.tan(FOV * 0.5) * (1 + 160 / Math.max(1, width));
+    return Math.abs(side) <= forward * horizontalLimit;
+  }
+
   function groundZAt(x, y) {
     const terrain = terrainAt(x, y);
     if (!terrain) return SEA_LEVEL * Z_SCALE;
@@ -308,6 +321,7 @@ function installSurfaceMode({ runtime, planet, sourceCanvas }) {
     const focal = width / (2 * Math.tan(FOV * 0.5));
     const stride = width >= 1050 ? 3 : 2;
     const skyFog = [118, 151, 145];
+    hiddenWaterSamplesSkipped = 0;
 
     for (let sx = 0; sx < width; sx += stride) {
       const rayOffset = ((sx + stride * 0.5) / width - 0.5) * FOV;
@@ -322,11 +336,11 @@ function installSurfaceMode({ runtime, planet, sourceCanvas }) {
         const wy = clamp(player.y + sin * distance, 0, world.height);
         const terrain = terrainAt(wx, wy);
         if (!terrain) break;
-        const water = waterAt(wx, wy);
         const surfaceZ = (terrain.land ? terrain.elevation : SEA_LEVEL) * Z_SCALE;
         const projectedY = horizon - ((surfaceZ - eyeZ) / distance) * focal;
 
         if (projectedY < coveredY) {
+          const water = waterAt(wx, wy);
           const noise = Math.sin((wx * 0.41 + wy * 0.23) + distance * 0.13) * 0.5;
           let color = localSurfaceColor(terrain, water, distance, noise);
           const fog = clamp((distance - 90) / 140, 0, 0.35);
@@ -335,6 +349,8 @@ function installSurfaceMode({ runtime, planet, sourceCanvas }) {
           const top = Math.max(-2, Math.floor(projectedY));
           ctx.fillRect(sx, top, stride + 1, Math.ceil(coveredY - top) + 1);
           coveredY = top;
+        } else {
+          hiddenWaterSamplesSkipped++;
         }
 
         distance += 0.75 + distance * 0.026;
@@ -351,6 +367,7 @@ function installSurfaceMode({ runtime, planet, sourceCanvas }) {
     const sprites = [];
     const originX = Math.floor(player.x / grid);
     const originY = Math.floor(player.y / grid);
+    culledVegetationCandidates = 0;
 
     for (let gy = originY - range; gy <= originY + range; gy++) {
       for (let gx = originX - range; gx <= originX + range; gx++) {
@@ -358,6 +375,10 @@ function installSurfaceMode({ runtime, planet, sourceCanvas }) {
         const jitterY = (hash2(gx + 47, gy - 19, seed) - 0.5) * grid * 0.72;
         const wx = wrap((gx + 0.5) * grid + jitterX, world.width);
         const wy = clamp((gy + 0.5) * grid + jitterY, 0, world.height);
+        if (!pointLikelyVisible(wx, wy, width, 125)) {
+          culledVegetationCandidates++;
+          continue;
+        }
         const terrain = terrainAt(wx, wy);
         if (!terrain?.land || !['forest', 'rainforest', 'grassland', 'steppe'].includes(terrain.biome)) continue;
         const biomass = typeof biomassSampler === 'function' ? biomassSampler(wx, wy) : (terrain.biome === 'rainforest' ? 0.9 : terrain.biome === 'forest' ? 0.72 : 0.34);
@@ -400,6 +421,7 @@ function installSurfaceMode({ runtime, planet, sourceCanvas }) {
   function drawCreatures(width, height, horizon, eyeZ, focal) {
     const { position, agent, predator, apex } = world.ecs.components;
     visibleCreatures = 0;
+    culledCreatureCandidates = 0;
 
     const groups = [
       { collection: agent, fill: '#d8c890', size: 0.72 },
@@ -415,6 +437,10 @@ function installSurfaceMode({ runtime, planet, sourceCanvas }) {
         const dx = shortestWrappedDelta(pos.x, player.x, world.width);
         const dy = pos.y - player.y;
         if (dx * dx + dy * dy > 150 * 150) continue;
+        if (!pointLikelyVisible(pos.x, pos.y, width, 150)) {
+          culledCreatureCandidates++;
+          continue;
+        }
         const terrain = terrainAt(pos.x, pos.y);
         if (!terrain?.land) continue;
         const groundZ = terrain.elevation * Z_SCALE;
@@ -648,6 +674,12 @@ function installSurfaceMode({ runtime, planet, sourceCanvas }) {
     surfaceModeBiome: document.documentElement.dataset.surfaceModeBiome || 'unknown',
     surfaceModeCoordinates: document.documentElement.dataset.surfaceModeCoordinates || 'unknown',
     surfaceModeVisibleCreatures: Number(document.documentElement.dataset.surfaceModeVisibleCreatures || 0),
+    surfaceModeCulling: {
+      strategy: 'pre-sample-frustum',
+      vegetationCandidatesSkipped: culledVegetationCandidates,
+      creatureCandidatesSkipped: culledCreatureCandidates,
+      hiddenWaterSamplesSkipped,
+    },
   });
 
   window.realitySandboxSurfaceMode = {
