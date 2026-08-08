@@ -33,6 +33,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxSurfaceVegetationV38?.installed &&
       window.realitySandboxSurfaceVegetationStabilityV38b?.installed &&
       window.realitySandboxSurfaceHorizonV38?.installed &&
+      window.realitySandboxSurfaceWeatherV39?.installed &&
       window.realitySandboxSurfaceGpuBackend?.installed &&
       document.getElementById('enterSurfaceMode') &&
       document.getElementById('surfaceGpuCanvas') &&
@@ -54,12 +55,17 @@ fs.mkdirSync(artifactDir, { recursive: true });
 
     await page.waitForFunction(() => window.realitySandboxSurfaceVegetationV38?.getStats?.().buildsCompleted >= 1, null, { timeout: 120000 });
     await page.waitForFunction(() => window.realitySandboxSurfaceWaterStabilityV38b?.getStats?.().meshesProcessed >= 1, null, { timeout: 60000 });
+    await page.waitForFunction(() => {
+      const w = window.realitySandboxSurfaceWeatherV39?.getStats?.();
+      return w?.buildsCompleted >= 1 && w?.fieldReady && w?.particleFrames >= 2;
+    }, null, { timeout: 120000 });
 
     const stable = await page.evaluate(() => ({
       player: window.realitySandboxSurfaceMode.getPlayer(),
       surface: window.realitySandboxSurfaceSphereV37.getStats(),
       sky: window.realitySandboxSurfaceCelestialsV38.getStats(),
       vegetation: window.realitySandboxSurfaceVegetationV38.getStats(),
+      weather: window.realitySandboxSurfaceWeatherV39.getStats(),
       waterStability: window.realitySandboxSurfaceWaterStabilityV38b.getStats(),
       vegetationStability: window.realitySandboxSurfaceVegetationStabilityV38b.getStats(),
       diagnostics: window.realitySandboxPresentationDiagnostics(),
@@ -87,7 +93,9 @@ fs.mkdirSync(artifactDir, { recursive: true });
     await page.keyboard.down('w');
     await page.waitForTimeout(2200);
     await page.keyboard.up('w');
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(900);
+
+    await page.waitForFunction(() => window.realitySandboxSurfaceWeatherV39?.getStats?.().buildsCompleted >= 2, null, { timeout: 120000 });
 
     const after = await page.evaluate(() => ({
       player: window.realitySandboxSurfaceMode.getPlayer(),
@@ -99,6 +107,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       vegetation: window.realitySandboxSurfaceVegetationV38.getStats(),
       vegetationStability: window.realitySandboxSurfaceVegetationStabilityV38b.getStats(),
       waterStability: window.realitySandboxSurfaceWaterStabilityV38b.getStats(),
+      weather: window.realitySandboxSurfaceWeatherV39.getStats(),
       horizon: window.realitySandboxSurfaceHorizonV38.getStats(),
       scheduler: window.realitySandboxSurfaceIdleSchedulerV34.getStats(),
       controller: window.realitySandboxSurfaceMode.getStats?.(),
@@ -106,12 +115,12 @@ fs.mkdirSync(artifactDir, { recursive: true });
       surfaceBuild: window.realitySandboxSurfaceBuild,
     }));
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v38b-water-plants-stability.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v39-cached-weather.png'), fullPage: true });
     fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ stable, fastSky, after, pageErrors }, null, 2));
 
     const moved = Math.hypot(after.player.x - stable.player.x, after.player.y - stable.player.y);
     assert(after.active, 'Surface mode did not remain active.');
-    assert(after.surfaceBuild === 'surface-v38b-water-plants-stability', `Unexpected surface build: ${after.surfaceBuild}`);
+    assert(after.surfaceBuild === 'surface-v39-cached-spherical-weather', `Unexpected surface build: ${after.surfaceBuild}`);
     assert(after.controller?.topology === 'sphere' && after.controller?.extendedFlight === true, 'Extended spherical flight controller is not active.');
     assert(after.controller.maxAltitude >= 400 && after.player.altitude > 100, `High flight did not extend altitude (${after.player.altitude}).`);
     assert(after.flight.extendedFlight === true && after.flight.cameraFar >= 2500, 'High-flight far plane extension is not active.');
@@ -126,6 +135,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(after.surface.waterEnabled === true && after.surface.waterOpaque === true && after.surface.sphereCurvatureEnabled === true, 'Sphere/water baseline regressed.');
 
     assert(after.waterStability.geometryWaves === false && after.waterStability.fragmentWaves === true, 'Water geometry is still being displaced into polygonal waves.');
+    assert(after.waterStability.worldSpaceWaves === true, 'Water waves are not continuous in world space.');
     assert(after.waterStability.wetDryBridgeTrianglesRemoved === true && after.waterStability.steepInlandWaterRejected === true, 'Steep wet/dry water bridging is not blocked.');
     assert(after.waterStability.frontFacesOnly === true && after.waterStability.waterOpaque === true, 'Water face/depth stability regressed.');
     assert(after.waterStability.meshesProcessed >= 1 && after.waterStability.trianglesRemoved > 0, 'Water stabilizer did not process and trim wet/dry geometry.');
@@ -138,6 +148,15 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(after.vegetationStability.preservesOldVegetationDuringRebuild === true, 'Vegetation does not remain visible during chunk rebuild handoff.');
     assert(after.vegetationStability.anchorRegistered === true && after.vegetationStability.instancedFrustumCullingDisabled === true, 'Vegetation anchor/culling stability is not active.');
     assert(after.vegetationStability.cullingDisabledMeshes >= 1, 'Instanced vegetation culling was not corrected.');
+
+    assert(after.weather.fieldReady === true && after.weather.cachedField === true, 'Cached weather field is not ready.');
+    assert(after.weather.gridSize === 15 && after.weather.waterSamples >= 225 && after.weather.terrainSamples >= 225, 'Weather field did not cache the expected environment grid.');
+    assert(after.weather.bilinearInterpolation === true && after.weather.interpolationCalls > 100, 'Weather particles are not using bilinear field interpolation.');
+    assert(after.weather.sphericalLatitudeCorrection === true && after.weather.usesWaterCyclePhysics === true, 'Weather field is not using spherical water-cycle wind physics.');
+    assert(after.weather.proceduralSamplingInRenderLoop === false && after.weather.renderLoopProceduralSamples === 0, 'Weather performs procedural sampling in the render loop.');
+    assert(after.weather.weatherSimulationRunningInSurface === false && after.weather.presentationOnlyAdvection === true, 'Weather presentation restarted the expensive simulation.');
+    assert(after.weather.cloudParticles >= 100 && after.weather.precipitationParticles >= 50 && after.weather.particleFrames > 10, 'Weather particle presentation is not running.');
+    assert(after.weather.buildsCompleted >= 2 && after.weather.anchorHandoffs >= 1, 'Weather cache did not rebuild cleanly across terrain chunk handoff.');
 
     assert(after.horizon.buildsCompleted >= 1 && after.horizon.mergedSingleMesh === true, 'High-altitude merged horizon ring was not built.');
     assert(after.horizon.ring === 3 && after.horizon.vertices >= 500 && after.horizon.renderLoopProceduralSamples === 0, 'High-altitude horizon contract failed.');
