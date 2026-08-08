@@ -6,6 +6,15 @@ export function createSphericalStepper(world) {
   const previousY = new Map();
 
   return function stepSphere(dt) {
+    // Surface mode owns a high-refresh camera. Let its adaptive budget decide
+    // whether this expensive whole-world simulation tick should run at all.
+    // This check happens BEFORE the old all-position snapshot, so skipped
+    // background ticks are genuinely cheap instead of still traversing every
+    // entity twice.
+    const budgetedDt = world.getSphericalStepDt?.(dt);
+    if (budgetedDt === false) return false;
+    const effectiveDt = Number.isFinite(budgetedDt) && budgetedDt > 0 ? budgetedDt : dt;
+
     const { position, velocity } = world.ecs.components;
     const width = world.width;
     const height = world.height;
@@ -15,7 +24,7 @@ export function createSphericalStepper(world) {
 
     // The existing world step still performs ordinary edge wrapping. We then
     // reinterpret vertical wraps as pole crossings on a sphere.
-    world.step(dt);
+    world.step(effectiveDt);
 
     for (const [id, pos] of position.entries()) {
       const before = previousY.get(id);
@@ -39,5 +48,6 @@ export function createSphericalStepper(world) {
       pos.x = ((pos.x % width) + width) % width;
       pos.y = Math.max(0, Math.min(height, pos.y));
     }
+    return true;
   };
 }
