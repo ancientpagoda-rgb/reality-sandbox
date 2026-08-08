@@ -33,9 +33,10 @@ function readBackend(canvas) {
     : gl.getParameter(gl.RENDERER);
   const text = `${vendor || ''} ${renderer || ''}`;
   const softwareRendererLikely = SOFTWARE_RENDERER_RE.test(text);
+  const isWebGl2 = typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext;
 
   return {
-    context: gl instanceof WebGL2RenderingContext ? 'webgl2' : 'webgl1',
+    context: isWebGl2 ? 'webgl2' : 'webgl1',
     vendor: String(vendor || 'unknown'),
     renderer: String(renderer || 'unknown'),
     version: String(gl.getParameter(gl.VERSION) || 'unknown'),
