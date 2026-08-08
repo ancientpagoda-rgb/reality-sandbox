@@ -15,6 +15,15 @@ export function createSphericalStepper(world) {
     if (budgetedDt === false) return false;
     const effectiveDt = Number.isFinite(budgetedDt) && budgetedDt > 0 ? budgetedDt : dt;
 
+    // Temporary v28 diagnostic: when Surface Mode is isolating creature cost,
+    // skip the complete world physics/creature step and both full-position
+    // traversals. Hydrology, tectonics, weather, and other module-host systems
+    // can continue separately; creature state itself remains untouched in RAM.
+    if (world.surfaceCreatureIsolationActive?.()) {
+      world.noteSurfaceCreatureWorldStepSuppressed?.();
+      return true;
+    }
+
     const { position, velocity } = world.ecs.components;
     const width = world.width;
     const height = world.height;
