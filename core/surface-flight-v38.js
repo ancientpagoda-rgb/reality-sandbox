@@ -24,6 +24,7 @@ function install(mode) {
   let virtualAltitude = EYE_HEIGHT;
   let activeLastFrame = false;
   let last = performance.now();
+  let lastHudPatch = -Infinity;
   let wheelEvents = 0;
   let highFlightFrames = 0;
 
@@ -66,6 +67,16 @@ function install(mode) {
       help.dataset.v38FlightHelp = 'true';
       help.textContent = 'WASD move · mouse look · Space/Ctrl fly · Shift = fast · wheel altitude · T sky time-lapse · Esc exit';
     }
+  }
+
+  function patchHudAltitude(now) {
+    if (now - lastHudPatch < 160) return;
+    lastHudPatch = now;
+    const hud = document.getElementById('surfaceModeHud');
+    if (!hud) return;
+    const info = [...hud.querySelectorAll('div')].find(el => el.innerHTML?.includes('altitude +'));
+    if (!info) return;
+    info.innerHTML = info.innerHTML.replace(/altitude \+[0-9.]+/, `altitude +${Math.max(0, virtualAltitude - EYE_HEIGHT).toFixed(1)}`);
   }
 
   function loop(now) {
@@ -114,6 +125,7 @@ function install(mode) {
       scene.fog.far = 1320 + t * 180;
     }
 
+    patchHudAltitude(now);
     document.documentElement.dataset.surfaceAltitudeV38 = virtualAltitude.toFixed(1);
   }
   requestAnimationFrame(loop);
@@ -128,6 +140,7 @@ function install(mode) {
       highFlightFrames,
       cameraFar: window.realitySandboxSurfaceLightHookV36?.getObjects?.().camera?.far || null,
       legacyAltitudeCeiling: LEGACY_ALTITUDE,
+      hudAltitudeSynced: true,
     }),
   };
   window.realitySandboxSurfaceFlightV38 = api;
