@@ -60,6 +60,7 @@ function install({ planet, mode, surface, scene }) {
 
   let group = null;
   let activeKey = '';
+  let requestedKey = '';
   let buildGeneration = 0;
   let lastSurfaceActive = false;
   const stats = {
@@ -153,6 +154,7 @@ function install({ planet, mode, surface, scene }) {
 
   function build(anchor) {
     const generation = ++buildGeneration;
+    requestedKey = anchor.key;
     stats.buildsStarted++;
     const candidates = [...candidateCells(anchor, NEAR_CELL, NEAR_RADIUS, 0), ...candidateCells(anchor, MID_CELL, MID_RADIUS, 1)];
     stats.candidates += candidates.length;
@@ -217,6 +219,7 @@ function install({ planet, mode, surface, scene }) {
       next.add(createInstanced(farGeometry, farMaterial, fars, farColors));
       disposeGroup(); group = next; scene.add(group);
       activeKey = anchor.key;
+      requestedKey = '';
       stats.nearTrees = canopies.length; stats.nearShrubs = shrubs.length; stats.midPlants = fars.length;
       stats.instances = trunks.length + canopies.length + shrubs.length + fars.length;
       stats.buildsCompleted++;
@@ -229,13 +232,13 @@ function install({ planet, mode, surface, scene }) {
     requestAnimationFrame(loop);
     const active = surfaceActive();
     if (!active) {
-      if (lastSurfaceActive) { lastSurfaceActive = false; buildGeneration++; activeKey = ''; disposeGroup(); }
+      if (lastSurfaceActive) { lastSurfaceActive = false; buildGeneration++; activeKey = ''; requestedKey = ''; disposeGroup(); }
       return;
     }
     lastSurfaceActive = true;
     const s = surface.getStats();
     const anchor = anchorFromSurface(s);
-    if (!anchor || anchor.key === activeKey) return;
+    if (!anchor || anchor.key === activeKey || anchor.key === requestedKey) return;
     build(anchor);
   }
   requestAnimationFrame(loop);
@@ -252,6 +255,7 @@ function install({ planet, mode, surface, scene }) {
       distanceLod: true,
       globalDisplayCap: false,
       activeChunkKey: activeKey,
+      requestedChunkKey: requestedKey,
     }),
   };
   window.realitySandboxSurfaceVegetationV38 = api;
