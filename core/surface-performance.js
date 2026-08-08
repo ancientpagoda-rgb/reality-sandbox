@@ -5,6 +5,12 @@ const TERRAIN_FAR_RADIUS = 158;
 const WATER_NEAR_RADIUS = 46;
 const WATER_MID_RADIUS = 96;
 const WATER_FAR_RADIUS = 142;
+const TERRAIN_NEAR_RADIUS_SQ = TERRAIN_NEAR_RADIUS * TERRAIN_NEAR_RADIUS;
+const TERRAIN_MID_RADIUS_SQ = TERRAIN_MID_RADIUS * TERRAIN_MID_RADIUS;
+const TERRAIN_FAR_RADIUS_SQ = TERRAIN_FAR_RADIUS * TERRAIN_FAR_RADIUS;
+const WATER_NEAR_RADIUS_SQ = WATER_NEAR_RADIUS * WATER_NEAR_RADIUS;
+const WATER_MID_RADIUS_SQ = WATER_MID_RADIUS * WATER_MID_RADIUS;
+const WATER_FAR_RADIUS_SQ = WATER_FAR_RADIUS * WATER_FAR_RADIUS;
 const MAX_CACHE_ENTRIES = 18000;
 const CACHE_SWEEP_INTERVAL_MS = 650;
 const QUALITY_CHANGE_COOLDOWN_MS = 900;
@@ -75,31 +81,31 @@ function installSamplerCache(planet) {
     return RENDER_SCALE_BY_LEVEL[qualityLevel] || 1;
   }
 
-  function detailStep(distance, kind) {
+  function detailStep(distanceSquared, kind) {
     const multiplier = detailMultiplier();
     if (kind === 'water') {
-      if (distance <= WATER_NEAR_RADIUS) return 0;
-      if (distance <= WATER_MID_RADIUS) return 0.35 * multiplier;
-      if (distance <= WATER_FAR_RADIUS) return 0.8 * multiplier;
+      if (distanceSquared <= WATER_NEAR_RADIUS_SQ) return 0;
+      if (distanceSquared <= WATER_MID_RADIUS_SQ) return 0.35 * multiplier;
+      if (distanceSquared <= WATER_FAR_RADIUS_SQ) return 0.8 * multiplier;
       return 1.45 * multiplier;
     }
 
-    if (distance <= TERRAIN_NEAR_RADIUS) return 0;
-    if (distance <= TERRAIN_MID_RADIUS) return 0.25 * multiplier;
-    if (distance <= TERRAIN_FAR_RADIUS) return 0.6 * multiplier;
+    if (distanceSquared <= TERRAIN_NEAR_RADIUS_SQ) return 0;
+    if (distanceSquared <= TERRAIN_MID_RADIUS_SQ) return 0.25 * multiplier;
+    if (distanceSquared <= TERRAIN_FAR_RADIUS_SQ) return 0.6 * multiplier;
     return 1.15 * multiplier;
   }
 
-  function cacheTtl(distance, kind, step) {
+  function cacheTtl(distanceSquared, kind, step) {
     if (!step) return FRAME_BUCKET_MS + 4;
     const levelBonus = qualityLevel * 42;
     if (kind === 'water') {
-      if (distance <= WATER_MID_RADIUS) return 92 + levelBonus;
-      if (distance <= WATER_FAR_RADIUS) return 170 + levelBonus * 1.35;
+      if (distanceSquared <= WATER_MID_RADIUS_SQ) return 92 + levelBonus;
+      if (distanceSquared <= WATER_FAR_RADIUS_SQ) return 170 + levelBonus * 1.35;
       return 280 + levelBonus * 1.8;
     }
-    if (distance <= TERRAIN_MID_RADIUS) return 76 + levelBonus;
-    if (distance <= TERRAIN_FAR_RADIUS) return 142 + levelBonus * 1.25;
+    if (distanceSquared <= TERRAIN_MID_RADIUS_SQ) return 76 + levelBonus;
+    if (distanceSquared <= TERRAIN_FAR_RADIUS_SQ) return 142 + levelBonus * 1.25;
     return 230 + levelBonus * 1.65;
   }
 
@@ -140,8 +146,8 @@ function installSamplerCache(planet) {
     const clampedY = clamp(y, 0, world.height);
     const dx = shortestWrappedDelta(wrappedX, player.x, world.width);
     const dy = clampedY - player.y;
-    const distance = Math.hypot(dx, dy);
-    const step = detailStep(distance, kind);
+    const distanceSquared = dx * dx + dy * dy;
+    const step = detailStep(distanceSquared, kind);
     const sampleX = step ? wrap(quantize(wrappedX, step), world.width) : wrappedX;
     const sampleY = step ? clamp(quantize(clampedY, step), 0, world.height) : clampedY;
     const cache = kind === 'water' ? waterCache : terrainCache;
@@ -165,7 +171,7 @@ function installSamplerCache(planet) {
 
     const value = original(sampleX, sampleY);
     if (cache.size < MAX_CACHE_ENTRIES) {
-      cache.set(key, { value, expiresAt: now + cacheTtl(distance, kind, step) });
+      cache.set(key, { value, expiresAt: now + cacheTtl(distanceSquared, kind, step) });
     }
     return value;
   }
@@ -275,6 +281,7 @@ function installSamplerCache(planet) {
       detailMultiplier: detailMultiplier(),
       renderScale: renderScale(),
       adaptiveResolutionHookInstalled: surfaceResolutionHookInstalled,
+      squaredDistanceHotPath: true,
     }),
     getQualityProfile: () => ({
       level: qualityLevel,
