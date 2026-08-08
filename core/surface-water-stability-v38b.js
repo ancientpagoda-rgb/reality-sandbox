@@ -46,8 +46,9 @@ import * as THREE from 'three';
       varying vec2 vWaterPosition;
       void main() {
         vWater = waterStrength;
-        vWaterPosition = position.xz;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+        vWaterPosition = worldPosition.xz;
+        gl_Position = projectionMatrix * viewMatrix * worldPosition;
       }
     `;
     material.fragmentShader = `
@@ -169,6 +170,7 @@ import * as THREE from 'three';
       ...stats,
       geometryWaves: false,
       fragmentWaves: true,
+      worldSpaceWaves: true,
       wetDryBridgeTrianglesRemoved: true,
       steepInlandWaterRejected: true,
       frontFacesOnly: true,
