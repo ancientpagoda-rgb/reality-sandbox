@@ -323,7 +323,7 @@ function installSurfaceMode({ runtime, planet, sourceCanvas }) {
     if (!active) return;
     if (document.pointerLockElement === canvas) {
       player.yaw = (player.yaw + event.movementX * 0.00225) % TAU;
-      player.pitch = clamp(player.pitch + event.movementY * 0.0019, -0.58, 0.58);
+      player.pitch = clamp(player.pitch - event.movementY * 0.0019, -0.58, 0.58);
       return;
     }
     if (!dragLook) return;
@@ -332,7 +332,7 @@ function installSurfaceMode({ runtime, planet, sourceCanvas }) {
     dragX = event.clientX;
     dragY = event.clientY;
     player.yaw = (player.yaw + dx * 0.004) % TAU;
-    player.pitch = clamp(player.pitch + dy * 0.0032, -0.58, 0.58);
+    player.pitch = clamp(player.pitch - dy * 0.0032, -0.58, 0.58);
   });
 
   canvas.addEventListener('pointerdown', event => {
