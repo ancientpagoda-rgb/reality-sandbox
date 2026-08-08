@@ -23,6 +23,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxSurfaceMode &&
       window.realitySandboxSurfaceGpu?.installed &&
       window.realitySandboxSurfaceCpuRelief?.installed &&
+      window.realitySandboxSurfaceIdleSchedulerV34?.installed &&
       window.realitySandboxSurfaceSphereV33?.installed &&
       window.realitySandboxSurfaceCelestialsV34?.installed &&
       window.realitySandboxSurfaceGpuBackend?.installed &&
@@ -48,6 +49,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       diagnostics: window.realitySandboxPresentationDiagnostics(),
       surface: window.realitySandboxSurfaceSphereV33.getStats(),
       sky: window.realitySandboxSurfaceCelestialsV34.getStats(),
+      scheduler: window.realitySandboxSurfaceIdleSchedulerV34.getStats(),
     }));
 
     await page.waitForFunction(() => (
@@ -64,6 +66,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       diagnostics: window.realitySandboxPresentationDiagnostics(),
       surface: window.realitySandboxSurfaceSphereV33.getStats(),
       sky: window.realitySandboxSurfaceCelestialsV34.getStats(),
+      scheduler: window.realitySandboxSurfaceIdleSchedulerV34.getStats(),
       controller: window.realitySandboxSurfaceMode.getStats?.(),
       active: window.realitySandboxSurfaceMode.isActive(),
       gpuCanvasVisible: (() => {
@@ -83,13 +86,13 @@ fs.mkdirSync(artifactDir, { recursive: true });
       surfaceBuild: window.realitySandboxSurfaceBuild,
     }));
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v34-orbital-sky.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v34-orbital-priority.png'), fullPage: true });
     fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ nearReady, after, pageErrors }, null, 2));
 
     const moved = Math.hypot(after.player.x - nearReady.player.x, after.player.y - nearReady.player.y);
     assert(nearReady.diagnostics.surfaceModeReady === true, 'Surface mode diagnostics never became ready.');
     assert(after.active && after.gpuCanvasVisible && after.celestialCanvasVisible, 'v34 surface/celestial presentation did not remain active.');
-    assert(after.surfaceBuild === 'surface-v34-orbital-sky-spherical-lod', `Unexpected surface build: ${after.surfaceBuild}`);
+    assert(after.surfaceBuild === 'surface-v34-orbital-sky-priority-spherical-lod', `Unexpected surface build: ${after.surfaceBuild}`);
     assert(after.controller?.topology === 'sphere', 'Surface movement controller is not using spherical topology.');
     assert(after.diagnostics.surfaceGpu?.gpuPrimary === true, 'WebGL renderer is not primary.');
     assert(after.diagnostics.surfaceGpu?.rendererInfo?.triangles > 100, 'Spherical cached surface produced too few triangles.');
@@ -99,6 +102,9 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(after.diagnostics.surfaceSphereV33?.sphereCurvatureEnabled === true, 'Sphere curvature is not enabled.');
     assert(after.diagnostics.surfaceSphereV33?.proceduralSamplingInRenderLoop === false, 'Procedural sampling is in the render loop.');
     assert(after.surface.renderLoopProceduralSamples === 0, 'Render loop performed procedural terrain/water samples.');
+    assert(after.scheduler.policy === 'near-first-interaction-debounced-distant', `Unexpected scheduler policy: ${after.scheduler.policy}`);
+    assert(after.scheduler.highPriorityRequests > 0, 'Near terrain was not prioritized.');
+    assert(after.scheduler.deferredRequests > 0 && after.scheduler.deferredRuns > 0, 'Distant idle work was not deferred/resumed.');
     assert(after.sky.source === 'Nysa orbital model', `Unexpected celestial source: ${after.sky.source}`);
     assert(after.sky.axialTiltCoupled === true && after.sky.observerLatitudeLongitudeCoupled === true, 'Celestial position is not coupled to Nysa geometry.');
     assert(after.sky.moonPhaseFromElongation === true && after.sky.apparentAngularSizeModeled === true, 'Moon phase/angular-size model is not enabled.');
