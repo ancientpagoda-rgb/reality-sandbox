@@ -67,7 +67,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
     const moved = Math.hypot(after.player.x - before.player.x, after.player.y - before.player.y);
     assert(before.diagnostics.surfaceModeReady === true, 'Surface mode diagnostics never became ready.');
     assert(after.active && after.gpuCanvasVisible, 'Flat GPU surface mode did not remain active with a visible WebGL canvas.');
-    assert(after.surfaceBuild === 'surface-v29-flat-gpu-isolation', `Unexpected surface build: ${after.surfaceBuild}`);
+    assert(after.surfaceBuild === 'surface-v30-flat-gpu-smooth-checkpoint', `Unexpected surface build: ${after.surfaceBuild}`);
     assert(after.diagnostics.surfaceGpu?.gpuPrimary === true, 'Flat WebGL renderer is not primary.');
     assert(after.diagnostics.surfaceGpu?.diagnosticScene === 'single-flat-plane', 'Unexpected diagnostic scene.');
     assert(after.diagnostics.surfaceGpu?.rendererInfo?.calls > 0, 'Flat GPU renderer produced no draw calls.');
