@@ -15,6 +15,8 @@ const MAX_CACHE_ENTRIES = 18000;
 const CACHE_SWEEP_INTERVAL_MS = 650;
 const QUALITY_CHANGE_COOLDOWN_MS = 900;
 const RENDER_SCALE_BY_LEVEL = [1, 0.96, 0.9, 0.82];
+const CREATURE_CELL_SIZE = 32;
+const CREATURE_INDEX_INTERVAL_BY_LEVEL = [120, 170, 240, 340];
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const wrap = (value, max) => ((value % max) + max) % max;
@@ -41,6 +43,7 @@ function installSamplerCache(planet) {
   const originalWaterSample = waterCycle.sample.bind(waterCycle);
   const terrainCache = new Map();
   const waterCache = new Map();
+  const creatureGrid = new Map();
 
   let bucket = -1;
   let lastSweep = 0;
@@ -50,6 +53,9 @@ function installSamplerCache(planet) {
   let qualityLevel = 0;
   let surfaceResolutionHookInstalled = false;
   let lastRenderScale = 1;
+  let creatureIndexBuiltAt = -Infinity;
+  let creatureIndexEntries = 0;
+  let creatureIndexVersion = 0;
 
   const stats = {
     terrainHits: 0,
@@ -64,6 +70,11 @@ function installSamplerCache(planet) {
     qualityChanges: 0,
     peakQualityLevel: 0,
     renderScaleChanges: 0,
+    creatureIndexRebuilds: 0,
+    creatureIndexEntitiesScanned: 0,
+    creatureIndexQueries: 0,
+    creatureIndexCellsVisited: 0,
+    creatureIndexCandidatesReturned: 0,
   };
 
   function activePlayer() {
@@ -79,6 +90,10 @@ function installSamplerCache(planet) {
   function renderScale() {
     if (!activePlayer()) return 1;
     return RENDER_SCALE_BY_LEVEL[qualityLevel] || 1;
+  }
+
+  function creatureIndexInterval() {
+    return CREATURE_INDEX_INTERVAL_BY_LEVEL[qualityLevel] || CREATURE_INDEX_INTERVAL_BY_LEVEL[0];
   }
 
   function detailStep(distanceSquared, kind) {
@@ -186,6 +201,89 @@ function installSamplerCache(planet) {
     return sampleWithCache('water', x, y, originalWaterSample);
   };
 
+  function rebuildCreatureIndex(now = performance.now()) {
+    const components = world.ecs?.components;
+    const position = components?.position;
+    const agent = components?.agent;
+    const predator = components?.predator;
+    const apex = components?.apex;
+    if (!position || !agent || !predator || !apex) return false;
+
+    creatureGrid.clear();
+    creatureIndexEntries = 0;
+    const cols = Math.max(1, Math.ceil(world.width / CREATURE_CELL_SIZE));
+    const rows = Math.max(1, Math.ceil(world.height / CREATURE_CELL_SIZE));
+
+    const addGroup = (collection, kind) => {
+      for (const [id] of collection.entries()) {
+        stats.creatureIndexEntitiesScanned++;
+        const pos = position.get(id);
+        if (!pos) continue;
+        const px = wrap(pos.x, world.width);
+        const py = clamp(pos.y, 0, world.height);
+        const cx = Math.min(cols - 1, Math.floor(px / CREATURE_CELL_SIZE));
+        const cy = Math.min(rows - 1, Math.floor(py / CREATURE_CELL_SIZE));
+        const key = `${cx}:${cy}`;
+        let cell = creatureGrid.get(key);
+        if (!cell) {
+          cell = [];
+          creatureGrid.set(key, cell);
+        }
+        cell.push({ id, kind });
+        creatureIndexEntries++;
+      }
+    };
+
+    addGroup(agent, 'agent');
+    addGroup(predator, 'predator');
+    addGroup(apex, 'apex');
+    creatureIndexBuiltAt = now;
+    creatureIndexVersion++;
+    stats.creatureIndexRebuilds++;
+    return true;
+  }
+
+  function ensureCreatureIndex(now = performance.now()) {
+    if (!activePlayer()) return false;
+    if (creatureGrid.size && now - creatureIndexBuiltAt < creatureIndexInterval()) return true;
+    return rebuildCreatureIndex(now);
+  }
+
+  function queryNearbyCreatures(x, y, radius) {
+    const now = performance.now();
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(radius) || radius <= 0) return null;
+    if (!ensureCreatureIndex(now)) return null;
+
+    const cols = Math.max(1, Math.ceil(world.width / CREATURE_CELL_SIZE));
+    const rows = Math.max(1, Math.ceil(world.height / CREATURE_CELL_SIZE));
+    const px = wrap(x, world.width);
+    const py = clamp(y, 0, world.height);
+    const centerX = Math.min(cols - 1, Math.floor(px / CREATURE_CELL_SIZE));
+    const centerY = Math.min(rows - 1, Math.floor(py / CREATURE_CELL_SIZE));
+    const paddedRadius = radius + CREATURE_CELL_SIZE;
+    const cellRadius = Math.ceil(paddedRadius / CREATURE_CELL_SIZE);
+    const results = [];
+    const visited = new Set();
+
+    for (let oy = -cellRadius; oy <= cellRadius; oy++) {
+      const cy = centerY + oy;
+      if (cy < 0 || cy >= rows) continue;
+      for (let ox = -cellRadius; ox <= cellRadius; ox++) {
+        const cx = ((centerX + ox) % cols + cols) % cols;
+        const key = `${cx}:${cy}`;
+        if (visited.has(key)) continue;
+        visited.add(key);
+        const cell = creatureGrid.get(key);
+        if (cell) results.push(...cell);
+      }
+    }
+
+    stats.creatureIndexQueries++;
+    stats.creatureIndexCellsVisited += visited.size;
+    stats.creatureIndexCandidatesReturned += results.length;
+    return results;
+  }
+
   function installAdaptiveSurfaceResolution() {
     if (surfaceResolutionHookInstalled) return true;
     const layer = document.getElementById('surfaceModeLayer');
@@ -282,25 +380,35 @@ function installSamplerCache(planet) {
       renderScale: renderScale(),
       adaptiveResolutionHookInstalled: surfaceResolutionHookInstalled,
       squaredDistanceHotPath: true,
+      creatureSpatialIndex: true,
+      creatureCellSize: CREATURE_CELL_SIZE,
+      creatureIndexIntervalMs: creatureIndexInterval(),
+      creatureIndexEntries,
+      creatureIndexCells: creatureGrid.size,
+      creatureIndexVersion,
+      creatureIndexAgeMs: Number.isFinite(creatureIndexBuiltAt) ? Math.max(0, performance.now() - creatureIndexBuiltAt) : null,
     }),
     getQualityProfile: () => ({
       level: qualityLevel,
       smoothedFrameMs,
       detailMultiplier: detailMultiplier(),
       renderScale: renderScale(),
+      creatureIndexIntervalMs: creatureIndexInterval(),
       nearFieldExact: true,
     }),
+    queryNearbyCreatures,
+    rebuildCreatureIndex: () => rebuildCreatureIndex(performance.now()),
   };
 
   window.realitySandboxSurfacePerformance = api;
-  document.documentElement.dataset.surfacePerformance = 'adaptive-distance-cache-resolution';
+  document.documentElement.dataset.surfacePerformance = 'adaptive-distance-cache-resolution-spatial-life';
   document.documentElement.dataset.surfacePerformanceLevel = '0';
   document.documentElement.dataset.surfaceRenderScale = '1.00';
 
   const previousDiagnostics = window.realitySandboxPresentationDiagnostics;
   window.realitySandboxPresentationDiagnostics = () => ({
     ...(typeof previousDiagnostics === 'function' ? previousDiagnostics() : {}),
-    surfacePerformance: 'adaptive-distance-cache-resolution',
+    surfacePerformance: 'adaptive-distance-cache-resolution-spatial-life',
     surfacePerformanceStats: api.getStats(),
   });
 }
