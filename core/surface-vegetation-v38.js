@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 
+const TAU = Math.PI * 2;
 const Z_SCALE = 62;
 const NEAR_RADIUS = 190;
 const MID_RADIUS = 430;
