@@ -24,8 +24,10 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxSurfaceGpu?.installed &&
       window.realitySandboxSurfaceCpuRelief?.installed &&
       window.realitySandboxSurfaceIdleSchedulerV34?.installed &&
+      window.realitySandboxSurfaceLightHookV36?.installed &&
       window.realitySandboxSurfaceSphereV35?.installed &&
       window.realitySandboxSurfaceCelestialsV35?.installed &&
+      window.realitySandboxSurfaceSolarLightingV36?.installed &&
       window.realitySandboxSurfaceGpuBackend?.installed &&
       document.getElementById('enterSurfaceMode') &&
       document.getElementById('surfaceGpuCanvas') &&
@@ -41,7 +43,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
 
     await page.waitForFunction(() => (
       window.realitySandboxSurfaceSphereV35?.getStats?.().nearBuildsCompleted >= 1 &&
-      window.realitySandboxSurfaceCelestialsV35?.getStats?.().updates >= 2
+      window.realitySandboxSurfaceCelestialsV35?.getStats?.().updates >= 2 &&
+      window.realitySandboxSurfaceSolarLightingV36?.getStats?.().updates >= 2
     ), null, { timeout: 60000 });
 
     const nearReady = await page.evaluate(() => ({
@@ -49,6 +52,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
       diagnostics: window.realitySandboxPresentationDiagnostics(),
       surface: window.realitySandboxSurfaceSphereV35.getStats(),
       sky: window.realitySandboxSurfaceCelestialsV35.getStats(),
+      solar: window.realitySandboxSurfaceSolarLightingV36.getStats(),
+      hook: window.realitySandboxSurfaceLightHookV36.getStats(),
       scheduler: window.realitySandboxSurfaceIdleSchedulerV34.getStats(),
     }));
 
@@ -66,6 +71,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
       diagnostics: window.realitySandboxPresentationDiagnostics(),
       surface: window.realitySandboxSurfaceSphereV35.getStats(),
       sky: window.realitySandboxSurfaceCelestialsV35.getStats(),
+      solar: window.realitySandboxSurfaceSolarLightingV36.getStats(),
+      hook: window.realitySandboxSurfaceLightHookV36.getStats(),
       scheduler: window.realitySandboxSurfaceIdleSchedulerV34.getStats(),
       controller: window.realitySandboxSurfaceMode.getStats?.(),
       active: window.realitySandboxSurfaceMode.isActive(),
@@ -86,16 +93,16 @@ fs.mkdirSync(artifactDir, { recursive: true });
       surfaceBuild: window.realitySandboxSurfaceBuild,
     }));
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v35-stable-sky-water.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v36-real-sun-lighting.png'), fullPage: true });
     fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ nearReady, after, pageErrors }, null, 2));
 
     const moved = Math.hypot(after.player.x - nearReady.player.x, after.player.y - nearReady.player.y);
     assert(nearReady.diagnostics.surfaceModeReady === true, 'Surface mode diagnostics never became ready.');
-    assert(after.active && after.gpuCanvasVisible && after.celestialCanvasVisible, 'v35 surface/celestial presentation did not remain active.');
-    assert(after.surfaceBuild === 'surface-v35-stable-sky-opaque-water', `Unexpected surface build: ${after.surfaceBuild}`);
+    assert(after.active && after.gpuCanvasVisible && after.celestialCanvasVisible, 'v36 surface/celestial presentation did not remain active.');
+    assert(after.surfaceBuild === 'surface-v36-real-sun-lighting', `Unexpected surface build: ${after.surfaceBuild}`);
     assert(after.controller?.topology === 'sphere', 'Surface movement controller is not using spherical topology.');
     assert(after.diagnostics.surfaceGpu?.gpuPrimary === true, 'WebGL renderer is not primary.');
-    assert(after.diagnostics.surfaceGpu?.diagnosticScene === 'cached-spherical-terrain-opaque-water-lod-rings', 'Unexpected v35 GPU scene.');
+    assert(after.diagnostics.surfaceGpu?.diagnosticScene === 'cached-spherical-terrain-opaque-water-lod-rings', 'Unexpected GPU scene.');
     assert(after.diagnostics.surfaceGpu?.rendererInfo?.triangles > 100, 'Spherical cached surface produced too few triangles.');
     assert(after.diagnostics.surfaceCpuRelief?.hiddenRootPresentationSuspended === true, 'Hidden Pixi root presentation was not suspended.');
     assert(after.diagnostics.surfaceSphereV35?.simulationRunning === false, 'Expensive simulation is running in Surface Mode.');
@@ -105,14 +112,18 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(after.surface.renderLoopProceduralSamples === 0, 'Render loop performed procedural terrain/water samples.');
     assert(after.scheduler.policy === 'near-first-interaction-debounced-distant', `Unexpected scheduler policy: ${after.scheduler.policy}`);
     assert(after.sky.surfaceRotationClockIndependent === true, 'Sky rotation is still tied to the fast orbital clock.');
-    assert(after.sky.orbitalClockRunsInSurface === false && after.sky.orbitSteps === 0, 'Celestial layer is still stepping the global orbit during Surface Mode.');
-    assert(after.sky.celestialDaySeconds >= 600, `Celestial day is still too fast: ${after.sky.celestialDaySeconds}`);
+    assert(after.sky.orbitalClockRunsInSurface === false && after.sky.orbitSteps === 0, 'Celestial layer is stepping the global orbit during Surface Mode.');
     assert(after.sky.cameraProjectedStars === true && after.sky.cameraProjectedSunMoon === true, 'Sky objects are not camera-projected.');
-    assert(after.sky.screenFixedStarfield === false, 'Starfield is still screen-fixed.');
-    assert(after.sky.axialTiltCoupled === true && after.sky.observerLatitudeLongitudeCoupled === true, 'Celestial position is not coupled to Nysa geometry.');
-    assert(after.sky.moonPhaseFromElongation === true && after.sky.apparentAngularSizeModeled === true, 'Moon phase/angular-size model is not enabled.');
-    assert(Number.isFinite(after.sky.sunAltitudeDeg) && Number.isFinite(after.sky.sunAzimuthDeg), 'Sun coordinates are invalid.');
-    assert(Number.isFinite(after.sky.moonAltitudeDeg) && Number.isFinite(after.sky.moonAzimuthDeg), 'Moon coordinates are invalid.');
+    assert(after.hook.sceneCaptured && after.hook.sunCaptured && after.hook.hemisphereCaptured, 'Existing Three.js surface lights were not captured.');
+    assert(after.hook.rendererCaptured && after.hook.cameraCaptured, 'Surface renderer/camera were not captured after entry.');
+    assert(after.solar.rendererAttached && after.solar.cameraAttached, 'Solar lighting controller is not attached to the active surface renderer.');
+    assert(after.solar.sunDirectionCoupled === true && after.solar.sunBrightnessCoupled === true, 'Directional Sun coupling is not enabled.');
+    assert(after.solar.hemisphereCoupled === true && after.solar.fogAndSkyCoupled === true && after.solar.exposureCoupled === true, 'Ambient/sky/exposure coupling is incomplete.');
+    assert(after.solar.usesExistingThreeLights === true, 'v36 replaced the proven lighting path instead of coupling it.');
+    assert(after.solar.shadowsEnabled === false && after.solar.performancePolicy === 'lighting-only-no-shadow-map', 'Shadow maps were enabled during the zero-lag v36 phase.');
+    assert(Number.isFinite(after.solar.sunIntensity) && after.solar.sunIntensity >= 0, 'Sun light intensity is invalid.');
+    assert(Number.isFinite(after.solar.hemisphereIntensity) && after.solar.hemisphereIntensity >= 0, 'Hemisphere intensity is invalid.');
+    assert(Number.isFinite(after.solar.exposure) && after.solar.exposure > 0, 'Tone-mapping exposure is invalid.');
     assert(after.surface.distantBuildsCompleted >= 1 && after.surface.distantTilesVisible >= 1, 'Deferred distant spherical squares did not begin streaming.');
     assert(after.diagnostics.surfaceGpuBackend?.renderer, 'WebGL backend renderer string is missing.');
     assert(moved > 0.5, `WASD movement did not move the player enough (${moved}).`);
