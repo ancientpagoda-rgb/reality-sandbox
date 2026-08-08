@@ -22,6 +22,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
     await page.waitForFunction(() => Boolean(
       window.realitySandboxSurfaceMode &&
       window.realitySandboxSurfaceGpu?.installed &&
+      window.realitySandboxSurfaceCpuRelief?.installed &&
+      window.realitySandboxSurfaceGpuBackend?.installed &&
       document.getElementById('enterSurfaceMode') &&
       document.getElementById('surfaceGpuCanvas')
     ), null, { timeout: 120000 });
@@ -64,7 +66,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
     const moved = Math.hypot(after.player.x - before.player.x, after.player.y - before.player.y);
     assert(before.diagnostics.surfaceModeReady === true, 'Surface mode diagnostics never became ready.');
     assert(after.active && after.inputCanvasPresent && after.gpuCanvasVisible, 'GPU surface mode did not remain active with a visible WebGL canvas.');
-    assert(after.surfaceBuild === 'surface-v25-gpu-only', `Unexpected surface build: ${after.surfaceBuild}`);
+    assert(after.surfaceBuild === 'surface-v26-gpu-cpu-relief', `Unexpected surface build: ${after.surfaceBuild}`);
     assert(after.diagnostics.surfaceMode === 'active', 'Surface mode diagnostics do not report an active presentation.');
     assert(after.diagnostics.surfaceModeRenderer === 'gpu-controller-no-cpu-raycaster', `CPU raycaster still appears active: ${after.diagnostics.surfaceModeRenderer}`);
     assert(after.diagnostics.surfaceGpu?.gpuPrimary === true, 'GPU surface diagnostics do not report the WebGL renderer as primary.');
@@ -72,6 +74,9 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(after.diagnostics.surfaceGpu?.renderer === 'WebGLRenderer', `Unexpected GPU renderer: ${after.diagnostics.surfaceGpu?.renderer}`);
     assert(after.diagnostics.surfaceGpu?.rendererInfo?.calls > 0, 'GPU renderer produced no draw calls.');
     assert(after.diagnostics.surfaceGpu?.rendererInfo?.triangles > 0, 'GPU renderer produced no triangles.');
+    assert(after.diagnostics.surfaceCpuRelief?.hiddenRootPresentationSuspended === true, 'Hidden Pixi root presentation was not suspended in surface mode.');
+    assert(after.diagnostics.surfaceCpuRelief?.rootRendersSkipped > 0, 'No hidden root render calls were skipped during surface mode.');
+    assert(after.diagnostics.surfaceGpuBackend?.renderer, 'WebGL backend diagnostics did not expose a renderer string.');
     assert(moved > 0.5, `WASD movement did not move the player enough (${moved}).`);
     assert(pageErrors.length === 0, `Surface mode produced browser errors: ${pageErrors.join(' | ')}`);
 
