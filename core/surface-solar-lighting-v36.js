@@ -8,14 +8,14 @@ async function waitForDependencies() {
     const hook = window.realitySandboxSurfaceLightHookV36;
     const sky = window.realitySandboxSurfaceCelestialsV35;
     const mode = window.realitySandboxSurfaceMode;
+    const objects = hook?.getObjects?.();
     if (
       hook?.installed &&
       sky?.installed &&
       mode?.isActive &&
-      hook.getObjects?.().sun &&
-      hook.getObjects?.().hemisphere &&
-      hook.getObjects?.().renderer &&
-      hook.getObjects?.().camera
+      objects?.scene &&
+      objects?.sun &&
+      objects?.hemisphere
     ) return { hook, sky, mode };
     await new Promise(resolve => setTimeout(resolve, 40));
   }
@@ -26,7 +26,7 @@ function install({ hook, sky, mode }) {
   if (window.realitySandboxSurfaceSolarLightingV36?.installed) return;
 
   const objects = hook.getObjects();
-  const { scene, sun, hemisphere, renderer } = objects;
+  const { scene, sun, hemisphere } = objects;
 
   const daySky = new THREE.Color(0x7798aa);
   const twilightSky = new THREE.Color(0x8d655d);
@@ -53,7 +53,7 @@ function install({ hook, sky, mode }) {
   let targetExposure = 1.03;
   let currentSunIntensity = sun.intensity;
   let currentHemiIntensity = hemisphere.intensity;
-  let currentExposure = renderer.toneMappingExposure;
+  let currentExposure = 1.03;
 
   const stats = {
     frames: 0,
@@ -77,9 +77,8 @@ function install({ hook, sky, mode }) {
     const azimuth = Number(celestial.sunAzimuthDeg) || 0;
     const daylight = clamp(Number(celestial.daylight) || 0, 0, 1);
     const twilight = clamp(Number(celestial.twilight) || 0, 0, 1);
-
     const camera = objects.camera;
-    if (!camera) return;
+    if (!camera) return false;
 
     up.copy(camera.up).normalize();
     east.set(up.y, -up.x, 0);
@@ -117,6 +116,7 @@ function install({ hook, sky, mode }) {
     stats.daylight = daylight;
     stats.twilight = twilight;
     stats.updates++;
+    return true;
   }
 
   function loop(now) {
@@ -128,11 +128,17 @@ function install({ hook, sky, mode }) {
       return;
     }
 
+    const renderer = objects.renderer;
+    const camera = objects.camera;
+    if (!renderer || !camera || !computeTargets()) {
+      last = now;
+      return;
+    }
+
     const dt = clamp((now - last) / 1000, 0, 0.08);
     last = now;
-    computeTargets();
-
     const response = 1 - Math.exp(-dt * 5.5);
+
     smoothedDirection.lerp(targetDirection, response).normalize();
     currentSunIntensity += (targetSunIntensity - currentSunIntensity) * response;
     currentHemiIntensity += (targetHemiIntensity - currentHemiIntensity) * response;
@@ -145,13 +151,10 @@ function install({ hook, sky, mode }) {
     hemisphere.color.lerp(targetHemiColor, response);
     hemisphere.groundColor.lerp(targetGroundColor, response);
 
-    const camera = objects.camera;
-    if (camera) {
-      sun.position.copy(camera.position).addScaledVector(smoothedDirection, 520);
-      if (sun.target) {
-        sun.target.position.copy(camera.position);
-        sun.target.updateMatrixWorld();
-      }
+    sun.position.copy(camera.position).addScaledVector(smoothedDirection, 520);
+    if (sun.target) {
+      sun.target.position.copy(camera.position);
+      sun.target.updateMatrixWorld();
     }
 
     if (scene.background?.isColor) scene.background.lerp(targetSky, response);
@@ -170,6 +173,8 @@ function install({ hook, sky, mode }) {
     getStats: () => ({
       ...stats,
       active: Boolean(mode.isActive?.()),
+      rendererAttached: Boolean(objects.renderer),
+      cameraAttached: Boolean(objects.camera),
       sunDirectionCoupled: true,
       sunBrightnessCoupled: true,
       hemisphereCoupled: true,
