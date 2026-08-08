@@ -8,6 +8,7 @@ const WATER_FAR_RADIUS = 142;
 const MAX_CACHE_ENTRIES = 18000;
 const CACHE_SWEEP_INTERVAL_MS = 650;
 const QUALITY_CHANGE_COOLDOWN_MS = 900;
+const RENDER_SCALE_BY_LEVEL = [1, 0.96, 0.9, 0.82];
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const wrap = (value, max) => ((value % max) + max) % max;
@@ -41,6 +42,8 @@ function installSamplerCache(planet) {
   let lastQualityChange = lastRaf;
   let smoothedFrameMs = 16.7;
   let qualityLevel = 0;
+  let surfaceResolutionHookInstalled = false;
+  let lastRenderScale = 1;
 
   const stats = {
     terrainHits: 0,
@@ -54,6 +57,7 @@ function installSamplerCache(planet) {
     expiredEntries: 0,
     qualityChanges: 0,
     peakQualityLevel: 0,
+    renderScaleChanges: 0,
   };
 
   function activePlayer() {
@@ -64,6 +68,11 @@ function installSamplerCache(planet) {
 
   function detailMultiplier() {
     return [1, 1.24, 1.58, 2.05][qualityLevel] || 1;
+  }
+
+  function renderScale() {
+    if (!activePlayer()) return 1;
+    return RENDER_SCALE_BY_LEVEL[qualityLevel] || 1;
   }
 
   function detailStep(distance, kind) {
@@ -171,6 +180,50 @@ function installSamplerCache(planet) {
     return sampleWithCache('water', x, y, originalWaterSample);
   };
 
+  function installAdaptiveSurfaceResolution() {
+    if (surfaceResolutionHookInstalled) return true;
+    const layer = document.getElementById('surfaceModeLayer');
+    if (!layer) return false;
+
+    const nativeGetBoundingClientRect = layer.getBoundingClientRect.bind(layer);
+    layer.getBoundingClientRect = function adaptiveSurfaceBoundingRect() {
+      const rect = nativeGetBoundingClientRect();
+      const scale = renderScale();
+      if (scale !== lastRenderScale) {
+        lastRenderScale = scale;
+        stats.renderScaleChanges++;
+        document.documentElement.dataset.surfaceRenderScale = scale.toFixed(2);
+      }
+      if (scale >= 0.999) return rect;
+
+      const width = rect.width * scale;
+      const height = rect.height * scale;
+      if (typeof DOMRect === 'function') return new DOMRect(rect.x, rect.y, width, height);
+      return {
+        x: rect.x,
+        y: rect.y,
+        top: rect.top,
+        left: rect.left,
+        right: rect.left + width,
+        bottom: rect.top + height,
+        width,
+        height,
+        toJSON: () => ({ x: rect.x, y: rect.y, width, height }),
+      };
+    };
+
+    surfaceResolutionHookInstalled = true;
+    layer.dataset.adaptiveResolution = 'true';
+    document.documentElement.dataset.surfaceRenderScale = '1.00';
+    return true;
+  }
+
+  function ensureSurfaceResolutionHook() {
+    if (installAdaptiveSurfaceResolution()) return;
+    requestAnimationFrame(ensureSurfaceResolutionHook);
+  }
+  requestAnimationFrame(ensureSurfaceResolutionHook);
+
   function updateAdaptiveQuality(now) {
     const dt = clamp(now - lastRaf, 1, 120);
     lastRaf = now;
@@ -220,23 +273,27 @@ function installSamplerCache(planet) {
       smoothedFrameMs: Number(smoothedFrameMs.toFixed(2)),
       qualityLevel,
       detailMultiplier: detailMultiplier(),
+      renderScale: renderScale(),
+      adaptiveResolutionHookInstalled: surfaceResolutionHookInstalled,
     }),
     getQualityProfile: () => ({
       level: qualityLevel,
       smoothedFrameMs,
       detailMultiplier: detailMultiplier(),
+      renderScale: renderScale(),
       nearFieldExact: true,
     }),
   };
 
   window.realitySandboxSurfacePerformance = api;
-  document.documentElement.dataset.surfacePerformance = 'adaptive-distance-cache';
+  document.documentElement.dataset.surfacePerformance = 'adaptive-distance-cache-resolution';
   document.documentElement.dataset.surfacePerformanceLevel = '0';
+  document.documentElement.dataset.surfaceRenderScale = '1.00';
 
   const previousDiagnostics = window.realitySandboxPresentationDiagnostics;
   window.realitySandboxPresentationDiagnostics = () => ({
     ...(typeof previousDiagnostics === 'function' ? previousDiagnostics() : {}),
-    surfacePerformance: 'adaptive-distance-cache',
+    surfacePerformance: 'adaptive-distance-cache-resolution',
     surfacePerformanceStats: api.getStats(),
   });
 }
