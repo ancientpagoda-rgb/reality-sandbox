@@ -23,7 +23,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxSurfaceMode &&
       window.realitySandboxSurfaceGpu?.installed &&
       window.realitySandboxSurfaceCpuRelief?.installed &&
-      window.realitySandboxSurfaceTerrainV31?.installed &&
+      window.realitySandboxSurfaceTerrainWaterV32?.installed &&
       window.realitySandboxSurfaceGpuBackend?.installed &&
       document.getElementById('enterSurfaceMode') &&
       document.getElementById('surfaceGpuCanvas')
@@ -37,17 +37,18 @@ fs.mkdirSync(artifactDir, { recursive: true });
     ), null, { timeout: 30000 });
 
     await page.waitForFunction(() => (
-      window.realitySandboxSurfaceTerrainV31?.getStats?.().terrainBuildsCompleted >= 1
+      window.realitySandboxSurfaceTerrainWaterV32?.getStats?.().nearBuildsCompleted >= 1
     ), null, { timeout: 60000 });
 
-    const settled = await page.evaluate(() => ({
+    const nearReady = await page.evaluate(() => ({
       player: window.realitySandboxSurfaceMode.getPlayer(),
       diagnostics: window.realitySandboxPresentationDiagnostics(),
-      terrain: window.realitySandboxSurfaceTerrainV31.getStats(),
+      surface: window.realitySandboxSurfaceTerrainWaterV32.getStats(),
     }));
 
-    await page.waitForTimeout(700);
-    const afterIdle = await page.evaluate(() => window.realitySandboxSurfaceTerrainV31.getStats());
+    await page.waitForFunction(() => (
+      window.realitySandboxSurfaceTerrainWaterV32?.getStats?.().distantBuildsCompleted >= 1
+    ), null, { timeout: 60000 });
 
     await page.keyboard.down('w');
     await page.waitForTimeout(420);
@@ -57,7 +58,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
     const after = await page.evaluate(() => ({
       player: window.realitySandboxSurfaceMode.getPlayer(),
       diagnostics: window.realitySandboxPresentationDiagnostics(),
-      terrain: window.realitySandboxSurfaceTerrainV31.getStats(),
+      surface: window.realitySandboxSurfaceTerrainWaterV32.getStats(),
       active: window.realitySandboxSurfaceMode.isActive(),
       gpuCanvasVisible: (() => {
         const canvas = document.getElementById('surfaceGpuCanvas');
@@ -69,26 +70,29 @@ fs.mkdirSync(artifactDir, { recursive: true });
       surfaceBuild: window.realitySandboxSurfaceBuild,
     }));
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v31-terrain.png'), fullPage: true });
-    fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ settled, afterIdle, after, pageErrors }, null, 2));
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v32-water-lod.png'), fullPage: true });
+    fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ nearReady, after, pageErrors }, null, 2));
 
-    const moved = Math.hypot(after.player.x - settled.player.x, after.player.y - settled.player.y);
-    assert(settled.diagnostics.surfaceModeReady === true, 'Surface mode diagnostics never became ready.');
-    assert(after.active && after.gpuCanvasVisible, 'Cached terrain GPU surface did not remain active.');
-    assert(after.surfaceBuild === 'surface-v31b-cached-terrain-only', `Unexpected surface build: ${after.surfaceBuild}`);
+    const moved = Math.hypot(after.player.x - nearReady.player.x, after.player.y - nearReady.player.y);
+    assert(nearReady.diagnostics.surfaceModeReady === true, 'Surface mode diagnostics never became ready.');
+    assert(after.active && after.gpuCanvasVisible, 'Cached terrain/water GPU surface did not remain active.');
+    assert(after.surfaceBuild === 'surface-v32-cached-water-lod-rings', `Unexpected surface build: ${after.surfaceBuild}`);
     assert(after.diagnostics.surfaceGpu?.gpuPrimary === true, 'WebGL renderer is not primary.');
-    assert(after.diagnostics.surfaceGpu?.diagnosticScene === 'cached-terrain-only', 'Unexpected v31 scene.');
+    assert(after.diagnostics.surfaceGpu?.diagnosticScene === 'cached-terrain-water-lod-rings', 'Unexpected v32 scene.');
     assert(after.diagnostics.surfaceGpu?.rendererInfo?.calls > 0, 'GPU renderer produced no draw calls.');
-    assert(after.diagnostics.surfaceGpu?.rendererInfo?.triangles > 100, 'Cached terrain produced too few triangles.');
+    assert(after.diagnostics.surfaceGpu?.rendererInfo?.triangles > 100, 'Cached terrain/water produced too few triangles.');
     assert(after.diagnostics.surfaceCpuRelief?.hiddenRootPresentationSuspended === true, 'Hidden Pixi root presentation was not suspended.');
-    assert(after.diagnostics.surfaceTerrainV31?.simulationRunning === false, 'Simulation is running during terrain-only phase.');
-    assert(after.diagnostics.surfaceTerrainV31?.waterEnabled === false, 'Water was reintroduced too early.');
-    assert(after.diagnostics.surfaceTerrainV31?.vegetationEnabled === false, 'Vegetation was reintroduced too early.');
-    assert(after.diagnostics.surfaceTerrainV31?.creaturesEnabled === false, 'Creatures were reintroduced too early.');
-    assert(after.diagnostics.surfaceTerrainV31?.proceduralTerrainInRenderLoop === false, 'Procedural terrain is in the render loop.');
-    assert(settled.terrain.terrainSamples > 1000, 'Real procedural terrain was not sampled to build the mesh.');
-    assert(afterIdle.terrainSamples === settled.terrain.terrainSamples, `Terrain sampler kept running after build: ${settled.terrain.terrainSamples} -> ${afterIdle.terrainSamples}`);
-    assert(after.terrain.renderLoopTerrainSamples === 0, 'Render loop performed procedural terrain samples.');
+    assert(after.diagnostics.surfaceTerrainWaterV32?.simulationRunning === false, 'Simulation is running during v32 presentation phase.');
+    assert(after.diagnostics.surfaceTerrainWaterV32?.waterEnabled === true, 'Cached GPU water was not enabled.');
+    assert(after.diagnostics.surfaceTerrainWaterV32?.vegetationEnabled === false, 'Vegetation was reintroduced too early.');
+    assert(after.diagnostics.surfaceTerrainWaterV32?.weatherEnabled === false, 'Weather was reintroduced too early.');
+    assert(after.diagnostics.surfaceTerrainWaterV32?.creaturesEnabled === false, 'Creatures were reintroduced too early.');
+    assert(after.diagnostics.surfaceTerrainWaterV32?.proceduralSamplingInRenderLoop === false, 'Procedural sampling is in the render loop.');
+    assert(after.surface.renderLoopProceduralSamples === 0, 'Render loop performed procedural samples.');
+    assert(nearReady.surface.terrainSamples > 1000, 'Real procedural terrain was not sampled for the near tile.');
+    assert(nearReady.surface.waterSamples > 1000, 'Hydrology was not sampled for cached GPU water.');
+    assert(after.surface.distantBuildsCompleted >= 1 && after.surface.distantTilesVisible >= 1, 'Deferred distant terrain squares did not begin streaming.');
+    assert(after.surface.plannedDistantTiles === 24, `Unexpected distant tile plan: ${after.surface.plannedDistantTiles}`);
     assert(after.diagnostics.surfaceGpuBackend?.renderer, 'WebGL backend renderer string is missing.');
     assert(moved > 0.5, `WASD movement did not move the player enough (${moved}).`);
     assert(pageErrors.length === 0, `Surface mode produced browser errors: ${pageErrors.join(' | ')}`);
