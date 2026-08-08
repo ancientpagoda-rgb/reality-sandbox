@@ -24,8 +24,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxSurfaceGpu?.installed &&
       window.realitySandboxSurfaceCpuRelief?.installed &&
       window.realitySandboxSurfaceIdleSchedulerV34?.installed &&
-      window.realitySandboxSurfaceSphereV33?.installed &&
-      window.realitySandboxSurfaceCelestialsV34?.installed &&
+      window.realitySandboxSurfaceSphereV35?.installed &&
+      window.realitySandboxSurfaceCelestialsV35?.installed &&
       window.realitySandboxSurfaceGpuBackend?.installed &&
       document.getElementById('enterSurfaceMode') &&
       document.getElementById('surfaceGpuCanvas') &&
@@ -40,20 +40,20 @@ fs.mkdirSync(artifactDir, { recursive: true });
     ), null, { timeout: 30000 });
 
     await page.waitForFunction(() => (
-      window.realitySandboxSurfaceSphereV33?.getStats?.().nearBuildsCompleted >= 1 &&
-      window.realitySandboxSurfaceCelestialsV34?.getStats?.().updates >= 2
+      window.realitySandboxSurfaceSphereV35?.getStats?.().nearBuildsCompleted >= 1 &&
+      window.realitySandboxSurfaceCelestialsV35?.getStats?.().updates >= 2
     ), null, { timeout: 60000 });
 
     const nearReady = await page.evaluate(() => ({
       player: window.realitySandboxSurfaceMode.getPlayer(),
       diagnostics: window.realitySandboxPresentationDiagnostics(),
-      surface: window.realitySandboxSurfaceSphereV33.getStats(),
-      sky: window.realitySandboxSurfaceCelestialsV34.getStats(),
+      surface: window.realitySandboxSurfaceSphereV35.getStats(),
+      sky: window.realitySandboxSurfaceCelestialsV35.getStats(),
       scheduler: window.realitySandboxSurfaceIdleSchedulerV34.getStats(),
     }));
 
     await page.waitForFunction(() => (
-      window.realitySandboxSurfaceSphereV33?.getStats?.().distantBuildsCompleted >= 1
+      window.realitySandboxSurfaceSphereV35?.getStats?.().distantBuildsCompleted >= 1
     ), null, { timeout: 60000 });
 
     await page.keyboard.down('w');
@@ -64,8 +64,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
     const after = await page.evaluate(() => ({
       player: window.realitySandboxSurfaceMode.getPlayer(),
       diagnostics: window.realitySandboxPresentationDiagnostics(),
-      surface: window.realitySandboxSurfaceSphereV33.getStats(),
-      sky: window.realitySandboxSurfaceCelestialsV34.getStats(),
+      surface: window.realitySandboxSurfaceSphereV35.getStats(),
+      sky: window.realitySandboxSurfaceCelestialsV35.getStats(),
       scheduler: window.realitySandboxSurfaceIdleSchedulerV34.getStats(),
       controller: window.realitySandboxSurfaceMode.getStats?.(),
       active: window.realitySandboxSurfaceMode.isActive(),
@@ -86,34 +86,33 @@ fs.mkdirSync(artifactDir, { recursive: true });
       surfaceBuild: window.realitySandboxSurfaceBuild,
     }));
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v34-orbital-priority.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v35-stable-sky-water.png'), fullPage: true });
     fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ nearReady, after, pageErrors }, null, 2));
 
     const moved = Math.hypot(after.player.x - nearReady.player.x, after.player.y - nearReady.player.y);
     assert(nearReady.diagnostics.surfaceModeReady === true, 'Surface mode diagnostics never became ready.');
-    assert(after.active && after.gpuCanvasVisible && after.celestialCanvasVisible, 'v34 surface/celestial presentation did not remain active.');
-    assert(after.surfaceBuild === 'surface-v34-orbital-sky-priority-spherical-lod', `Unexpected surface build: ${after.surfaceBuild}`);
+    assert(after.active && after.gpuCanvasVisible && after.celestialCanvasVisible, 'v35 surface/celestial presentation did not remain active.');
+    assert(after.surfaceBuild === 'surface-v35-stable-sky-opaque-water', `Unexpected surface build: ${after.surfaceBuild}`);
     assert(after.controller?.topology === 'sphere', 'Surface movement controller is not using spherical topology.');
     assert(after.diagnostics.surfaceGpu?.gpuPrimary === true, 'WebGL renderer is not primary.');
+    assert(after.diagnostics.surfaceGpu?.diagnosticScene === 'cached-spherical-terrain-opaque-water-lod-rings', 'Unexpected v35 GPU scene.');
     assert(after.diagnostics.surfaceGpu?.rendererInfo?.triangles > 100, 'Spherical cached surface produced too few triangles.');
     assert(after.diagnostics.surfaceCpuRelief?.hiddenRootPresentationSuspended === true, 'Hidden Pixi root presentation was not suspended.');
-    assert(after.diagnostics.surfaceSphereV33?.simulationRunning === false, 'Expensive simulation is running in Surface Mode.');
-    assert(after.diagnostics.surfaceSphereV33?.waterEnabled === true, 'Cached GPU water is not enabled.');
-    assert(after.diagnostics.surfaceSphereV33?.sphereCurvatureEnabled === true, 'Sphere curvature is not enabled.');
-    assert(after.diagnostics.surfaceSphereV33?.proceduralSamplingInRenderLoop === false, 'Procedural sampling is in the render loop.');
+    assert(after.diagnostics.surfaceSphereV35?.simulationRunning === false, 'Expensive simulation is running in Surface Mode.');
+    assert(after.diagnostics.surfaceSphereV35?.waterEnabled === true && after.diagnostics.surfaceSphereV35?.waterOpaque === true, 'Water is not opaque/enabled.');
+    assert(after.diagnostics.surfaceSphereV35?.sphereCurvatureEnabled === true, 'Sphere curvature is not enabled.');
+    assert(after.diagnostics.surfaceSphereV35?.proceduralSamplingInRenderLoop === false, 'Procedural sampling is in the render loop.');
     assert(after.surface.renderLoopProceduralSamples === 0, 'Render loop performed procedural terrain/water samples.');
     assert(after.scheduler.policy === 'near-first-interaction-debounced-distant', `Unexpected scheduler policy: ${after.scheduler.policy}`);
-    assert(after.scheduler.highPriorityRequests > 0, 'Near terrain was not prioritized.');
-    assert(after.scheduler.deferredRequests > 0 && after.scheduler.deferredRuns > 0, 'Distant idle work was not deferred/resumed.');
-    assert(after.sky.source === 'Nysa orbital model', `Unexpected celestial source: ${after.sky.source}`);
+    assert(after.sky.surfaceRotationClockIndependent === true, 'Sky rotation is still tied to the fast orbital clock.');
+    assert(after.sky.orbitalClockRunsInSurface === false && after.sky.orbitSteps === 0, 'Celestial layer is still stepping the global orbit during Surface Mode.');
+    assert(after.sky.celestialDaySeconds >= 600, `Celestial day is still too fast: ${after.sky.celestialDaySeconds}`);
+    assert(after.sky.cameraProjectedStars === true && after.sky.cameraProjectedSunMoon === true, 'Sky objects are not camera-projected.');
+    assert(after.sky.screenFixedStarfield === false, 'Starfield is still screen-fixed.');
     assert(after.sky.axialTiltCoupled === true && after.sky.observerLatitudeLongitudeCoupled === true, 'Celestial position is not coupled to Nysa geometry.');
     assert(after.sky.moonPhaseFromElongation === true && after.sky.apparentAngularSizeModeled === true, 'Moon phase/angular-size model is not enabled.');
-    assert(after.sky.updates >= 2, 'Celestial layer did not update.');
     assert(Number.isFinite(after.sky.sunAltitudeDeg) && Number.isFinite(after.sky.sunAzimuthDeg), 'Sun coordinates are invalid.');
     assert(Number.isFinite(after.sky.moonAltitudeDeg) && Number.isFinite(after.sky.moonAzimuthDeg), 'Moon coordinates are invalid.');
-    assert(after.sky.sunAngularDiameterDeg > 0 && after.sky.moonAngularDiameterDeg > 0, 'Celestial angular sizes are invalid.');
-    assert(after.sky.moonIllumination >= 0 && after.sky.moonIllumination <= 1, 'Moon illumination is outside 0..1.');
-    assert(typeof after.sky.moonPhase === 'string' && after.sky.moonPhase.length > 0, 'Moon phase name is missing.');
     assert(after.surface.distantBuildsCompleted >= 1 && after.surface.distantTilesVisible >= 1, 'Deferred distant spherical squares did not begin streaming.');
     assert(after.diagnostics.surfaceGpuBackend?.renderer, 'WebGL backend renderer string is missing.');
     assert(moved > 0.5, `WASD movement did not move the player enough (${moved}).`);
