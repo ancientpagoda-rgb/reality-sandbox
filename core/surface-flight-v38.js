@@ -1,9 +1,11 @@
 const EYE_HEIGHT = 3.6;
 const LEGACY_ALTITUDE = 52;
-const MAX_ALTITUDE = 480;
-const CLIMB_SPEED = 34;
-const FAST_CLIMB_SPEED = 175;
-const WHEEL_SCALE = 0.28;
+const MAX_ALTITUDE = 4200;
+const CLIMB_SPEED = 58;
+const FAST_CLIMB_SPEED = 920;
+const WHEEL_SCALE_LOW = 0.28;
+const WHEEL_SCALE_HIGH = 2.8;
+const CAMERA_FAR = 42000;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 async function waitForMode() {
@@ -35,6 +37,7 @@ function install(mode) {
   mode.getStats = () => ({
     ...nativeGetStats(),
     extendedFlight: true,
+    largePlanetFlight: true,
     maxAltitude: MAX_ALTITUDE,
     virtualAltitude,
     wheelAltitudeControl: true,
@@ -54,7 +57,9 @@ function install(mode) {
     event.preventDefault();
     const base = nativeGetPlayer();
     if (!activeLastFrame) virtualAltitude = base.altitude || EYE_HEIGHT;
-    virtualAltitude = clamp(virtualAltitude - event.deltaY * WHEEL_SCALE, EYE_HEIGHT, MAX_ALTITUDE);
+    const t = clamp((virtualAltitude - 120) / 1500, 0, 1);
+    const wheelScale = WHEEL_SCALE_LOW + (WHEEL_SCALE_HIGH - WHEEL_SCALE_LOW) * t;
+    virtualAltitude = clamp(virtualAltitude - event.deltaY * wheelScale, EYE_HEIGHT, MAX_ALTITUDE);
     wheelEvents++;
   }, { passive: false, capture: true });
 
@@ -63,9 +68,9 @@ function install(mode) {
     if (!hud) return;
     const divs = [...hud.querySelectorAll('div')];
     const help = divs.find(el => el.textContent?.includes('WASD move'));
-    if (help && !help.dataset.v38FlightHelp) {
-      help.dataset.v38FlightHelp = 'true';
-      help.textContent = 'WASD move · mouse look · Space/Ctrl fly · Shift = fast · wheel altitude · T sky time-lapse · Esc exit';
+    if (help && !help.dataset.v43FlightHelp) {
+      help.dataset.v43FlightHelp = 'true';
+      help.textContent = 'WASD move · mouse look · Space/Ctrl fly · Shift = rapid climb · wheel altitude · T sky time-lapse · Esc exit';
     }
   }
 
@@ -113,16 +118,14 @@ function install(mode) {
     const hook = window.realitySandboxSurfaceLightHookV36?.getObjects?.();
     const camera = hook?.camera;
     const scene = hook?.scene;
-    if (camera) {
-      if (camera.far !== 2600) {
-        camera.far = 2600;
-        camera.updateProjectionMatrix();
-      }
+    if (camera && camera.far !== CAMERA_FAR) {
+      camera.far = CAMERA_FAR;
+      camera.updateProjectionMatrix();
     }
     if (scene?.fog) {
       const t = clamp((virtualAltitude - LEGACY_ALTITUDE) / (MAX_ALTITUDE - LEGACY_ALTITUDE), 0, 1);
-      scene.fog.near = 180 + t * 230;
-      scene.fog.far = 1320 + t * 180;
+      scene.fog.near = 180 + t * 980;
+      scene.fog.far = 1320 + t * 24600;
     }
 
     patchHudAltitude(now);
@@ -134,6 +137,7 @@ function install(mode) {
     installed: true,
     getStats: () => ({
       extendedFlight: true,
+      largePlanetFlight: true,
       maxAltitude: MAX_ALTITUDE,
       virtualAltitude,
       wheelEvents,
@@ -141,10 +145,11 @@ function install(mode) {
       cameraFar: window.realitySandboxSurfaceLightHookV36?.getObjects?.().camera?.far || null,
       legacyAltitudeCeiling: LEGACY_ALTITUDE,
       hudAltitudeSynced: true,
+      altitudeScaleMultiplier: MAX_ALTITUDE / 480,
     }),
   };
   window.realitySandboxSurfaceFlightV38 = api;
-  document.documentElement.dataset.surfaceFlightV38 = 'extended-altitude';
+  document.documentElement.dataset.surfaceFlightV38 = 'large-planet-extended-altitude';
 
   const prev = window.realitySandboxPresentationDiagnostics;
   window.realitySandboxPresentationDiagnostics = () => ({
