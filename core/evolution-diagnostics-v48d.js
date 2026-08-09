@@ -12,8 +12,9 @@ async function waitForRuntime() {
     const history = window.realitySandboxMorphogenesisHistoryV48c;
     const nutrientCycle = window.realitySandboxClosedNutrientCycleV49;
     const sensoryBrains = window.realitySandboxSensoryBrainsV50;
-    if (origin?.installed && inspector?.installed && morphology?.installed && milestones?.installed && population?.installed && deepTime?.installed && morphogenesis?.installed && inheritance?.installed && selection?.installed && history?.installed && nutrientCycle?.installed && sensoryBrains?.installed) {
-      return { origin, inspector, morphology, milestones, population, deepTime, morphogenesis, inheritance, selection, history, nutrientCycle, sensoryBrains };
+    const socialSignaling = window.realitySandboxSocialSignalingV51;
+    if (origin?.installed && inspector?.installed && morphology?.installed && milestones?.installed && population?.installed && deepTime?.installed && morphogenesis?.installed && inheritance?.installed && selection?.installed && history?.installed && nutrientCycle?.installed && sensoryBrains?.installed && socialSignaling?.installed) {
+      return { origin, inspector, morphology, milestones, population, deepTime, morphogenesis, inheritance, selection, history, nutrientCycle, sensoryBrains, socialSignaling };
     }
     await new Promise(resolve => setTimeout(resolve, 100));
   }
@@ -44,6 +45,7 @@ function install(parts) {
     const fauna = retiredFaunaModules();
     const nutrientStats = parts.nutrientCycle.getStats();
     const brainStats = parts.sensoryBrains.getStats();
+    const signalStats = parts.socialSignaling.getStats();
     return {
       ready: true,
       build: window.realitySandboxSurfaceBuild,
@@ -61,6 +63,7 @@ function install(parts) {
       bodyPlanHistory: parts.history.getStats(),
       nutrientCycle: nutrientStats,
       sensoryBrains: brainStats,
+      socialSignaling: signalStats,
       lineageCounts: {
         total: parts.origin.getLineages().length,
         motile: parts.origin.getLineages().filter(lineage => lineage.type === 'motile').length,
@@ -76,13 +79,15 @@ function install(parts) {
         parts.inheritance.getStats().hardPopulationCap === false &&
         parts.selection.getStats().hardPopulationCap === false &&
         nutrientStats.hardPopulationCap === false &&
-        brainStats.noHardPopulationCap === true,
+        brainStats.noHardPopulationCap === true &&
+        signalStats.noHardPopulationCap === true,
       surfaceFaunaRendererDisabled:
         parts.origin.getStats().legacyFaunaRendererEnabled === false &&
         parts.morphogenesis.getStats().surfaceRendererEnabled === false &&
         parts.selection.getStats().surfaceRendererEnabled === false &&
         nutrientStats.surfaceRendererEnabled === false &&
-        brainStats.surfaceRendererEnabled === false,
+        brainStats.surfaceRendererEnabled === false &&
+        signalStats.surfaceRendererEnabled === false,
     };
   }
 
@@ -91,15 +96,15 @@ function install(parts) {
     const failures = [];
     if (!state.retiredFaunaModulesAbsent) failures.push('A retired Surface-fauna experiment is loaded.');
     if (!state.noHardPopulationCap) failures.push('An evolution module reports a hard population cap.');
-    if (!state.surfaceFaunaRendererDisabled) failures.push('A v47-v50 fauna renderer is unexpectedly enabled.');
+    if (!state.surfaceFaunaRendererDisabled) failures.push('A v47-v51 fauna renderer is unexpectedly enabled.');
     if (!state.origin.plantFirstOrigin) failures.push('Plant-first origin mode is inactive.');
-    if (!state.origin.authoritativeFixedStep || !state.morphogenesis.authoritativeFixedStep || !state.inheritance.authoritativeFixedStep || !state.habitatSelection.authoritativeFixedStep || !state.bodyPlanHistory.authoritativeFixedStep || !state.nutrientCycle.authoritativeFixedStep || !state.sensoryBrains.authoritativeFixedStep) {
+    if (!state.origin.authoritativeFixedStep || !state.morphogenesis.authoritativeFixedStep || !state.inheritance.authoritativeFixedStep || !state.habitatSelection.authoritativeFixedStep || !state.bodyPlanHistory.authoritativeFixedStep || !state.nutrientCycle.authoritativeFixedStep || !state.sensoryBrains.authoritativeFixedStep || !state.socialSignaling.authoritativeFixedStep) {
       failures.push('An evolution subsystem is outside the authoritative fixed step.');
     }
     if (state.morphogenesis.traits?.length !== 9) failures.push('v48 developmental trait schema is incomplete.');
     if (state.inheritance.birthInheritanceComplexity !== 'O(1)') failures.push('v48 developmental inheritance is not using the O(1) lineage cache.');
     if (!state.deepTime.reducedOrderEvolutionaryTime) failures.push('Evolutionary deep-time scaling is inactive.');
-    if (state.evolutionBuild !== 'evolution-v50-sensory-brains') failures.push(`Unexpected evolution build ${state.evolutionBuild}.`);
+    if (state.evolutionBuild !== 'evolution-v51-social-signaling') failures.push(`Unexpected evolution build ${state.evolutionBuild}.`);
     if (!state.nutrientCycle.detritusToSoil || !state.nutrientCycle.metabolicWasteToSoil || !state.nutrientCycle.soilToPlantBiomass || !state.nutrientCycle.weatheringAndLeaching || !state.nutrientCycle.toxinSoilFeedback) {
       failures.push('The v49 closed nutrient cycle is incomplete.');
     }
@@ -108,12 +113,15 @@ function install(parts) {
       failures.push('The v50 sensory-brain phenotype is incomplete.');
     }
     if (!Array.isArray(state.sensoryBrains.behaviorModes) || state.sensoryBrains.behaviorModes.length !== 7) failures.push('The v50 behavioral mode schema is incomplete.');
+    if (!state.socialSignaling.inheritedSignalPropensity || !state.socialSignaling.kinRestrictedSignals || !state.socialSignaling.alarmCommunication || !state.socialSignaling.foodCommunication || !state.socialSignaling.packHuntCommunication || !state.socialSignaling.spatialHashing) {
+      failures.push('The v51 social-signaling phenotype is incomplete.');
+    }
     return { ok: failures.length === 0, failures, snapshot: state };
   }
 
   const api = { installed: true, snapshot, invariants };
   window.realitySandboxEvolutionDiagnosticsV48d = api;
-  document.documentElement.dataset.evolutionDiagnosticsV48d = 'ready-v50';
+  document.documentElement.dataset.evolutionDiagnosticsV48d = 'ready-v51';
 
   if (window.realitySandboxDebug && typeof window.realitySandboxDebug === 'object') {
     window.realitySandboxDebug.evolution = snapshot;
@@ -123,7 +131,7 @@ function install(parts) {
   const previousPresentationDiagnostics = window.realitySandboxPresentationDiagnostics;
   window.realitySandboxPresentationDiagnostics = () => ({
     ...(typeof previousPresentationDiagnostics === 'function' ? previousPresentationDiagnostics() : {}),
-    evolutionV50: snapshot(),
+    evolutionV51: snapshot(),
   });
 }
 
