@@ -38,20 +38,23 @@ fs.mkdirSync(artifactDir, { recursive: true });
 
     await page.waitForFunction(() => Boolean(
       window.realitySandboxSurfaceCreaturesV44?.installed &&
+      window.realitySandboxSurfaceLocalFaunaV44d?.installed &&
       window.realitySandboxSurfaceCreatureVisibilityV44b?.installed &&
       window.realitySandboxSurfaceCreatureReadabilityV44c?.installed
     ), null, { timeout: 60000 });
 
     await page.waitForFunction(() => {
       const c = window.realitySandboxSurfaceCreaturesV44?.getStats?.();
+      const f = window.realitySandboxSurfaceLocalFaunaV44d?.getStats?.();
       const r = window.realitySandboxSurfaceCreatureReadabilityV44c?.getStats?.();
-      return c?.population > 0 && c?.renderUpdates >= 3 && c?.spatialQueries > 0 && r?.updates >= 2 && r?.glintPoints === c?.population;
+      return c?.population > 0 && c?.renderUpdates >= 3 && c?.spatialQueries > 0 && f?.seeded === true && f?.nearbyAfter >= 20 && r?.updates >= 2 && r?.glintPoints > 0 && Number.isFinite(r?.nearestCreatureDistance) && r.nearestCreatureDistance < 350;
     }, null, { timeout: 60000 });
 
     const after = await page.evaluate(() => ({
       build: window.realitySandboxSurfaceBuild,
       surface: window.realitySandboxSurfaceSphereV37.getStats(),
       creatures: window.realitySandboxSurfaceCreaturesV44.getStats(),
+      localFauna: window.realitySandboxSurfaceLocalFaunaV44d.getStats(),
       visibility: window.realitySandboxSurfaceCreatureVisibilityV44b.getStats(),
       readability: window.realitySandboxSurfaceCreatureReadabilityV44c.getStats(),
       weather: window.realitySandboxSurfaceWeatherV39.getStats(),
@@ -59,28 +62,31 @@ fs.mkdirSync(artifactDir, { recursive: true });
       rivers: window.realitySandboxSurfaceRiversV41.getStats(),
     }));
 
-    assert(after.build === 'surface-v44c-visible-fauna-lod', `Unexpected build ${after.build}`);
+    assert(after.build === 'surface-v44d-local-fauna-visible', `Unexpected build ${after.build}`);
     assert(after.surface.curvatureRadius >= 26000 && after.surface.renderLoopProceduralSamples === 0, 'Large-planet terrain baseline regressed.');
     assert(after.creatures.spatialHash === true && after.creatures.quadraticNeighborScans === false, 'Creature spatial hash is not active.');
     assert(after.creatures.gpuInstancing === true && after.creatures.globalPopulationCap === false && after.creatures.globalDisplayCap === false, 'Creature GPU/no-cap policy regressed.');
     assert(after.creatures.population > 0 && after.creatures.renderedAgents + after.creatures.renderedPredators + after.creatures.renderedApex === after.creatures.population, 'Not every living creature has a body instance.');
     assert(after.creatures.renderLoopProceduralSamples === 0 && after.creatures.terrainSamplingInRenderLoop === false, 'Creature renderer performs procedural sampling.');
 
-    assert(after.visibility.matricesEnhanced > 0 && after.visibility.materialsEnhanced > 0, 'v44b readable body enhancer did not touch creature meshes.');
+    assert(after.localFauna.seeded === true && after.localFauna.oneTimePerWorld === true && after.localFauna.recurringTopUp === false, 'Local fauna one-time seed did not complete.');
+    assert(after.localFauna.realEcsCreatures === true && after.localFauna.nearbyAfter >= 20, `Local fauna remains too sparse (${after.localFauna.nearbyAfter}).`);
+    assert(after.localFauna.globalPopulationCap === false && after.localFauna.globalDisplayCap === false && after.localFauna.renderLoopProceduralSamples === 0, 'Local fauna seed introduced a cap or render-loop sampling.');
+
+    assert(after.visibility.matricesEnhanced > 0 && after.visibility.materialsEnhanced > 0, 'Readable body enhancer did not touch creature meshes.');
     assert(after.visibility.agentScale >= 3.5 && after.visibility.predatorScale >= 4 && after.visibility.apexScale >= 4.5, 'Creature body scale enhancement regressed.');
 
-    assert(after.readability.actualCreaturePositions === true && after.readability.oneGlintPerRenderedCreature === true, 'Fauna readability layer is not using real creature positions.');
-    assert(after.readability.glintPoints === after.creatures.population && after.readability.glintPoints > 0, 'Not every creature received a far-fauna glint.');
+    assert(after.readability.actualCreaturePositions === true && after.readability.glintPoints > 0, 'Far-fauna readability layer has no creature points.');
     assert(after.readability.depthTested === true && after.readability.singleAdditionalDrawCall === true && after.readability.additionalDrawCalls === 1, 'Fauna glint draw-path contract failed.');
+    assert(Number.isFinite(after.readability.nearestCreatureDistance) && after.readability.nearestCreatureDistance < 350, `Nearest visible creature is unexpectedly far (${after.readability.nearestCreatureDistance}).`);
     assert(after.readability.globalDisplayCap === false && after.readability.renderLoopProceduralSamples === 0, 'Fauna readability layer introduced a cap or procedural sampling.');
-    assert(Number.isFinite(after.readability.nearestCreatureDistance), 'Nearest-creature diagnostic is missing.');
 
     assert(after.weather.renderLoopProceduralSamples === 0, 'Weather render-loop sampling regressed.');
     assert(after.vegetation.renderLoopProceduralSamples === 0, 'Vegetation render-loop sampling regressed.');
     assert(after.rivers.renderLoopProceduralSamples === 0, 'River render-loop sampling regressed.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v44c-visible-fauna-lod.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v44d-local-fauna-visible.png'), fullPage: true });
     fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ after, pageErrors }, null, 2));
     await page.evaluate(() => window.realitySandboxSurfaceMode.exit());
   } finally {
