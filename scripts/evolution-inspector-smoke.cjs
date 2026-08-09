@@ -25,7 +25,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxEvolutionMorphologyV47c?.installed &&
       window.realitySandboxEvolutionaryMilestonesV47d?.installed &&
       window.realitySandboxLineagePopulationRecordV47e?.installed &&
-      window.realitySandboxEvolutionDeepTimeV47f?.installed
+      window.realitySandboxEvolutionDeepTimeV47f?.installed &&
+      window.realitySandboxMorphogenesisV48?.installed
     ), null, { timeout: 120000 });
 
     const collapsed = await page.evaluate(() => window.realitySandboxEvolutionInspectorV47b.getStats());
@@ -45,6 +46,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       const history = window.realitySandboxEvolutionaryMilestonesV47d;
       const populationRecord = window.realitySandboxLineagePopulationRecordV47e;
       const deepTime = window.realitySandboxEvolutionDeepTimeV47f;
+      const morphogenesis = window.realitySandboxMorphogenesisV48;
       const lineages = api.getLineages();
       const motile = lineages.find(x => x.type === 'motile');
       if (motile) inspector.selectLineage(motile.id);
@@ -52,10 +54,12 @@ fs.mkdirSync(artifactDir, { recursive: true });
       history.render();
       populationRecord.render();
       deepTime.render();
+      morphogenesis.render();
       const options = root ? [...root.querySelectorAll('.lineage-select option')].map(x => x.textContent) : [];
       const svg = root?.querySelector('.morph-svg');
       const tree = root?.querySelector('.tree-svg');
       const selected = root?.querySelector('.lineage-select')?.value || null;
+      const lineagePhenotypes = morphogenesis.getLineagePhenotypes();
       return {
         build: window.realitySandboxSurfaceBuild,
         inspector: inspector.getStats(),
@@ -63,6 +67,9 @@ fs.mkdirSync(artifactDir, { recursive: true });
         history: history.getStats(),
         recordStats: populationRecord.getStats(),
         deepTime: deepTime.getStats(),
+        morphogenesis: morphogenesis.getStats(),
+        lineagePhenotypes,
+        selectedPhenotype: selected ? lineagePhenotypes.find(x => x.lineageId === selected) || null : null,
         record: selected ? populationRecord.getRecord(selected) : null,
         milestones: history.getMilestones(selected),
         options,
@@ -84,18 +91,20 @@ fs.mkdirSync(artifactDir, { recursive: true });
         recordSparkline: Boolean(root?.querySelector('.record-spark-v47e')),
         recordMeta: root?.querySelector('.record-meta-v47e')?.textContent || '',
         deepTimeText: root?.querySelector('.deep-time-v47f')?.textContent || '',
+        bodyPlanCells: root?.querySelectorAll('.body-plan-grid-v48 > div')?.length || 0,
+        bodyPlanText: root?.querySelector('.body-plan-v48')?.textContent || '',
         lineages,
         ancestryEvents: api.getAncestry(),
         originStats: api.getStats(),
       };
     });
 
-    assert(inspected.build === 'surface-v47f-deep-time-evolution', `Unexpected build ${inspected.build}`);
+    assert(inspected.build === 'surface-v48-morphogenesis-body-plans', `Unexpected build ${inspected.build}`);
     assert(inspected.panelOpen === true && inspected.inspector.open === true, 'Evolution inspector did not open.');
     assert(inspected.options.length >= 1, 'Evolution inspector lineage selector is empty.');
     assert(inspected.speciesTitle.length > 0, 'Evolution inspector did not render the selected lineage name.');
     assert(inspected.ancestry.length > 0, 'Evolution inspector ancestry view is empty.');
-    assert(inspected.traitRows === 15, `Expected 15 genome trait rows, found ${inspected.traitRows}.`);
+    assert(inspected.traitRows === 15, `Expected 15 v47 genome trait rows, found ${inspected.traitRows}.`);
     assert(inspected.summaryCells === 4, `Expected 4 evolution summary metrics, found ${inspected.summaryCells}.`);
     assert(inspected.inspector.lineageBrowser && inspected.inspector.ancestryView && inspected.inspector.liveGenomeDrift && inspected.inspector.gooGridBehaviorMetrics, 'Evolution inspector feature contract is incomplete.');
     assert(inspected.morphology.genomeDrivenMorphology && inspected.morphology.ancestryTree && inspected.morphology.surfaceRendererTouched === false && inspected.morphology.svgOnly, 'v47c morphology contract is incomplete.');
@@ -107,6 +116,11 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(inspected.deepTime.reducedOrderEvolutionaryTime && inspected.deepTime.yearsPerBiologyStep === 25000, 'v47f deep-time contract is incomplete.');
     assert(inspected.deepTime.currentYears >= 4900000 && inspected.deepTime.currentYears <= 5500000, `3,000 fixed steps should represent about 5 Myr, got ${inspected.deepTime.currentYears}.`);
     assert(inspected.deepTimeText.includes('Myr') && inspected.deepTimeText.includes('25,000 years'), 'Deep-time UI did not render the geological scale.');
+    assert(inspected.morphogenesis.authoritativeFixedStep && inspected.morphogenesis.heritableDevelopmentalTraits && inspected.morphogenesis.plantToAnimalMorphogenesis, 'v48 morphogenesis contract is incomplete.');
+    assert(inspected.morphogenesis.traits.length === 9, `Expected 9 v48 developmental traits, got ${inspected.morphogenesis.traits.length}.`);
+    assert(inspected.morphogenesis.hardPopulationCap === false && inspected.morphogenesis.surfaceRendererEnabled === false, 'v48 introduced a hard population cap or Surface renderer.');
+    assert(inspected.bodyPlanCells === 6, `Expected 6 body-plan inspector cells, found ${inspected.bodyPlanCells}.`);
+    assert(inspected.bodyPlanText.includes('Morphogenesis v48') && inspected.bodyPlanText.includes('body plan'), 'v48 body-plan inspector did not render.');
     assert(inspected.originStats.plantLineages >= 1, 'No plant lineage exists for inspection.');
     if (inspected.originStats.motileLineages >= 1) {
       assert(inspected.selected?.startsWith('motile-'), `Motile lineage selection failed: ${inspected.selected}`);
@@ -120,11 +134,15 @@ fs.mkdirSync(artifactDir, { recursive: true });
       assert(inspected.record.peakPopulation >= 1, 'Selected motile lineage never recorded a real population peak.');
       assert(inspected.recordCard && inspected.recordSparkline, 'Lineage population record did not render its card/sparkline.');
       assert(inspected.recordMeta.includes('range center') && inspected.recordMeta.includes('historical samples'), 'Lineage geographic/history metadata did not render.');
+      assert(inspected.selectedPhenotype && inspected.selectedPhenotype.population >= 1, 'Selected motile lineage has no v48 phenotype population.');
+      assert(typeof inspected.selectedPhenotype.dominantBodyPlan === 'string' && inspected.selectedPhenotype.dominantBodyPlan.length > 0, 'Selected motile lineage lacks a dominant v48 body plan.');
+      assert(Number.isFinite(inspected.selectedPhenotype.animalLikeScore) && inspected.selectedPhenotype.animalLikeScore > 0, 'Selected motile lineage lacks a finite animal-like score.');
+      assert(Number.isFinite(inspected.selectedPhenotype.neuralComplexity) && Number.isFinite(inspected.selectedPhenotype.contractility) && Number.isFinite(inspected.selectedPhenotype.digestion), 'Selected v48 body plan lacks developmental averages.');
     }
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
     fs.writeFileSync(path.join(artifactDir, 'evolution-inspector.json'), JSON.stringify({ inspected, pageErrors }, null, 2));
-    await page.screenshot({ path: path.join(artifactDir, 'evolution-inspector-v47f.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'evolution-inspector-v48.png'), fullPage: true });
   } finally {
     await browser.close();
   }
