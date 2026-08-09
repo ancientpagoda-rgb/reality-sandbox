@@ -23,7 +23,7 @@ import './surface-gpu-backend-diagnostics.js?v=20260808-surface-v46e';
 import './surface-mobile-controls.js?v=20260808-surface-v46e';
 import './presentation-invariant-compat.js?v=20260808-surface-v46e';
 
-const SURFACE_BUILD = 'surface-v46e-clean-no-fauna';
+const SURFACE_BUILD = 'surface-v47-origin-of-motile-life';
 window.realitySandboxSurfaceBuild = SURFACE_BUILD;
 document.documentElement.dataset.surfaceBuild = SURFACE_BUILD;
-document.documentElement.dataset.surfaceFaunaPolicy = 'disabled-pending-redesign';
+document.documentElement.dataset.surfaceFaunaPolicy = 'motile-life-evolves-no-surface-renderer-yet';
