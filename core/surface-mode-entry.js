@@ -23,7 +23,7 @@ import './surface-gpu-backend-diagnostics.js?v=20260808-surface-v46e';
 import './surface-mobile-controls.js?v=20260808-surface-v46e';
 import './presentation-invariant-compat.js?v=20260808-surface-v46e';
 
-const SURFACE_BUILD = 'surface-v47c-genome-morphology-tree';
+const SURFACE_BUILD = 'surface-v47d-evolutionary-history';
 window.realitySandboxSurfaceBuild = SURFACE_BUILD;
 document.documentElement.dataset.surfaceBuild = SURFACE_BUILD;
 document.documentElement.dataset.surfaceFaunaPolicy = 'motile-life-evolves-no-surface-renderer-yet';
