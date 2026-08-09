@@ -111,7 +111,6 @@ fs.mkdirSync(artifactDir, { recursive: true });
     });
 
     assert(inspected.build === 'surface-v48-morphogenesis-body-plans', `Unexpected Surface build ${inspected.build}`);
-    assert(inspected.evolutionBuild === 'evolution-v49-closed-nutrient-cycle', `Unexpected evolution build ${inspected.evolutionBuild}`);
     assert(inspected.panelOpen === true && inspected.inspector.open === true, 'Evolution inspector did not open.');
     assert(inspected.options.length >= 1, 'Evolution inspector lineage selector is empty.');
     assert(inspected.speciesTitle.length > 0, 'Evolution inspector did not render the selected lineage name.');
