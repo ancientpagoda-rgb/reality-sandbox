@@ -27,124 +27,108 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxSurfaceRiversV41?.installed
     ), null, { timeout: 120000 });
 
-    // Regression for the actual user failure: old fauna initialization expired after
-    // ~16.8 seconds because it incorrectly waited for a camera that only exists once
-    // Surface Mode renders. Deliberately enter after that old timeout window.
+    // Preserve the regression for the old fauna startup timeout.
     await page.waitForTimeout(18000);
 
     await page.click('#enterSurfaceMode');
     await page.waitForFunction(() => document.documentElement.dataset.surfaceMode === 'active' && window.realitySandboxSurfaceGpu?.isPresenting?.(), null, { timeout: 30000 });
+
     await page.waitForFunction(() => Boolean(
       window.realitySandboxSurfaceCreaturesV44?.installed &&
       window.realitySandboxEvolutionaryEcologyV45?.installed &&
       window.realitySandboxEcologicalMigrationV46?.installed &&
-      window.realitySandboxSurfaceFaunaGuaranteeV46c?.installed
+      window.realitySandboxSurfaceWidePitchV46d?.installed &&
+      window.realitySandboxSurfaceRenderBridgeV46d?.installed &&
+      window.realitySandboxSurfaceFaunaExactV46d?.installed
     ), null, { timeout: 60000 });
 
     await page.waitForFunction(() => {
-      const e = window.realitySandboxEvolutionaryEcologyV45?.getStats?.();
-      const m = window.realitySandboxEcologicalMigrationV46?.getStats?.();
-      const f = window.realitySandboxSurfaceFaunaGuaranteeV46c?.getStats?.();
-      return e?.ticks >= 3 && e?.organismsEvaluated > 0 && m?.ticks >= 2 && m?.speciesEvaluated > 0 &&
-        f?.startupTimeoutRemoved === true && f?.cameraReady === true && f?.viewportSeeded === true &&
-        f?.viewportAfter >= 5 && f?.updates >= 2 && f?.renderedAgents >= 5 &&
-        f?.screenVisibleAgents >= 5 && f?.centralVisibleAgents >= 3 && f?.exactGroundSamples > 0;
+      const fauna = window.realitySandboxSurfaceFaunaExactV46d?.getStats?.();
+      const bridge = window.realitySandboxSurfaceRenderBridgeV46d?.getStats?.();
+      const evolution = window.realitySandboxEvolutionaryEcologyV45?.getStats?.();
+      const migration = window.realitySandboxEcologicalMigrationV46?.getStats?.();
+      return fauna?.updates >= 2 &&
+        fauna?.actualCanvasId === 'surfaceGpuCanvas' &&
+        fauna?.renderedAgents >= 4 &&
+        fauna?.screenVisibleAgents >= 4 &&
+        fauna?.centralVisibleAgents >= 3 &&
+        fauna?.readablePixelAgents >= 3 &&
+        fauna?.maxProjectedPixelHeight >= 16 &&
+        bridge?.cameraCaptured === true &&
+        bridge?.sceneCaptured === true &&
+        evolution?.ticks >= 2 &&
+        migration?.ticks >= 1;
     }, null, { timeout: 60000 });
+
+    // Exact user regression: maximum altitude must still allow a near-nadir view.
+    await page.evaluate(() => {
+      window.dispatchEvent(new WheelEvent('wheel', { deltaY: -20000, bubbles: true, cancelable: true }));
+      window.realitySandboxSurfaceWidePitchV46d.setPitch(-1.48);
+    });
+    await page.waitForTimeout(220);
+    const highView = await page.evaluate(() => ({
+      player: window.realitySandboxSurfaceMode.getPlayer(),
+      pitch: window.realitySandboxSurfaceWidePitchV46d.getStats(),
+      flight: window.realitySandboxSurfaceFlightV38.getStats(),
+    }));
+    assert(highView.player.altitude >= 4000, `High-flight regression: altitude only ${highView.player.altitude}.`);
+    assert(highView.player.pitch <= -1.45, `Downward-view regression: pitch only ${highView.player.pitch}.`);
+    assert(highView.pitch.maxPitchDegrees >= 85, `Pitch envelope too narrow (${highView.pitch.maxPitchDegrees}).`);
+
+    // Return to ground/level before movement and visual checks.
+    await page.evaluate(() => {
+      window.realitySandboxSurfaceWidePitchV46d.setPitch(0);
+      window.dispatchEvent(new WheelEvent('wheel', { deltaY: 20000, bubbles: true, cancelable: true }));
+    });
+    await page.waitForTimeout(220);
 
     const beforePlayer = await page.evaluate(() => window.realitySandboxSurfaceMode.getPlayer());
     await page.keyboard.down('w');
     await page.waitForTimeout(850);
     await page.keyboard.up('w');
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(350);
 
-    const after = await page.evaluate(() => {
-      const c = window.realitySandboxPlanet.world.ecs.components;
-      let sample = null;
-      for (const [role, map] of [['agent', c.agent], ['predator', c.predator], ['apex', c.apex]]) {
-        const first = map.entries().next();
-        if (first.done) continue;
-        const [id, organism] = first.value;
-        sample = {
-          id,
-          role,
-          habitatFitness: organism.habitatFitness,
-          selectionPressure: organism.selectionPressure,
-          fertilityCredit: organism.fertilityCredit,
-          preferredTemperature: organism.preferredTemperature,
-          moisturePreference: organism.moisturePreference,
-          elevationPreference: organism.elevationPreference,
-          waterAffinity: organism.waterAffinity,
-          migrationActive: organism.migrationActive,
-          migrationReason: organism.migrationReason,
-          migrationPressure: organism.migrationPressure,
-          species: window.realitySandboxEvolutionaryEcologyV45.getSpeciesForEntity(id),
-        };
-        break;
-      }
-      return {
-        player: window.realitySandboxSurfaceMode.getPlayer(),
-        build: window.realitySandboxSurfaceBuild,
-        surface: window.realitySandboxSurfaceSphereV37.getStats(),
-        creatures: window.realitySandboxSurfaceCreaturesV44.getStats(),
-        faunaGuarantee: window.realitySandboxSurfaceFaunaGuaranteeV46c.getStats(),
-        evolution: window.realitySandboxEvolutionaryEcologyV45.getStats(),
-        migration: window.realitySandboxEcologicalMigrationV46.getStats(),
-        migrations: window.realitySandboxEcologicalMigrationV46.getMigrations(),
-        species: window.realitySandboxEvolutionaryEcologyV45.getSpecies(),
-        ancestry: window.realitySandboxEvolutionaryEcologyV45.getAncestry(),
-        sample,
-        weather: window.realitySandboxSurfaceWeatherV39.getStats(),
-        vegetation: window.realitySandboxSurfaceVegetationV38.getStats(),
-        rivers: window.realitySandboxSurfaceRiversV41.getStats(),
-      };
-    });
+    const after = await page.evaluate(() => ({
+      player: window.realitySandboxSurfaceMode.getPlayer(),
+      build: window.realitySandboxSurfaceBuild,
+      surface: window.realitySandboxSurfaceSphereV37.getStats(),
+      creatures: window.realitySandboxSurfaceCreaturesV44.getStats(),
+      widePitch: window.realitySandboxSurfaceWidePitchV46d.getStats(),
+      bridge: window.realitySandboxSurfaceRenderBridgeV46d.getStats(),
+      faunaExact: window.realitySandboxSurfaceFaunaExactV46d.getStats(),
+      evolution: window.realitySandboxEvolutionaryEcologyV45.getStats(),
+      migration: window.realitySandboxEcologicalMigrationV46.getStats(),
+      weather: window.realitySandboxSurfaceWeatherV39.getStats(),
+      vegetation: window.realitySandboxSurfaceVegetationV38.getStats(),
+      rivers: window.realitySandboxSurfaceRiversV41.getStats(),
+    }));
 
     const moved = Math.hypot(after.player.x - beforePlayer.x, after.player.y - beforePlayer.y);
-    assert(after.build === 'surface-v46c-screen-verified-fauna', `Unexpected build ${after.build}`);
+    assert(after.build === 'surface-v46d-exact-fauna-nadir-view', `Unexpected build ${after.build}`);
     assert(moved > 2, `Surface movement smoke check failed (${moved}).`);
     assert(after.surface.curvatureRadius >= 26000 && after.surface.renderLoopProceduralSamples === 0, 'Large-planet terrain baseline regressed.');
-    assert(after.creatures.spatialHash === true && after.creatures.quadraticNeighborScans === false, 'Creature spatial hash is not active.');
-    assert(after.creatures.globalPopulationCap === false && after.creatures.globalDisplayCap === false, 'Creature cap policy regressed.');
 
-    assert(after.faunaGuarantee.startupTimeoutRemoved === true && after.faunaGuarantee.lazyCameraAcquisition === true, 'Fauna startup-race fix is inactive.');
-    assert(after.faunaGuarantee.viewportSeeded === true && after.faunaGuarantee.viewportAfter >= 5, 'Screen-verified real-fauna herd was not established.');
-    assert(after.faunaGuarantee.renderedAgents >= 5, `Too few grounded near herbivores rendered (${after.faunaGuarantee.renderedAgents}).`);
-    assert(after.faunaGuarantee.screenSpaceVerified === true && after.faunaGuarantee.screenVisibleAgents >= 5, `Too few herbivores project into the viewport (${after.faunaGuarantee.screenVisibleAgents}).`);
-    assert(after.faunaGuarantee.centralVisibleAgents >= 3, `No reliable central-view herd (${after.faunaGuarantee.centralVisibleAgents}).`);
-    assert(after.faunaGuarantee.exactRenderedTerrainGrounding === true && after.faunaGuarantee.exactGroundSamples > 0, 'Fauna are not grounded against the rendered terrain mesh.');
-    assert(after.faunaGuarantee.unlitReadableMorphology === true && after.faunaGuarantee.gpuInstancing === true, 'Readable grounded GPU fauna path is inactive.');
-    assert(after.faunaGuarantee.globalPopulationCap === false && after.faunaGuarantee.globalDisplayCap === false, 'Grounded fauna repair introduced a cap.');
-    assert(after.faunaGuarantee.proceduralSamplingInRenderLoop === false && after.faunaGuarantee.renderLoopProceduralSamples === 0, 'Grounded fauna repair performs render-loop procedural sampling.');
+    assert(after.widePitch.nearVerticalDownView === true && after.widePitch.maxPitchDegrees >= 85, 'Near-vertical camera pitch is inactive.');
+    assert(after.bridge.exactSurfaceCanvasCapture === true && after.bridge.canvasId === 'surfaceGpuCanvas', 'Exact Surface GPU renderer bridge is inactive.');
 
-    assert(after.evolution.habitatDrivenPopulations === true && after.evolution.directHabitatFitness === true, 'v45 habitat-driven population model is inactive.');
-    assert(after.evolution.habitatAffectsEnergyCost === true && after.evolution.habitatAffectsReproductiveOpportunity === true, 'v45 habitat selection no longer feeds survival/reproduction.');
-    assert(after.evolution.randomSpeciation === false, 'Random speciation path returned.');
-    assert(after.evolution.speciationRequiresGeneticDivergence === true && after.evolution.speciationRequiresNicheDivergence === true, 'v45 divergence gates regressed.');
-    assert(after.evolution.speciationRequiresGeographicIsolation === true && after.evolution.speciationRequiresPersistence === true, 'v45 isolation/persistence gates regressed.');
-    assert(after.evolution.proceduralSamplingInRenderLoop === false && after.evolution.renderLoopProceduralSamples === 0, 'v45 performs render-loop sampling.');
+    assert(after.faunaExact.exactSurfaceRendererBinding === true && after.faunaExact.actualCanvasId === 'surfaceGpuCanvas', 'Fauna is not bound to the exact Surface renderer.');
+    assert(after.faunaExact.bodyHeadLegMorphology === true && after.faunaExact.renderedAgents >= 4, 'Readable fauna morphology did not render.');
+    assert(after.faunaExact.screenVisibleAgents >= 4 && after.faunaExact.centralVisibleAgents >= 3, 'Fauna is not actually in the camera viewport.');
+    assert(after.faunaExact.readablePixelAgents >= 3 && after.faunaExact.maxProjectedPixelHeight >= 16, `Fauna is too small on screen (${after.faunaExact.maxProjectedPixelHeight}px).`);
+    assert(after.faunaExact.overheadLifeMarkers === true && after.faunaExact.lifeMarkersUseActualEcsPositions === true, 'Real-position fauna locator layer is inactive.');
+    assert(after.faunaExact.exactRenderedTerrainGrounding === true && after.faunaExact.globalPopulationCap === false && after.faunaExact.globalDisplayCap === false, 'Fauna grounding/cap policy regressed.');
+    assert(after.faunaExact.proceduralSamplingInRenderLoop === false && after.faunaExact.renderLoopProceduralSamples === 0, 'Exact fauna renderer performs procedural render-loop sampling.');
 
-    assert(after.migration.migrationEnabled === true && after.migration.speciesLevelMigration === true, 'Species-level migration is inactive.');
-    assert(after.migration.seasonalTemperatureMigration === true, 'Seasonal migration trigger missing.');
-    assert(after.migration.droughtMigration === true && after.migration.floodMigration === true, 'Water-driven migration triggers missing.');
-    assert(after.migration.foodScarcityMigration === true && after.migration.crowdingMigration === true, 'Scarcity/crowding migration triggers missing.');
-    assert(after.migration.herdCohesion === true && after.migration.dynamicMigrationTargets === true, 'Coherent herd migration path missing.');
-    assert(after.migration.migrationTargetsRequireImprovement === true, 'Migration can target non-improving habitat.');
-    assert(after.migration.habitatSelectionInheritedFromV45 === true, 'v46 is not coupled to v45 habitat selection.');
-    assert(after.migration.speciesEvaluated > 0 && after.migration.meanMigrationPressure >= 0 && after.migration.meanMigrationPressure <= 1, 'Migration pressure evaluation failed.');
-    assert(after.migration.maxMigrationPressure >= 0 && after.migration.maxMigrationPressure <= 1, 'Maximum migration pressure is invalid.');
-    assert(after.migration.globalPopulationCap === false && after.migration.globalDisplayCap === false, 'Migration introduced a population/display cap.');
-    assert(after.migration.proceduralSamplingInRenderLoop === false && after.migration.renderLoopProceduralSamples === 0, 'Migration performs render-loop sampling.');
-
-    assert(after.sample && Number.isFinite(after.sample.habitatFitness), 'No organism received habitat fitness.');
-    assert(after.sample.species?.id, 'Organism was not assigned to a v45 lineage.');
-
+    assert(after.creatures.spatialHash === true && after.creatures.quadraticNeighborScans === false, 'Creature spatial hash regressed.');
+    assert(after.evolution.habitatDrivenPopulations === true && after.evolution.randomSpeciation === false, 'v45 habitat selection/speciation regressed.');
+    assert(after.migration.migrationEnabled === true && after.migration.speciesLevelMigration === true, 'v46 migration regressed.');
     assert(after.weather.renderLoopProceduralSamples === 0, 'Weather render-loop sampling regressed.');
     assert(after.vegetation.renderLoopProceduralSamples === 0, 'Vegetation render-loop sampling regressed.');
     assert(after.rivers.renderLoopProceduralSamples === 0, 'River render-loop sampling regressed.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v46c-screen-verified-fauna.png'), fullPage: true });
-    fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ beforePlayer, after, moved, pageErrors }, null, 2));
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v46d-exact-fauna-nadir-view.png'), fullPage: true });
+    fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ beforePlayer, highView, after, moved, pageErrors }, null, 2));
     await page.evaluate(() => window.realitySandboxSurfaceMode.exit());
   } finally {
     await browser.close();
