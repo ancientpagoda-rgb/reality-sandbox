@@ -26,7 +26,9 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxEvolutionaryMilestonesV47d?.installed &&
       window.realitySandboxLineagePopulationRecordV47e?.installed &&
       window.realitySandboxEvolutionDeepTimeV47f?.installed &&
-      window.realitySandboxMorphogenesisV48?.installed
+      window.realitySandboxMorphogenesisV48?.installed &&
+      window.realitySandboxClosedNutrientCycleV49?.installed &&
+      window.realitySandboxNutrientInspectorV49a?.installed
     ), null, { timeout: 120000 });
 
     const collapsed = await page.evaluate(() => window.realitySandboxEvolutionInspectorV47b.getStats());
@@ -47,6 +49,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
       const populationRecord = window.realitySandboxLineagePopulationRecordV47e;
       const deepTime = window.realitySandboxEvolutionDeepTimeV47f;
       const morphogenesis = window.realitySandboxMorphogenesisV48;
+      const nutrientCycle = window.realitySandboxClosedNutrientCycleV49;
+      const nutrientInspector = window.realitySandboxNutrientInspectorV49a;
       const lineages = api.getLineages();
       const motile = lineages.find(x => x.type === 'motile');
       if (motile) inspector.selectLineage(motile.id);
@@ -55,6 +59,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       populationRecord.render();
       deepTime.render();
       morphogenesis.render();
+      nutrientInspector.render();
       const options = root ? [...root.querySelectorAll('.lineage-select option')].map(x => x.textContent) : [];
       const svg = root?.querySelector('.morph-svg');
       const tree = root?.querySelector('.tree-svg');
@@ -62,12 +67,15 @@ fs.mkdirSync(artifactDir, { recursive: true });
       const lineagePhenotypes = morphogenesis.getLineagePhenotypes();
       return {
         build: window.realitySandboxSurfaceBuild,
+        evolutionBuild: window.realitySandboxEvolutionBuild,
         inspector: inspector.getStats(),
         morphology: morphology.getStats(),
         history: history.getStats(),
         recordStats: populationRecord.getStats(),
         deepTime: deepTime.getStats(),
         morphogenesis: morphogenesis.getStats(),
+        nutrient: nutrientCycle.getStats(),
+        nutrientInspector: nutrientInspector.getStats(),
         lineagePhenotypes,
         selectedPhenotype: selected ? lineagePhenotypes.find(x => x.lineageId === selected) || null : null,
         record: selected ? populationRecord.getRecord(selected) : null,
@@ -93,13 +101,17 @@ fs.mkdirSync(artifactDir, { recursive: true });
         deepTimeText: root?.querySelector('.deep-time-v47f')?.textContent || '',
         bodyPlanCells: root?.querySelectorAll('.body-plan-grid-v48 > div')?.length || 0,
         bodyPlanText: root?.querySelector('.body-plan-v48')?.textContent || '',
+        nutrientCells: root?.querySelectorAll('.nutrient-grid-v49a > div')?.length || 0,
+        nutrientText: root?.querySelector('.nutrient-v49a')?.textContent || '',
+        nutrientNote: root?.querySelector('.nutrient-note-v49a')?.textContent || '',
         lineages,
         ancestryEvents: api.getAncestry(),
         originStats: api.getStats(),
       };
     });
 
-    assert(inspected.build === 'surface-v48-morphogenesis-body-plans', `Unexpected build ${inspected.build}`);
+    assert(inspected.build === 'surface-v48-morphogenesis-body-plans', `Unexpected Surface build ${inspected.build}`);
+    assert(inspected.evolutionBuild === 'evolution-v49-closed-nutrient-cycle', `Unexpected evolution build ${inspected.evolutionBuild}`);
     assert(inspected.panelOpen === true && inspected.inspector.open === true, 'Evolution inspector did not open.');
     assert(inspected.options.length >= 1, 'Evolution inspector lineage selector is empty.');
     assert(inspected.speciesTitle.length > 0, 'Evolution inspector did not render the selected lineage name.');
@@ -121,6 +133,10 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(inspected.morphogenesis.hardPopulationCap === false && inspected.morphogenesis.surfaceRendererEnabled === false, 'v48 introduced a hard population cap or Surface renderer.');
     assert(inspected.bodyPlanCells === 6, `Expected 6 body-plan inspector cells, found ${inspected.bodyPlanCells}.`);
     assert(inspected.bodyPlanText.includes('Morphogenesis v48') && inspected.bodyPlanText.includes('body plan'), 'v48 body-plan inspector did not render.');
+    assert(inspected.nutrient.installed && inspected.nutrient.localNutrientField && inspected.nutrient.soilToPlantBiomass, 'v49 nutrient cycle is not available to the inspector.');
+    assert(inspected.nutrientInspector.lineageLocalNutrients && inspected.nutrientInspector.lineageSoilToxin && inspected.nutrientInspector.globalRecyclingTotals && inspected.nutrientInspector.surfaceRendererTouched === false, 'v49 nutrient-inspector contract is incomplete.');
+    assert(inspected.nutrientCells === 6, `Expected 6 v49 nutrient-inspector cells, found ${inspected.nutrientCells}.`);
+    assert(inspected.nutrientText.includes('Nutrient ecology') && inspected.nutrientText.includes('detritus recycled') && inspected.nutrientText.includes('plant uptake'), 'v49 nutrient ecology did not render its recycling totals.');
     assert(inspected.originStats.plantLineages >= 1, 'No plant lineage exists for inspection.');
     if (inspected.originStats.motileLineages >= 1) {
       assert(inspected.selected?.startsWith('motile-'), `Motile lineage selection failed: ${inspected.selected}`);
@@ -138,11 +154,12 @@ fs.mkdirSync(artifactDir, { recursive: true });
       assert(typeof inspected.selectedPhenotype.dominantBodyPlan === 'string' && inspected.selectedPhenotype.dominantBodyPlan.length > 0, 'Selected motile lineage lacks a dominant v48 body plan.');
       assert(Number.isFinite(inspected.selectedPhenotype.animalLikeScore) && inspected.selectedPhenotype.animalLikeScore > 0, 'Selected motile lineage lacks a finite animal-like score.');
       assert(Number.isFinite(inspected.selectedPhenotype.neuralComplexity) && Number.isFinite(inspected.selectedPhenotype.contractility) && Number.isFinite(inspected.selectedPhenotype.digestion), 'Selected v48 body plan lacks developmental averages.');
+      assert(inspected.nutrientNote.includes('Selected-lineage environment'), 'Selected motile lineage did not expose its local v49 nutrient environment.');
     }
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
     fs.writeFileSync(path.join(artifactDir, 'evolution-inspector.json'), JSON.stringify({ inspected, pageErrors }, null, 2));
-    await page.screenshot({ path: path.join(artifactDir, 'evolution-inspector-v48.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'evolution-inspector-v49.png'), fullPage: true });
   } finally {
     await browser.close();
   }
