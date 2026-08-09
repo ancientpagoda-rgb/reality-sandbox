@@ -118,6 +118,18 @@ function install({ morphogenesis, deepTime, inspector, origin, planet, modules, 
 
   function captureThresholds() {
     for (const phenotype of morphogenesis.getLineagePhenotypes?.() || []) {
+      const baselineKey = `${phenotype.lineageId}:${phenotype.dominantBodyPlan}`;
+      if (!seenLineagePlans.has(baselineKey)) {
+        seenLineagePlans.add(baselineKey);
+        pushEvent(
+          phenotype.lineageId,
+          world.tick,
+          `${phenotype.dominantBodyPlan} observed`,
+          `First recorded dominant body plan for this lineage: ${phenotype.dominantBodyPlan}.`,
+          'first-observed-body-plan',
+        );
+      }
+
       const thresholds = [
         ['animal-like-35', phenotype.animalLikeScore >= 0.35, 'Animal-like organization rises', `Animal-like developmental score crossed 35%.`],
         ['animal-like-55', phenotype.animalLikeScore >= 0.55, 'Integrated animal-like body plan', `Animal-like developmental score crossed 55%.`],
@@ -173,6 +185,7 @@ function install({ morphogenesis, deepTime, inspector, origin, planet, modules, 
       installed: true,
       samples,
       events: events.length,
+      firstObservedBodyPlans: true,
       lineageBodyPlanFirstEmergence: true,
       developmentalThresholdHistory: true,
       deepTimeLabels: true,
