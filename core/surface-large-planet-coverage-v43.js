@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { biomeColor } from './planet.js';
 
 const Z_SCALE = 62;
+const BUILD_ALTITUDE = 115;
 const SHOW_ALTITUDE = 180;
 const MACRO_RADIUS = 18500;
 const RADIAL_RINGS = 28;
@@ -69,6 +70,7 @@ function install({ planet, mode, surface, scene, camera }) {
     vertices: 0,
     triangles: 0,
     visibleFrames: 0,
+    deferredLowAltitudeFrames: 0,
     renderLoopProceduralSamples: 0,
   };
 
@@ -237,7 +239,9 @@ function install({ planet, mode, surface, scene, camera }) {
     }
     lastSurfaceActive = true;
     const player = mode.getPlayer();
-    ensureFor(player);
+    if (player.altitude >= BUILD_ALTITUDE) ensureFor(player);
+    else stats.deferredLowAltitudeFrames++;
+
     const sAnchor = surfaceAnchor();
     if (active && sAnchor) {
       active.mesh.position.set(shortestWrappedDelta(active.x, sAnchor.x, world.width), 0, active.y - sAnchor.y);
@@ -265,6 +269,7 @@ function install({ planet, mode, surface, scene, camera }) {
       visible: Boolean(active?.mesh.visible),
       curvatureRadius,
       macroRadius: MACRO_RADIUS,
+      buildAltitude: BUILD_ALTITUDE,
       showAltitude: SHOW_ALTITUDE,
       radialRings: RADIAL_RINGS,
       angularSegments: ANGULAR_SEGMENTS,
@@ -273,6 +278,7 @@ function install({ planet, mode, surface, scene, camera }) {
       circularCoverage: true,
       mergedSingleMesh: true,
       idleBuilt: true,
+      lowAltitudeBuildDeferred: true,
       proceduralSamplingInRenderLoop: false,
       cameraFar: camera.far,
     }),
