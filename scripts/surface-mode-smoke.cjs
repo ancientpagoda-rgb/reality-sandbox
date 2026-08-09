@@ -26,6 +26,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxSurfaceIdleSchedulerV34?.installed &&
       window.realitySandboxSurfaceLightHookV36?.installed &&
       window.realitySandboxSurfaceWaterStabilityV38b?.installed &&
+      window.realitySandboxSurfaceOssV40?.installed &&
       window.realitySandboxSurfaceFlightV38?.installed &&
       window.realitySandboxSurfaceSphereV37?.installed &&
       window.realitySandboxSurfaceCelestialsV38?.installed &&
@@ -59,6 +60,10 @@ fs.mkdirSync(artifactDir, { recursive: true });
       const w = window.realitySandboxSurfaceWeatherV39?.getStats?.();
       return w?.buildsCompleted >= 1 && w?.fieldReady && w?.particleFrames >= 2;
     }, null, { timeout: 120000 });
+    await page.waitForFunction(() => {
+      const o = window.realitySandboxSurfaceOssV40?.getStats?.();
+      return o?.skirtsBuilt >= 1 && o?.screenSpaceErrorSamples >= 2 && o?.atmosphereShell === true;
+    }, null, { timeout: 60000 });
 
     const stable = await page.evaluate(() => ({
       player: window.realitySandboxSurfaceMode.getPlayer(),
@@ -66,6 +71,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       sky: window.realitySandboxSurfaceCelestialsV38.getStats(),
       vegetation: window.realitySandboxSurfaceVegetationV38.getStats(),
       weather: window.realitySandboxSurfaceWeatherV39.getStats(),
+      oss: window.realitySandboxSurfaceOssV40.getStats(),
       waterStability: window.realitySandboxSurfaceWaterStabilityV38b.getStats(),
       vegetationStability: window.realitySandboxSurfaceVegetationStabilityV38b.getStats(),
       diagnostics: window.realitySandboxPresentationDiagnostics(),
@@ -108,6 +114,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       vegetationStability: window.realitySandboxSurfaceVegetationStabilityV38b.getStats(),
       waterStability: window.realitySandboxSurfaceWaterStabilityV38b.getStats(),
       weather: window.realitySandboxSurfaceWeatherV39.getStats(),
+      oss: window.realitySandboxSurfaceOssV40.getStats(),
       horizon: window.realitySandboxSurfaceHorizonV38.getStats(),
       scheduler: window.realitySandboxSurfaceIdleSchedulerV34.getStats(),
       controller: window.realitySandboxSurfaceMode.getStats?.(),
@@ -115,12 +122,12 @@ fs.mkdirSync(artifactDir, { recursive: true });
       surfaceBuild: window.realitySandboxSurfaceBuild,
     }));
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v39-cached-weather.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v40-oss-globe-consolidation.png'), fullPage: true });
     fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ stable, fastSky, after, pageErrors }, null, 2));
 
     const moved = Math.hypot(after.player.x - stable.player.x, after.player.y - stable.player.y);
     assert(after.active, 'Surface mode did not remain active.');
-    assert(after.surfaceBuild === 'surface-v39-cached-spherical-weather', `Unexpected surface build: ${after.surfaceBuild}`);
+    assert(after.surfaceBuild === 'surface-v40-oss-globe-consolidation', `Unexpected surface build: ${after.surfaceBuild}`);
     assert(after.controller?.topology === 'sphere' && after.controller?.extendedFlight === true, 'Extended spherical flight controller is not active.');
     assert(after.controller.maxAltitude >= 400 && after.player.altitude > 100, `High flight did not extend altitude (${after.player.altitude}).`);
     assert(after.flight.extendedFlight === true && after.flight.cameraFar >= 2500, 'High-flight far plane extension is not active.');
@@ -157,6 +164,19 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(after.weather.weatherSimulationRunningInSurface === false && after.weather.presentationOnlyAdvection === true, 'Weather presentation restarted the expensive simulation.');
     assert(after.weather.cloudParticles >= 100 && after.weather.precipitationParticles >= 50 && after.weather.particleFrames > 10, 'Weather particle presentation is not running.');
     assert(after.weather.buildsCompleted >= 2 && after.weather.anchorHandoffs >= 1, 'Weather cache did not rebuild cleanly across terrain chunk handoff.');
+
+    assert(after.oss.screenSpaceErrorEnabled === true && after.oss.screenSpaceErrorTargetPixels <= 2.5, 'Cesium-style screen-space-error policy is not enabled.');
+    assert(after.oss.screenSpaceErrorSamples > 10 && Number.isFinite(after.oss.averageScreenSpaceError) && Number.isFinite(after.oss.maxScreenSpaceError), 'Screen-space-error diagnostics did not sample terrain tiles.');
+    assert(after.oss.sphericalHorizonCulling === true && after.oss.rearViewCulling === true && after.oss.horizonCullTests > 10, 'Spherical horizon/rear culling is not active.');
+    assert(after.oss.terrainSkirts === true && after.oss.skirtsBuilt >= 1 && after.oss.skirtTriangles > 0, 'Terrain edge skirts were not attached.');
+    assert(after.oss.terrainGeomorphContinuityStrategy === 'edge-skirts-best-available', 'Unexpected LOD seam continuity strategy.');
+    assert(after.oss.altitudeAwareFoliageLod === true && after.oss.foliageLodChanges >= 1, 'Terrain3D-style foliage LOD policy did not react to altitude/SSE.');
+    assert(after.oss.atmosphereShell === true && after.oss.atmosphereSunCoupled === true && after.oss.atmosphereFrames > 10, 'WorldWind/OpenSpace-style atmosphere shell is not running.');
+    assert(after.oss.inheritedBestAvailableRefinement === true && after.oss.inheritedViewPriority === true, 'deck.gl/Cesium best-available view-priority behavior was not retained.');
+    assert(after.oss.inheritedBoundedNearCache >= 3, 'Bounded terrain cache was not retained.');
+    assert(after.oss.inheritedCachedBilinearWeather === true, 'Nullschool-style cached bilinear weather was not retained.');
+    assert(after.oss.globalDisplayCap === false && after.oss.renderLoopProceduralSamples === 0, 'OSS consolidation introduced a display cap or render-loop sampling.');
+    assert(after.oss.visibleTrackedMeshes >= 1, 'OSS culling hid every tracked surface mesh.');
 
     assert(after.horizon.buildsCompleted >= 1 && after.horizon.mergedSingleMesh === true, 'High-altitude merged horizon ring was not built.');
     assert(after.horizon.ring === 3 && after.horizon.vertices >= 500 && after.horizon.renderLoopProceduralSamples === 0, 'High-altitude horizon contract failed.');
