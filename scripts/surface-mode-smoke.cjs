@@ -30,7 +30,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxEcologicalMigrationV46?.installed &&
       window.realitySandboxOriginMotileLifeV47?.installed &&
       window.realitySandboxEvolutionInspectorV47b?.installed &&
-      window.realitySandboxEvolutionMorphologyV47c?.installed
+      window.realitySandboxEvolutionMorphologyV47c?.installed &&
+      window.realitySandboxEvolutionaryMilestonesV47d?.installed
     ), null, { timeout: 120000 });
 
     await page.click('#enterSurfaceMode');
@@ -74,6 +75,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       origin: window.realitySandboxOriginMotileLifeV47.getStats(),
       inspector: window.realitySandboxEvolutionInspectorV47b.getStats(),
       morphology: window.realitySandboxEvolutionMorphologyV47c.getStats(),
+      milestones: window.realitySandboxEvolutionaryMilestonesV47d.getStats(),
       weather: window.realitySandboxSurfaceWeatherV39.getStats(),
       vegetation: window.realitySandboxSurfaceVegetationV38.getStats(),
       rivers: window.realitySandboxSurfaceRiversV41.getStats(),
@@ -89,11 +91,12 @@ fs.mkdirSync(artifactDir, { recursive: true });
     }));
 
     const moved = Math.hypot(after.player.x - beforePlayer.x, after.player.y - beforePlayer.y);
-    assert(after.build === 'surface-v47c-genome-morphology-tree', `Unexpected build ${after.build}`);
+    assert(after.build === 'surface-v47d-evolutionary-history', `Unexpected build ${after.build}`);
     assert(after.faunaPolicy === 'motile-life-evolves-no-surface-renderer-yet', `Unexpected fauna policy ${after.faunaPolicy}`);
     assert(after.origin.plantFirstOrigin === true && after.origin.legacyFaunaRendererEnabled === false, 'v47 origin-life policy is inactive.');
     assert(after.inspector.collapsedByDefault === true && after.inspector.shadowDomIsolated === true, 'v47b inspector policy regressed.');
     assert(after.morphology.genomeDrivenMorphology === true && after.morphology.ancestryTree === true && after.morphology.surfaceRendererTouched === false, 'v47c morphology/tree policy regressed.');
+    assert(after.milestones.authoritativeFixedStep === true && after.milestones.causalContextRecorded === true, 'v47d milestone recorder is not on the authoritative clock.');
     assert(Object.values(after.faunaModulesAbsent).every(Boolean), `Experimental Surface fauna module still loaded: ${JSON.stringify(after.faunaModulesAbsent)}`);
     assert(moved > 2, `Surface movement smoke check failed (${moved}).`);
     assert(after.surface.curvatureRadius >= 26000 && after.surface.renderLoopProceduralSamples === 0, 'Large-planet terrain baseline regressed.');
@@ -105,7 +108,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(after.rivers.renderLoopProceduralSamples === 0, 'River render-loop sampling regressed.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v47c-genome-morphology-tree.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v47d-evolutionary-history.png'), fullPage: true });
     fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ beforePlayer, highView, after, moved, pageErrors }, null, 2));
     await page.evaluate(() => window.realitySandboxSurfaceMode.exit());
   } finally {
