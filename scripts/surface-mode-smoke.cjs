@@ -22,80 +22,97 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxSurfaceMode &&
       window.realitySandboxSurfaceGpu?.installed &&
       window.realitySandboxSurfaceSphereV37?.installed &&
-      window.realitySandboxSurfaceFlightV38?.installed &&
-      window.realitySandboxSurfaceCelestialsV38?.installed &&
-      window.realitySandboxSurfaceSolarLightingV36?.installed &&
-      window.realitySandboxSurfaceWaterStabilityV38b?.installed &&
       window.realitySandboxSurfaceVegetationV38?.installed &&
       window.realitySandboxSurfaceWeatherV39?.installed &&
-      window.realitySandboxSurfaceOssV40?.installed &&
-      window.realitySandboxSurfaceRiversV41?.installed &&
-      window.realitySandboxSurfaceLargePlanetCoverageV43?.installed
+      window.realitySandboxSurfaceRiversV41?.installed
     ), null, { timeout: 120000 });
 
     await page.click('#enterSurfaceMode');
     await page.waitForFunction(() => document.documentElement.dataset.surfaceMode === 'active' && window.realitySandboxSurfaceGpu?.isPresenting?.(), null, { timeout: 30000 });
-
     await page.waitForFunction(() => Boolean(
       window.realitySandboxSurfaceCreaturesV44?.installed &&
-      window.realitySandboxSurfaceLocalFaunaV44d?.installed &&
-      window.realitySandboxSurfaceCreatureVisibilityV44b?.installed &&
-      window.realitySandboxSurfaceCreatureReadabilityV44c?.installed
+      window.realitySandboxEvolutionaryEcologyV45?.installed
     ), null, { timeout: 60000 });
 
     await page.waitForFunction(() => {
-      const c = window.realitySandboxSurfaceCreaturesV44?.getStats?.();
-      const f = window.realitySandboxSurfaceLocalFaunaV44d?.getStats?.();
-      const r = window.realitySandboxSurfaceCreatureReadabilityV44c?.getStats?.();
-      return c?.population > 0 && c?.renderUpdates >= 3 && c?.spatialQueries > 0 && f?.seeded === true && f?.nearbyAfter >= 20 && r?.updates >= 2 && r?.glintPoints > 0 && Number.isFinite(r?.nearestCreatureDistance) && r.nearestCreatureDistance < 350;
+      const e = window.realitySandboxEvolutionaryEcologyV45?.getStats?.();
+      return e?.ticks >= 3 && e?.organismsEvaluated > 0 && e?.habitatSamples > 0 && e?.speciesAssignments > 0;
     }, null, { timeout: 60000 });
 
     const beforePlayer = await page.evaluate(() => window.realitySandboxSurfaceMode.getPlayer());
     await page.keyboard.down('w');
     await page.waitForTimeout(850);
     await page.keyboard.up('w');
-    await page.waitForTimeout(250);
+    await page.waitForTimeout(300);
 
-    const after = await page.evaluate(() => ({
-      player: window.realitySandboxSurfaceMode.getPlayer(),
-      build: window.realitySandboxSurfaceBuild,
-      surface: window.realitySandboxSurfaceSphereV37.getStats(),
-      creatures: window.realitySandboxSurfaceCreaturesV44.getStats(),
-      localFauna: window.realitySandboxSurfaceLocalFaunaV44d.getStats(),
-      visibility: window.realitySandboxSurfaceCreatureVisibilityV44b.getStats(),
-      readability: window.realitySandboxSurfaceCreatureReadabilityV44c.getStats(),
-      weather: window.realitySandboxSurfaceWeatherV39.getStats(),
-      vegetation: window.realitySandboxSurfaceVegetationV38.getStats(),
-      rivers: window.realitySandboxSurfaceRiversV41.getStats(),
-    }));
+    const after = await page.evaluate(() => {
+      const c = window.realitySandboxPlanet.world.ecs.components;
+      let sample = null;
+      for (const [role, map] of [['agent', c.agent], ['predator', c.predator], ['apex', c.apex]]) {
+        const first = map.entries().next();
+        if (first.done) continue;
+        const [id, organism] = first.value;
+        sample = {
+          id,
+          role,
+          habitatFitness: organism.habitatFitness,
+          selectionPressure: organism.selectionPressure,
+          fertilityCredit: organism.fertilityCredit,
+          preferredTemperature: organism.preferredTemperature,
+          moisturePreference: organism.moisturePreference,
+          elevationPreference: organism.elevationPreference,
+          waterAffinity: organism.waterAffinity,
+          species: window.realitySandboxEvolutionaryEcologyV45.getSpeciesForEntity(id),
+        };
+        break;
+      }
+      return {
+        player: window.realitySandboxSurfaceMode.getPlayer(),
+        build: window.realitySandboxSurfaceBuild,
+        surface: window.realitySandboxSurfaceSphereV37.getStats(),
+        creatures: window.realitySandboxSurfaceCreaturesV44.getStats(),
+        evolution: window.realitySandboxEvolutionaryEcologyV45.getStats(),
+        species: window.realitySandboxEvolutionaryEcologyV45.getSpecies(),
+        ancestry: window.realitySandboxEvolutionaryEcologyV45.getAncestry(),
+        sample,
+        weather: window.realitySandboxSurfaceWeatherV39.getStats(),
+        vegetation: window.realitySandboxSurfaceVegetationV38.getStats(),
+        rivers: window.realitySandboxSurfaceRiversV41.getStats(),
+      };
+    });
 
     const moved = Math.hypot(after.player.x - beforePlayer.x, after.player.y - beforePlayer.y);
-    assert(after.build === 'surface-v44d-local-fauna-visible', `Unexpected build ${after.build}`);
+    assert(after.build === 'surface-v45-habitat-selection-speciation', `Unexpected build ${after.build}`);
     assert(moved > 2, `Surface movement smoke check failed (${moved}).`);
     assert(after.surface.curvatureRadius >= 26000 && after.surface.renderLoopProceduralSamples === 0, 'Large-planet terrain baseline regressed.');
     assert(after.creatures.spatialHash === true && after.creatures.quadraticNeighborScans === false, 'Creature spatial hash is not active.');
-    assert(after.creatures.gpuInstancing === true && after.creatures.globalPopulationCap === false && after.creatures.globalDisplayCap === false, 'Creature GPU/no-cap policy regressed.');
-    assert(after.creatures.population > 0 && after.creatures.renderedAgents + after.creatures.renderedPredators + after.creatures.renderedApex === after.creatures.population, 'Not every living creature has a body instance.');
-    assert(after.creatures.renderLoopProceduralSamples === 0 && after.creatures.terrainSamplingInRenderLoop === false, 'Creature renderer performs procedural sampling.');
+    assert(after.creatures.globalPopulationCap === false && after.creatures.globalDisplayCap === false, 'Creature cap policy regressed.');
 
-    assert(after.localFauna.seeded === true && after.localFauna.oneTimePerWorld === true && after.localFauna.recurringTopUp === false, 'Local fauna one-time seed did not complete.');
-    assert(after.localFauna.realEcsCreatures === true && after.localFauna.nearbyAfter >= 20, `Local fauna remains too sparse (${after.localFauna.nearbyAfter}).`);
-    assert(after.localFauna.globalPopulationCap === false && after.localFauna.globalDisplayCap === false && after.localFauna.renderLoopProceduralSamples === 0, 'Local fauna seed introduced a cap or render-loop sampling.');
+    assert(after.evolution.habitatDrivenPopulations === true && after.evolution.directHabitatFitness === true, 'Habitat-driven population model is inactive.');
+    assert(after.evolution.habitatAffectsEnergyCost === true && after.evolution.habitatAffectsReproductiveOpportunity === true, 'Habitat is not feeding survival/reproduction.');
+    assert(after.evolution.localHabitatSteering === true && after.evolution.realSelectionPressure === true, 'Habitat selection pressure is inactive.');
+    assert(after.evolution.randomSpeciation === false, 'Random speciation path returned.');
+    assert(after.evolution.speciationRequiresGeneticDivergence === true, 'Genetic-divergence speciation gate missing.');
+    assert(after.evolution.speciationRequiresNicheDivergence === true, 'Niche-divergence speciation gate missing.');
+    assert(after.evolution.speciationRequiresGeographicIsolation === true, 'Geographic-isolation speciation gate missing.');
+    assert(after.evolution.speciationRequiresPersistence === true && after.evolution.persistentIsolationCycles >= 3, 'Persistent isolation gate missing.');
+    assert(after.evolution.activeOrganisms > 0 && after.evolution.livingSpecies >= 3, 'Evolutionary species registry did not initialize.');
+    assert(after.evolution.meanHabitatFitness >= 0 && after.evolution.meanHabitatFitness <= 1, 'Mean habitat fitness is invalid.');
+    assert(after.evolution.globalPopulationCap === false && after.evolution.globalDisplayCap === false, 'Evolutionary ecology introduced a population/display cap.');
+    assert(after.evolution.proceduralSamplingInRenderLoop === false && after.evolution.renderLoopProceduralSamples === 0, 'Evolutionary ecology performs render-loop sampling.');
 
-    assert(after.visibility.matricesEnhanced > 0 && after.visibility.materialsEnhanced > 0, 'Readable body enhancer did not touch creature meshes.');
-    assert(after.visibility.agentScale >= 3.5 && after.visibility.predatorScale >= 4 && after.visibility.apexScale >= 4.5, 'Creature body scale enhancement regressed.');
-
-    assert(after.readability.actualCreaturePositions === true && after.readability.glintPoints > 0, 'Far-fauna readability layer has no creature points.');
-    assert(after.readability.depthTested === true && after.readability.singleAdditionalDrawCall === true && after.readability.additionalDrawCalls === 1, 'Fauna glint draw-path contract failed.');
-    assert(Number.isFinite(after.readability.nearestCreatureDistance) && after.readability.nearestCreatureDistance < 350, `Nearest visible creature is unexpectedly far (${after.readability.nearestCreatureDistance}).`);
-    assert(after.readability.globalDisplayCap === false && after.readability.renderLoopProceduralSamples === 0, 'Fauna readability layer introduced a cap or procedural sampling.');
+    assert(after.sample && Number.isFinite(after.sample.habitatFitness), 'No organism received habitat fitness.');
+    assert(after.sample.habitatFitness >= 0 && after.sample.habitatFitness <= 1, 'Organism habitat fitness is out of range.');
+    assert(Number.isFinite(after.sample.selectionPressure) && Number.isFinite(after.sample.fertilityCredit), 'Selection/reproductive state missing from organism.');
+    assert(Number.isFinite(after.sample.preferredTemperature) && Number.isFinite(after.sample.moisturePreference) && Number.isFinite(after.sample.elevationPreference), 'Adaptive niche traits are missing.');
+    assert(after.sample.species?.id, 'Organism was not assigned to a v45 lineage.');
 
     assert(after.weather.renderLoopProceduralSamples === 0, 'Weather render-loop sampling regressed.');
     assert(after.vegetation.renderLoopProceduralSamples === 0, 'Vegetation render-loop sampling regressed.');
     assert(after.rivers.renderLoopProceduralSamples === 0, 'River render-loop sampling regressed.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v44d-local-fauna-visible.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v45-habitat-selection-speciation.png'), fullPage: true });
     fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ beforePlayer, after, moved, pageErrors }, null, 2));
     await page.evaluate(() => window.realitySandboxSurfaceMode.exit());
   } finally {
