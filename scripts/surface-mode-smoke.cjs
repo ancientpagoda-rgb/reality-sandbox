@@ -50,7 +50,14 @@ fs.mkdirSync(artifactDir, { recursive: true });
       return c?.population > 0 && c?.renderUpdates >= 3 && c?.spatialQueries > 0 && f?.seeded === true && f?.nearbyAfter >= 20 && r?.updates >= 2 && r?.glintPoints > 0 && Number.isFinite(r?.nearestCreatureDistance) && r.nearestCreatureDistance < 350;
     }, null, { timeout: 60000 });
 
+    const beforePlayer = await page.evaluate(() => window.realitySandboxSurfaceMode.getPlayer());
+    await page.keyboard.down('w');
+    await page.waitForTimeout(850);
+    await page.keyboard.up('w');
+    await page.waitForTimeout(250);
+
     const after = await page.evaluate(() => ({
+      player: window.realitySandboxSurfaceMode.getPlayer(),
       build: window.realitySandboxSurfaceBuild,
       surface: window.realitySandboxSurfaceSphereV37.getStats(),
       creatures: window.realitySandboxSurfaceCreaturesV44.getStats(),
@@ -62,7 +69,9 @@ fs.mkdirSync(artifactDir, { recursive: true });
       rivers: window.realitySandboxSurfaceRiversV41.getStats(),
     }));
 
+    const moved = Math.hypot(after.player.x - beforePlayer.x, after.player.y - beforePlayer.y);
     assert(after.build === 'surface-v44d-local-fauna-visible', `Unexpected build ${after.build}`);
+    assert(moved > 2, `Surface movement smoke check failed (${moved}).`);
     assert(after.surface.curvatureRadius >= 26000 && after.surface.renderLoopProceduralSamples === 0, 'Large-planet terrain baseline regressed.');
     assert(after.creatures.spatialHash === true && after.creatures.quadraticNeighborScans === false, 'Creature spatial hash is not active.');
     assert(after.creatures.gpuInstancing === true && after.creatures.globalPopulationCap === false && after.creatures.globalDisplayCap === false, 'Creature GPU/no-cap policy regressed.');
@@ -87,7 +96,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
     await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v44d-local-fauna-visible.png'), fullPage: true });
-    fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ after, pageErrors }, null, 2));
+    fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ beforePlayer, after, moved, pageErrors }, null, 2));
     await page.evaluate(() => window.realitySandboxSurfaceMode.exit());
   } finally {
     await browser.close();
