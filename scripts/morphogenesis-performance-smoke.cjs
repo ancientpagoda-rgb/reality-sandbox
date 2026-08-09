@@ -40,6 +40,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
       if (!existing) return { missingMotile: true };
 
       const before = cache.getStats();
+
+      // 1) Normal descendant of an existing motile lineage: O(1) lineage prototype.
       const id = ecs.createEntity();
       c.position.set(id, existing.position ? { ...existing.position } : { x: 100, y: 100 });
       c.velocity.set(id, { vx: 0, vy: 0 });
@@ -59,8 +61,39 @@ fs.mkdirSync(artifactDir, { recursive: true });
       const inserted = c.motile.get(id);
       const genes = inserted?.bioV48?.genes ? { ...inserted.bioV48.genes } : null;
       const inheritedBy = inserted?.bioV48?.inheritedBy || null;
-      const afterInsert = cache.getStats();
       ecs.destroyEntity(id);
+
+      // 2) First motile descendant of a new lineage with an actual v48 plant ancestor.
+      const plantEntry = [...c.resource.entries()].find(([, res]) => res?.bioV48?.genes && res?.bioV47?.genome);
+      let plantInheritance = null;
+      if (plantEntry) {
+        const [plantId, plant] = plantEntry;
+        const plantPos = c.position.get(plantId) || existing.position || { x: 120, y: 120 };
+        const plantChildId = ecs.createEntity();
+        c.position.set(plantChildId, { ...plantPos });
+        c.velocity.set(plantChildId, { vx: 0, vy: 0 });
+        c.motile.set(plantChildId, {
+          lineageId: `smoke-plant-origin-${plantChildId}`,
+          generation: 0,
+          plantAncestorId: plantId,
+          energy: 1,
+          age: 0,
+          state: 'awake',
+          sleepDebt: 0,
+          decisionCooldown: 0,
+          neurotoxinLoad: 0,
+          genome: { ...plant.bioV47.genome, motility: Math.max(0.25, plant.bioV47.genome.motility || 0), heterotrophy: Math.max(0.23, plant.bioV47.genome.heterotrophy || 0) },
+        });
+        const plantChild = c.motile.get(plantChildId);
+        plantInheritance = {
+          inheritedBy: plantChild?.bioV48?.inheritedBy || null,
+          developmentalPlantAncestorId: plantChild?.bioV48?.developmentalPlantAncestorId ?? null,
+          geneKeys: plantChild?.bioV48?.genes ? Object.keys(plantChild.bioV48.genes).sort() : [],
+        };
+        ecs.destroyEntity(plantChildId);
+      }
+
+      const afterInsert = cache.getStats();
 
       return {
         missingMotile: false,
@@ -72,6 +105,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
         inheritedBy,
         genes,
         geneKeys: genes ? Object.keys(genes).sort() : [],
+        plantInheritance,
         lineagePhenotypes: morphogenesis.getLineagePhenotypes(),
         legacyFauna: { agent: c.agent.size, predator: c.predator.size, apex: c.apex.size },
       };
@@ -84,10 +118,14 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(result.morphogenesis.hardPopulationCap === false && result.morphogenesis.surfaceRendererEnabled === false, 'v48 changed the no-cap/no-Surface-renderer policy.');
     assert(result.cacheAfter.birthInheritanceComplexity === 'O(1)' && result.cacheAfter.fullPopulationBirthSearchAvoided === true, 'v48a did not install the O(1) birth inheritance path.');
     assert(result.cacheAfter.hardPopulationCap === false && result.cacheAfter.authoritativeFixedStep === true, 'v48a changed population policy or clock ownership.');
-    assert(result.cacheAfter.birthsPreseeded === result.cacheBefore.birthsPreseeded + 1, 'Temporary descendant did not pass through the cached inheritance hook.');
+    assert(result.cacheAfter.developmentalContinuityAcrossSpeciation === true && result.cacheAfter.plantToMotileDevelopmentalContinuity === true, 'v48a developmental continuity guarantees are inactive.');
+    assert(result.cacheAfter.birthsPreseeded >= result.cacheBefore.birthsPreseeded + 1, 'Temporary descendant did not pass through the cached inheritance hook.');
     assert(result.inheritedBy === 'v48a-lineage-cache', `Unexpected developmental inheritance marker ${result.inheritedBy}.`);
     assert(result.genes && result.geneKeys.length === 9, `Cached descendant has incomplete developmental genes: ${result.geneKeys.join(', ')}`);
     assert(result.geneKeys.includes('multicellularity') && result.geneKeys.includes('neuralComplexity') && result.geneKeys.includes('terrestrialAffinity'), 'Core v48 developmental genes are missing.');
+    assert(result.plantInheritance, 'No v48 plant ancestor was available for continuity verification.');
+    assert(result.plantInheritance.inheritedBy === 'v48a-plant-ancestor', `Plant→motile development was not inherited from the actual plant ancestor: ${result.plantInheritance.inheritedBy}.`);
+    assert(result.plantInheritance.developmentalPlantAncestorId != null && result.plantInheritance.geneKeys.length === 9, 'Plant→motile developmental inheritance is incomplete.');
     assert(result.lineagePhenotypes.length >= 1, 'v48 produced no lineage phenotype summary after deep-time advance.');
     assert(result.selection.authoritativeFixedStep && result.selection.developmentalHabitatSelection, 'v48b habitat selection is not on the authoritative fixed step.');
     assert(result.selection.habitatAffectsEnergyBudget && result.selection.habitatAffectsReproductionIndirectly, 'v48b habitat fit is not coupled to ecological success.');
