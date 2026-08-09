@@ -12,6 +12,7 @@ import './surface-creatures-v44.js?v=20260808-surface-v46';
 import './surface-local-fauna-v44d.js?v=20260808-surface-v46';
 import './evolutionary-ecology-v45.js?v=20260808-surface-v46';
 import './ecological-migration-v46.js?v=20260808-surface-v46';
+import './ecological-migration-velocity-guard-v46.js?v=20260808-surface-v46';
 import './surface-creature-visibility-v44b.js?v=20260808-surface-v46';
 import './surface-creature-readability-v44c.js?v=20260808-surface-v46';
 import './surface-celestials-v38.js?v=20260808-surface-v46';
