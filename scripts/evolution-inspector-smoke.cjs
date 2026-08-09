@@ -24,7 +24,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxEvolutionInspectorV47b?.installed &&
       window.realitySandboxEvolutionMorphologyV47c?.installed &&
       window.realitySandboxEvolutionaryMilestonesV47d?.installed &&
-      window.realitySandboxLineagePopulationRecordV47e?.installed
+      window.realitySandboxLineagePopulationRecordV47e?.installed &&
+      window.realitySandboxEvolutionDeepTimeV47f?.installed
     ), null, { timeout: 120000 });
 
     const collapsed = await page.evaluate(() => window.realitySandboxEvolutionInspectorV47b.getStats());
@@ -43,12 +44,14 @@ fs.mkdirSync(artifactDir, { recursive: true });
       const morphology = window.realitySandboxEvolutionMorphologyV47c;
       const history = window.realitySandboxEvolutionaryMilestonesV47d;
       const populationRecord = window.realitySandboxLineagePopulationRecordV47e;
+      const deepTime = window.realitySandboxEvolutionDeepTimeV47f;
       const lineages = api.getLineages();
       const motile = lineages.find(x => x.type === 'motile');
       if (motile) inspector.selectLineage(motile.id);
       morphology.render();
       history.render();
       populationRecord.render();
+      deepTime.render();
       const options = root ? [...root.querySelectorAll('.lineage-select option')].map(x => x.textContent) : [];
       const svg = root?.querySelector('.morph-svg');
       const tree = root?.querySelector('.tree-svg');
@@ -59,6 +62,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
         morphology: morphology.getStats(),
         history: history.getStats(),
         recordStats: populationRecord.getStats(),
+        deepTime: deepTime.getStats(),
         record: selected ? populationRecord.getRecord(selected) : null,
         milestones: history.getMilestones(selected),
         options,
@@ -79,13 +83,14 @@ fs.mkdirSync(artifactDir, { recursive: true });
         recordCard: Boolean(root?.querySelector('.record-card-v47e')),
         recordSparkline: Boolean(root?.querySelector('.record-spark-v47e')),
         recordMeta: root?.querySelector('.record-meta-v47e')?.textContent || '',
+        deepTimeText: root?.querySelector('.deep-time-v47f')?.textContent || '',
         lineages,
         ancestryEvents: api.getAncestry(),
         originStats: api.getStats(),
       };
     });
 
-    assert(inspected.build === 'surface-v47e-lineage-population-record', `Unexpected build ${inspected.build}`);
+    assert(inspected.build === 'surface-v47f-deep-time-evolution', `Unexpected build ${inspected.build}`);
     assert(inspected.panelOpen === true && inspected.inspector.open === true, 'Evolution inspector did not open.');
     assert(inspected.options.length >= 1, 'Evolution inspector lineage selector is empty.');
     assert(inspected.speciesTitle.length > 0, 'Evolution inspector did not render the selected lineage name.');
@@ -99,6 +104,9 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(inspected.treeSvg && inspected.treeNodes >= 1, 'Evolution tree did not render any lineage nodes.');
     assert(inspected.history.authoritativeFixedStep && inspected.history.causalContextRecorded && inspected.history.environmentalContext && inspected.history.samples >= 1, 'v47d evolutionary history contract is incomplete.');
     assert(inspected.recordStats.authoritativeFixedStep && inspected.recordStats.populationHistory && inspected.recordStats.extinctionTracking && inspected.recordStats.geographicRange && inspected.recordStats.samples >= 1, 'v47e lineage population-record contract is incomplete.');
+    assert(inspected.deepTime.reducedOrderEvolutionaryTime && inspected.deepTime.yearsPerBiologyStep === 25000, 'v47f deep-time contract is incomplete.');
+    assert(inspected.deepTime.currentYears >= 4900000 && inspected.deepTime.currentYears <= 5500000, `3,000 fixed steps should represent about 5 Myr, got ${inspected.deepTime.currentYears}.`);
+    assert(inspected.deepTimeText.includes('Myr') && inspected.deepTimeText.includes('25,000 years'), 'Deep-time UI did not render the geological scale.');
     assert(inspected.originStats.plantLineages >= 1, 'No plant lineage exists for inspection.');
     if (inspected.originStats.motileLineages >= 1) {
       assert(inspected.selected?.startsWith('motile-'), `Motile lineage selection failed: ${inspected.selected}`);
@@ -116,7 +124,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
     fs.writeFileSync(path.join(artifactDir, 'evolution-inspector.json'), JSON.stringify({ inspected, pageErrors }, null, 2));
-    await page.screenshot({ path: path.join(artifactDir, 'evolution-inspector-v47e.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'evolution-inspector-v47f.png'), fullPage: true });
   } finally {
     await browser.close();
   }
