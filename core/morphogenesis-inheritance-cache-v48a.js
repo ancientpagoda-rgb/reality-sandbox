@@ -59,17 +59,18 @@ function mutateGenes(parent, seed, scale = 0.055) {
 async function waitForRuntime() {
   while (true) {
     const morphogenesis = window.realitySandboxMorphogenesisV48;
+    const origin = window.realitySandboxOriginMotileLifeV47;
     const planet = window.realitySandboxPlanet;
     const modules = window.realitySandboxModules;
     const motile = planet?.world?.ecs?.components?.motile;
-    if (morphogenesis?.installed && motile instanceof Map && modules?.step) {
-      return { morphogenesis, planet, modules, motile };
+    if (morphogenesis?.installed && origin?.installed && motile instanceof Map && modules?.step) {
+      return { morphogenesis, origin, planet, modules, motile };
     }
     await new Promise(resolve => setTimeout(resolve, 100));
   }
 }
 
-function install({ planet, modules, motile }) {
+function install({ origin, planet, modules, motile }) {
   if (window.realitySandboxMorphogenesisInheritanceCacheV48a?.installed) return;
 
   const { world } = planet;
@@ -77,6 +78,7 @@ function install({ planet, modules, motile }) {
   let refreshAccumulator = 0;
   let birthsPreseeded = 0;
   let founderFallbacks = 0;
+  let parentLineageInheritances = 0;
   let prototypeRefreshes = 0;
   let lastPopulation = motile.size;
 
@@ -101,19 +103,43 @@ function install({ planet, modules, motile }) {
     lastPopulation = motile.size;
   }
 
+  function inheritedPrototype(lineageId) {
+    const direct = prototypes.get(lineageId);
+    if (direct) return { genes: direct, mode: 'lineage' };
+
+    const ancestry = origin.getAncestry?.() || [];
+    for (let index = ancestry.length - 1; index >= 0; index--) {
+      const event = ancestry[index];
+      if (String(event?.childId || '') !== lineageId) continue;
+      const parentId = String(event?.parentId || '');
+      const parentGenes = prototypes.get(parentId);
+      if (parentGenes) return { genes: parentGenes, mode: 'parent-lineage', parentId };
+      break;
+    }
+    return null;
+  }
+
   refreshPrototypes();
 
   const nativeSet = motile.set.bind(motile);
   motile.set = function cachedDevelopmentalInheritance(id, organism) {
     if (organism && !organism.bioV48 && organism.genome) {
       const lineageId = String(organism.lineageId || 'unclassified');
-      const prototype = prototypes.get(lineageId);
+      const inherited = inheritedPrototype(lineageId);
       const seed = `${world.seed || 'nysa'}:v48a:${lineageId}:${id}:${organism.generation || 0}`;
-      const genes = prototype
-        ? mutateGenes(prototype, seed, 0.055)
+      const genes = inherited?.genes
+        ? mutateGenes(inherited.genes, seed, 0.055)
         : founderGenes(organism.genome, seed);
-      if (!prototype) founderFallbacks++;
-      organism.bioV48 = { genes, phenotype: null, inheritedBy: 'v48a-lineage-cache' };
+
+      if (!inherited) founderFallbacks++;
+      else if (inherited.mode === 'parent-lineage') parentLineageInheritances++;
+
+      organism.bioV48 = {
+        genes,
+        phenotype: null,
+        inheritedBy: inherited?.mode === 'parent-lineage' ? 'v48a-parent-lineage-cache' : inherited ? 'v48a-lineage-cache' : 'v48a-founder-fallback',
+        developmentalParentLineageId: inherited?.parentId || null,
+      };
       if (!prototypes.has(lineageId)) prototypes.set(lineageId, copyGenes(genes));
       birthsPreseeded++;
     }
@@ -143,11 +169,13 @@ function install({ planet, modules, motile }) {
       lineagesCached: prototypes.size,
       birthsPreseeded,
       founderFallbacks,
+      parentLineageInheritances,
       prototypeRefreshes,
       lastPopulation,
       refreshSeconds: REFRESH_SECONDS,
       birthInheritanceComplexity: 'O(1)',
       fullPopulationBirthSearchAvoided: true,
+      developmentalContinuityAcrossSpeciation: true,
       hardPopulationCap: false,
       authoritativeFixedStep: true,
     }),
