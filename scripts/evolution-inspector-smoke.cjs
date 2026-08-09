@@ -21,7 +21,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
     await page.waitForFunction(() => Boolean(
       window.realitySandboxDebug?.ready &&
       window.realitySandboxOriginMotileLifeV47?.installed &&
-      window.realitySandboxEvolutionInspectorV47b?.installed
+      window.realitySandboxEvolutionInspectorV47b?.installed &&
+      window.realitySandboxEvolutionMorphologyV47c?.installed
     ), null, { timeout: 120000 });
 
     const collapsed = await page.evaluate(() => window.realitySandboxEvolutionInspectorV47b.getStats());
@@ -37,13 +38,18 @@ fs.mkdirSync(artifactDir, { recursive: true });
       const root = host?.shadowRoot;
       const api = window.realitySandboxOriginMotileLifeV47;
       const inspector = window.realitySandboxEvolutionInspectorV47b;
+      const morphology = window.realitySandboxEvolutionMorphologyV47c;
       const lineages = api.getLineages();
       const motile = lineages.find(x => x.type === 'motile');
       if (motile) inspector.selectLineage(motile.id);
+      morphology.render();
       const options = root ? [...root.querySelectorAll('.lineage-select option')].map(x => x.textContent) : [];
+      const svg = root?.querySelector('.morph-svg');
+      const tree = root?.querySelector('.tree-svg');
       return {
         build: window.realitySandboxSurfaceBuild,
         inspector: inspector.getStats(),
+        morphology: morphology.getStats(),
         options,
         selected: root?.querySelector('.lineage-select')?.value || null,
         speciesTitle: root?.querySelector('.species h2')?.textContent || '',
@@ -52,13 +58,18 @@ fs.mkdirSync(artifactDir, { recursive: true });
         behaviorCells: root?.querySelectorAll('.behavior > div')?.length || 0,
         summaryCells: root?.querySelectorAll('.summary .metric')?.length || 0,
         panelOpen: root?.querySelector('.panel')?.classList.contains('open') || false,
+        morphologySvg: Boolean(svg),
+        morphologyShapes: svg?.querySelectorAll('ellipse,circle,path')?.length || 0,
+        morphologyCaption: svg?.querySelector('.caption')?.textContent || '',
+        treeSvg: Boolean(tree),
+        treeNodes: tree?.querySelectorAll('.tree-node')?.length || 0,
         lineages,
         ancestryEvents: api.getAncestry(),
         originStats: api.getStats(),
       };
     });
 
-    assert(inspected.build === 'surface-v47b-evolution-inspector', `Unexpected build ${inspected.build}`);
+    assert(inspected.build === 'surface-v47c-genome-morphology-tree', `Unexpected build ${inspected.build}`);
     assert(inspected.panelOpen === true && inspected.inspector.open === true, 'Evolution inspector did not open.');
     assert(inspected.options.length >= 1, 'Evolution inspector lineage selector is empty.');
     assert(inspected.speciesTitle.length > 0, 'Evolution inspector did not render the selected lineage name.');
@@ -66,16 +77,21 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(inspected.traitRows === 15, `Expected 15 genome trait rows, found ${inspected.traitRows}.`);
     assert(inspected.summaryCells === 4, `Expected 4 evolution summary metrics, found ${inspected.summaryCells}.`);
     assert(inspected.inspector.lineageBrowser && inspected.inspector.ancestryView && inspected.inspector.liveGenomeDrift && inspected.inspector.gooGridBehaviorMetrics, 'Evolution inspector feature contract is incomplete.');
+    assert(inspected.morphology.genomeDrivenMorphology && inspected.morphology.ancestryTree && inspected.morphology.surfaceRendererTouched === false && inspected.morphology.svgOnly, 'v47c morphology contract is incomplete.');
+    assert(inspected.morphologySvg && inspected.morphologyShapes >= 2, 'Genome-derived organism schematic did not render.');
+    assert(inspected.morphologyCaption.includes('morphology inferred from genome'), 'Morphology schematic is not clearly labeled as genome-derived.');
+    assert(inspected.treeSvg && inspected.treeNodes >= 1, 'Evolution tree did not render any lineage nodes.');
     assert(inspected.originStats.plantLineages >= 1, 'No plant lineage exists for inspection.');
     if (inspected.originStats.motileLineages >= 1) {
       assert(inspected.selected?.startsWith('motile-'), `Motile lineage selection failed: ${inspected.selected}`);
       assert(inspected.behaviorCells >= 1, 'Living behavior section did not render for a motile lineage.');
       assert(inspected.ancestryEvents.some(x => x.childId === inspected.selected), 'Selected motile lineage has no ancestry transition.');
+      assert(inspected.treeNodes >= 2, 'Motile lineage tree should include at least its flora ancestor and itself.');
     }
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
     fs.writeFileSync(path.join(artifactDir, 'evolution-inspector.json'), JSON.stringify({ inspected, pageErrors }, null, 2));
-    await page.screenshot({ path: path.join(artifactDir, 'evolution-inspector.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'evolution-inspector-v47c.png'), fullPage: true });
   } finally {
     await browser.close();
   }
