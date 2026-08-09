@@ -38,19 +38,25 @@ function install(mode) {
   });
 
   const canvas = () => document.getElementById('surfaceModeCanvas');
+  const setPitch = value => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return widePitch;
+    widePitch = clamp(numeric, -MAX_PITCH, MAX_PITCH);
+    return widePitch;
+  };
 
   document.addEventListener('mousemove', event => {
     if (!mode.isActive?.()) return;
     const input = canvas();
     if (input && document.pointerLockElement === input) {
-      widePitch = clamp(widePitch - event.movementY * POINTER_SENSITIVITY, -MAX_PITCH, MAX_PITCH);
+      setPitch(widePitch - event.movementY * POINTER_SENSITIVITY);
       pointerMoves++;
       return;
     }
     if (!dragging) return;
     const dy = event.clientY - dragY;
     dragY = event.clientY;
-    widePitch = clamp(widePitch - dy * DRAG_SENSITIVITY, -MAX_PITCH, MAX_PITCH);
+    setPitch(widePitch - dy * DRAG_SENSITIVITY);
     dragMoves++;
   }, { capture: true });
 
@@ -67,7 +73,7 @@ function install(mode) {
     requestAnimationFrame(loop);
     const active = Boolean(mode.isActive?.() && document.documentElement.dataset.surfaceMode === 'active');
     if (active && !activeLastFrame) {
-      widePitch = clamp(Number(nativeGetPlayer()?.pitch) || 0, -MAX_PITCH, MAX_PITCH);
+      setPitch(Number(nativeGetPlayer()?.pitch) || 0);
       activeLastFrame = true;
     } else if (!active && activeLastFrame) {
       activeLastFrame = false;
@@ -79,6 +85,7 @@ function install(mode) {
 
   const api = {
     installed: true,
+    setPitch,
     getStats: () => ({
       installed: true,
       maxPitchRadians: MAX_PITCH,
