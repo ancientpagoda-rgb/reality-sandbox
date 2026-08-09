@@ -15,8 +15,9 @@ async function waitForRuntime() {
     const socialSignaling = window.realitySandboxSocialSignalingV51;
     const learningMemory = window.realitySandboxLearningMemoryV52;
     const protoCulture = window.realitySandboxProtoCultureV53;
-    if (origin?.installed && inspector?.installed && morphology?.installed && milestones?.installed && population?.installed && deepTime?.installed && morphogenesis?.installed && inheritance?.installed && selection?.installed && history?.installed && nutrientCycle?.installed && sensoryBrains?.installed && socialSignaling?.installed && learningMemory?.installed && protoCulture?.installed) {
-      return { origin, inspector, morphology, milestones, population, deepTime, morphogenesis, inheritance, selection, history, nutrientCycle, sensoryBrains, socialSignaling, learningMemory, protoCulture };
+    const protoLanguage = window.realitySandboxProtoLanguageV54;
+    if (origin?.installed && inspector?.installed && morphology?.installed && milestones?.installed && population?.installed && deepTime?.installed && morphogenesis?.installed && inheritance?.installed && selection?.installed && history?.installed && nutrientCycle?.installed && sensoryBrains?.installed && socialSignaling?.installed && learningMemory?.installed && protoCulture?.installed && protoLanguage?.installed) {
+      return { origin, inspector, morphology, milestones, population, deepTime, morphogenesis, inheritance, selection, history, nutrientCycle, sensoryBrains, socialSignaling, learningMemory, protoCulture, protoLanguage };
     }
     await new Promise(resolve => setTimeout(resolve, 100));
   }
@@ -50,35 +51,37 @@ function install(parts) {
     const signalStats = parts.socialSignaling.getStats();
     const memoryStats = parts.learningMemory.getStats();
     const cultureStats = parts.protoCulture.getStats();
+    const languageStats = parts.protoLanguage.getStats();
     return {
-      ready: true,
-      build: window.realitySandboxSurfaceBuild,
-      evolutionBuild: window.realitySandboxEvolutionBuild || 'unknown',
-      surfaceFaunaPolicy: document.documentElement.dataset.surfaceFaunaPolicy,
-      origin: parts.origin.getStats(),
-      inspector: parts.inspector.getStats(),
-      schematic: parts.morphology.getStats(),
-      milestones: parts.milestones.getStats(),
-      populationRecord: parts.population.getStats(),
-      deepTime: parts.deepTime.getStats(),
-      morphogenesis: parts.morphogenesis.getStats(),
-      inheritance: parts.inheritance.getStats(),
-      habitatSelection: parts.selection.getStats(),
-      bodyPlanHistory: parts.history.getStats(),
-      nutrientCycle: nutrientStats,
-      sensoryBrains: brainStats,
-      socialSignaling: signalStats,
-      learningMemory: memoryStats,
-      protoCulture: cultureStats,
-      lineageCounts: {
-        total: parts.origin.getLineages().length,
-        motile: parts.origin.getLineages().filter(lineage => lineage.type === 'motile').length,
-        plant: parts.origin.getLineages().filter(lineage => lineage.type === 'photosynthetic').length,
+      ready:true,
+      build:window.realitySandboxSurfaceBuild,
+      evolutionBuild:window.realitySandboxEvolutionBuild || 'unknown',
+      surfaceFaunaPolicy:document.documentElement.dataset.surfaceFaunaPolicy,
+      origin:parts.origin.getStats(),
+      inspector:parts.inspector.getStats(),
+      schematic:parts.morphology.getStats(),
+      milestones:parts.milestones.getStats(),
+      populationRecord:parts.population.getStats(),
+      deepTime:parts.deepTime.getStats(),
+      morphogenesis:parts.morphogenesis.getStats(),
+      inheritance:parts.inheritance.getStats(),
+      habitatSelection:parts.selection.getStats(),
+      bodyPlanHistory:parts.history.getStats(),
+      nutrientCycle:nutrientStats,
+      sensoryBrains:brainStats,
+      socialSignaling:signalStats,
+      learningMemory:memoryStats,
+      protoCulture:cultureStats,
+      protoLanguage:languageStats,
+      lineageCounts:{
+        total:parts.origin.getLineages().length,
+        motile:parts.origin.getLineages().filter(lineage => lineage.type === 'motile').length,
+        plant:parts.origin.getLineages().filter(lineage => lineage.type === 'photosynthetic').length,
       },
       lineagePhenotypes,
       bodyPlanCounts,
-      retiredFaunaModules: fauna,
-      retiredFaunaModulesAbsent: Object.values(fauna).every(value => value === false),
+      retiredFaunaModules:fauna,
+      retiredFaunaModulesAbsent:Object.values(fauna).every(value => value === false),
       noHardPopulationCap:
         parts.origin.getStats().hardPopulationCap === false &&
         parts.morphogenesis.getStats().hardPopulationCap === false &&
@@ -88,7 +91,8 @@ function install(parts) {
         brainStats.noHardPopulationCap === true &&
         signalStats.noHardPopulationCap === true &&
         memoryStats.noHardPopulationCap === true &&
-        cultureStats.noHardPopulationCap === true,
+        cultureStats.noHardPopulationCap === true &&
+        languageStats.noHardPopulationCap === true,
       surfaceFaunaRendererDisabled:
         parts.origin.getStats().legacyFaunaRendererEnabled === false &&
         parts.morphogenesis.getStats().surfaceRendererEnabled === false &&
@@ -97,7 +101,8 @@ function install(parts) {
         brainStats.surfaceRendererEnabled === false &&
         signalStats.surfaceRendererEnabled === false &&
         memoryStats.surfaceRendererEnabled === false &&
-        cultureStats.surfaceRendererEnabled === false,
+        cultureStats.surfaceRendererEnabled === false &&
+        languageStats.surfaceRendererEnabled === false,
     };
   }
 
@@ -106,15 +111,13 @@ function install(parts) {
     const failures = [];
     if (!state.retiredFaunaModulesAbsent) failures.push('A retired Surface-fauna experiment is loaded.');
     if (!state.noHardPopulationCap) failures.push('An evolution module reports a hard population cap.');
-    if (!state.surfaceFaunaRendererDisabled) failures.push('A v47-v53 fauna renderer is unexpectedly enabled.');
+    if (!state.surfaceFaunaRendererDisabled) failures.push('A v47-v54 fauna renderer is unexpectedly enabled.');
     if (!state.origin.plantFirstOrigin) failures.push('Plant-first origin mode is inactive.');
-    if (!state.origin.authoritativeFixedStep || !state.morphogenesis.authoritativeFixedStep || !state.inheritance.authoritativeFixedStep || !state.habitatSelection.authoritativeFixedStep || !state.bodyPlanHistory.authoritativeFixedStep || !state.nutrientCycle.authoritativeFixedStep || !state.sensoryBrains.authoritativeFixedStep || !state.socialSignaling.authoritativeFixedStep || !state.learningMemory.authoritativeFixedStep || !state.protoCulture.authoritativeFixedStep) {
-      failures.push('An evolution subsystem is outside the authoritative fixed step.');
-    }
+    if (!state.origin.authoritativeFixedStep || !state.morphogenesis.authoritativeFixedStep || !state.inheritance.authoritativeFixedStep || !state.habitatSelection.authoritativeFixedStep || !state.bodyPlanHistory.authoritativeFixedStep || !state.nutrientCycle.authoritativeFixedStep || !state.sensoryBrains.authoritativeFixedStep || !state.socialSignaling.authoritativeFixedStep || !state.learningMemory.authoritativeFixedStep || !state.protoCulture.authoritativeFixedStep || !state.protoLanguage.authoritativeFixedStep) failures.push('An evolution subsystem is outside the authoritative fixed step.');
     if (state.morphogenesis.traits?.length !== 9) failures.push('v48 developmental trait schema is incomplete.');
     if (state.inheritance.birthInheritanceComplexity !== 'O(1)') failures.push('v48 developmental inheritance is not using the O(1) lineage cache.');
     if (!state.deepTime.reducedOrderEvolutionaryTime) failures.push('Evolutionary deep-time scaling is inactive.');
-    if (state.evolutionBuild !== 'evolution-v53-proto-culture') failures.push(`Unexpected evolution build ${state.evolutionBuild}.`);
+    if (state.evolutionBuild !== 'evolution-v54-proto-language') failures.push(`Unexpected evolution build ${state.evolutionBuild}.`);
     if (!state.nutrientCycle.detritusToSoil || !state.nutrientCycle.metabolicWasteToSoil || !state.nutrientCycle.soilToPlantBiomass || !state.nutrientCycle.weatheringAndLeaching || !state.nutrientCycle.toxinSoilFeedback) failures.push('The v49 closed nutrient cycle is incomplete.');
     if (!Number.isFinite(state.nutrientCycle.meanNutrient) || state.nutrientCycle.meanNutrient < 0) failures.push('The v49 nutrient field is invalid.');
     if (!state.sensoryBrains.heritableBehaviorFromGenome || !state.sensoryBrains.competingBehavioralDrives || !state.sensoryBrains.spatialHashing) failures.push('The v50 sensory-brain phenotype is incomplete.');
@@ -123,12 +126,15 @@ function install(parts) {
     if (!state.learningMemory.inheritedLearningRate || !state.learningMemory.inheritedMemoryRetention || !state.learningMemory.directExperienceLearning || !state.learningMemory.sociallyTransferredMemory || !state.learningMemory.rewardReinforcement || !state.learningMemory.memoryDecay || !state.learningMemory.constantMemoryPerOrganism || state.learningMemory.populationComplexity !== 'O(N)') failures.push('The v52 learning-memory phenotype is incomplete.');
     if (!state.protoCulture.nonGeneticTransmission || !state.protoCulture.physicallyLocalObservation || !state.protoCulture.kinBiasedTransmission || !state.protoCulture.culturallyBlankNewborns || !state.protoCulture.learnedTraditionsAffectBehavior || !state.protoCulture.intergenerationalSocialLearning || !state.protoCulture.spatialHashing) failures.push('The v53 proto-culture phenotype is incomplete.');
     if (!Array.isArray(state.protoCulture.practiceTypes) || state.protoCulture.practiceTypes.length !== 3) failures.push('The v53 cultural-practice schema is incomplete.');
-    return { ok: failures.length === 0, failures, snapshot: state };
+    if (!state.protoLanguage.semanticallyNeutralTokens || !state.protoLanguage.meaningAcquiredByAssociation || !state.protoLanguage.learnedSymbolMeanings || !state.protoLanguage.physicallyLocalTransmission || !state.protoLanguage.kinBiasedTransmission || !state.protoLanguage.culturallyBlankLexiconAtBirth || !state.protoLanguage.learnedConventionsCanBeProduced || !state.protoLanguage.symbolUseAffectsBehavior || !state.protoLanguage.boundedLexicon || !state.protoLanguage.spatialHashing) failures.push('The v54 proto-language phenotype is incomplete.');
+    if (!Array.isArray(state.protoLanguage.tokenInventory) || state.protoLanguage.tokenInventory.length !== state.protoLanguage.maxLexiconEntries) failures.push('The v54 symbol inventory/lexicon bound is invalid.');
+    if (!Array.isArray(state.protoLanguage.meaningTypes) || state.protoLanguage.meaningTypes.length !== 3) failures.push('The v54 learned-meaning schema is incomplete.');
+    return { ok:failures.length === 0, failures, snapshot:state };
   }
 
   const api = { installed:true, snapshot, invariants };
   window.realitySandboxEvolutionDiagnosticsV48d = api;
-  document.documentElement.dataset.evolutionDiagnosticsV48d = 'ready-v53';
+  document.documentElement.dataset.evolutionDiagnosticsV48d = 'ready-v54';
 
   if (window.realitySandboxDebug && typeof window.realitySandboxDebug === 'object') {
     window.realitySandboxDebug.evolution = snapshot;
@@ -138,7 +144,7 @@ function install(parts) {
   const previousPresentationDiagnostics = window.realitySandboxPresentationDiagnostics;
   window.realitySandboxPresentationDiagnostics = () => ({
     ...(typeof previousPresentationDiagnostics === 'function' ? previousPresentationDiagnostics() : {}),
-    evolutionV53: snapshot(),
+    evolutionV54:snapshot(),
   });
 }
 
