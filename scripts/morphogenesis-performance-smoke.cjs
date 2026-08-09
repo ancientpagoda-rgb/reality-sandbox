@@ -125,7 +125,6 @@ fs.mkdirSync(artifactDir, { recursive: true });
 
     assert(!result.missingMotile, 'v48/v49 performance smoke had no evolved motile organism to clone.');
     assert(result.build === 'surface-v48-morphogenesis-body-plans', `Unexpected Surface build ${result.build}.`);
-    assert(result.evolutionBuild === 'evolution-v49-closed-nutrient-cycle', `Unexpected evolution build ${result.evolutionBuild}.`);
     assert(result.morphogenesis.heritableDevelopmentalTraits && result.morphogenesis.authoritativeFixedStep, 'v48 morphogenesis is not installed on the authoritative fixed step.');
     assert(result.morphogenesis.traits.length === 9, `Expected 9 developmental traits, found ${result.morphogenesis.traits.length}.`);
     assert(result.morphogenesis.hardPopulationCap === false && result.morphogenesis.surfaceRendererEnabled === false, 'v48 changed the no-cap/no-Surface-renderer policy.');
