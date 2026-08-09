@@ -58,11 +58,11 @@ fs.mkdirSync(artifactDir, { recursive:true });
         sleepDebt:0.1,
         decisionCooldown:0,
         neurotoxinLoad:0,
-        genome:{ ...teacher.genome, brainSpeed:1, sense:1, sociality:1 },
+        genome:{ ...teacher.genome, brainSpeed:0.45, sense:0.45, sociality:0 },
         bioV50:{ mode:'explore', drives:{ explore:1 }, hunger:0.8, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null },
         bioV51:null,
-        bioV52:{ learningRate:1, retention:0.94, memories:{ food:null, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:0.85, formedAtStep:0, lastSocialReceivedAtStep:null },
-        bioV53:{ openness:1, conformity:1, practices:{ 'food-route':null, 'danger-avoidance':null, 'pack-hunt':null }, appliedPractice:null, learnedFrom:null, lastEnergy:0.85, culturalAge:0 },
+        bioV52:{ learningRate:0.45, retention:0.7, memories:{ food:null, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:0.85, formedAtStep:0, lastSocialReceivedAtStep:null },
+        bioV53:{ openness:0.4, conformity:0.2, practices:{ 'food-route':null, 'danger-avoidance':null, 'pack-hunt':null }, appliedPractice:null, learnedFrom:null, lastEnergy:0.85, culturalAge:0 },
       });
       return { ok:true, teacherId:donor.id, learnerId, lineageId:teacher.lineageId, target };
     });
@@ -76,6 +76,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
     }), setup);
     const teacherToken = learned.teacher?.production?.['food-route'];
     assert(teacherToken, 'Teacher invented no arbitrary food-route symbol.');
+    assert(!learned.learner?.lastEmission, 'Naive learner vocalized before acquiring the teacher convention.');
     assert(learned.learner?.lexicon?.[teacherToken]?.meaning === 'food-route', 'Learner did not acquire the teacher symbol meaning by association.');
     assert(learned.learner.lexicon[teacherToken].confidence >= 0.34, 'Learner symbol association remained below interpretation threshold.');
 
@@ -84,6 +85,9 @@ fs.mkdirSync(artifactDir, { recursive:true });
       const c = planet.world.ecs.components;
       const learner = c.motile.get(learnerId);
       planet.world.ecs.destroyEntity(teacherId);
+      learner.genome.brainSpeed = 1;
+      learner.genome.sense = 1;
+      learner.genome.sociality = 1;
       learner.bioV53.practices['food-route'] = { x:target.x, y:target.y, targetId:null, strength:1, modelId:learnerId, learnedAtStep:0, updatedAtStep:0 };
       learner.bioV53.appliedPractice = 'food-route';
       learner.bioV50 = { ...(learner.bioV50 || {}), mode:'explore', drives:{ explore:1 }, hunger:0.8, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null };
@@ -102,11 +106,11 @@ fs.mkdirSync(artifactDir, { recursive:true });
         sleepDebt:0.1,
         decisionCooldown:0,
         neurotoxinLoad:0,
-        genome:{ ...learner.genome, brainSpeed:1, sense:1, sociality:1 },
+        genome:{ ...learner.genome, brainSpeed:0.45, sense:0.45, sociality:0 },
         bioV50:{ mode:'explore', drives:{ explore:1 }, hunger:0.8, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null },
         bioV51:null,
-        bioV52:{ learningRate:1, retention:0.94, memories:{ food:null, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:0.85, formedAtStep:0, lastSocialReceivedAtStep:null },
-        bioV53:{ openness:1, conformity:1, practices:{ 'food-route':{ x:target.x, y:target.y, targetId:null, strength:0.8, modelId:learnerId, learnedAtStep:0, updatedAtStep:0 }, 'danger-avoidance':null, 'pack-hunt':null }, appliedPractice:null, learnedFrom:learnerId, lastEnergy:0.85, culturalAge:0 },
+        bioV52:{ learningRate:0.45, retention:0.7, memories:{ food:null, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:0.85, formedAtStep:0, lastSocialReceivedAtStep:null },
+        bioV53:{ openness:0.4, conformity:0.2, practices:{ 'food-route':{ x:target.x, y:target.y, targetId:null, strength:0.8, modelId:learnerId, learnedAtStep:0, updatedAtStep:0 }, 'danger-avoidance':null, 'pack-hunt':null }, appliedPractice:null, learnedFrom:learnerId, lastEnergy:0.85, culturalAge:0 },
       });
       return { listenerId };
     }, setup);
