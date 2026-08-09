@@ -29,14 +29,14 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxEvolutionaryEcologyV45?.installed &&
       window.realitySandboxEcologicalMigrationV46?.installed &&
       window.realitySandboxOriginMotileLifeV47?.installed &&
-      window.realitySandboxEvolutionInspectorV47b?.installed
+      window.realitySandboxEvolutionInspectorV47b?.installed &&
+      window.realitySandboxEvolutionMorphologyV47c?.installed
     ), null, { timeout: 120000 });
 
     await page.click('#enterSurfaceMode');
     await page.waitForFunction(() => document.documentElement.dataset.surfaceMode === 'active' && window.realitySandboxSurfaceGpu?.isPresenting?.(), null, { timeout: 30000 });
     await page.waitForFunction(() => window.realitySandboxSurfaceSphereV37?.getStats?.().nearBuildsCompleted > 0, null, { timeout: 60000 });
 
-    // Preserve the confirmed camera repair: maximum altitude must allow a near-nadir view.
     await page.evaluate(() => {
       window.dispatchEvent(new WheelEvent('wheel', { deltaY: -20000, bubbles: true, cancelable: true }));
       window.realitySandboxSurfaceWidePitchV46d.setPitch(-1.48);
@@ -73,6 +73,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       migration: window.realitySandboxEcologicalMigrationV46.getStats(),
       origin: window.realitySandboxOriginMotileLifeV47.getStats(),
       inspector: window.realitySandboxEvolutionInspectorV47b.getStats(),
+      morphology: window.realitySandboxEvolutionMorphologyV47c.getStats(),
       weather: window.realitySandboxSurfaceWeatherV39.getStats(),
       vegetation: window.realitySandboxSurfaceVegetationV38.getStats(),
       rivers: window.realitySandboxSurfaceRiversV41.getStats(),
@@ -88,10 +89,11 @@ fs.mkdirSync(artifactDir, { recursive: true });
     }));
 
     const moved = Math.hypot(after.player.x - beforePlayer.x, after.player.y - beforePlayer.y);
-    assert(after.build === 'surface-v47b-evolution-inspector', `Unexpected build ${after.build}`);
+    assert(after.build === 'surface-v47c-genome-morphology-tree', `Unexpected build ${after.build}`);
     assert(after.faunaPolicy === 'motile-life-evolves-no-surface-renderer-yet', `Unexpected fauna policy ${after.faunaPolicy}`);
     assert(after.origin.plantFirstOrigin === true && after.origin.legacyFaunaRendererEnabled === false, 'v47 origin-life policy is inactive.');
     assert(after.inspector.collapsedByDefault === true && after.inspector.shadowDomIsolated === true, 'v47b inspector policy regressed.');
+    assert(after.morphology.genomeDrivenMorphology === true && after.morphology.ancestryTree === true && after.morphology.surfaceRendererTouched === false, 'v47c morphology/tree policy regressed.');
     assert(Object.values(after.faunaModulesAbsent).every(Boolean), `Experimental Surface fauna module still loaded: ${JSON.stringify(after.faunaModulesAbsent)}`);
     assert(moved > 2, `Surface movement smoke check failed (${moved}).`);
     assert(after.surface.curvatureRadius >= 26000 && after.surface.renderLoopProceduralSamples === 0, 'Large-planet terrain baseline regressed.');
@@ -103,7 +105,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(after.rivers.renderLoopProceduralSamples === 0, 'River render-loop sampling regressed.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v47b-evolution-inspector.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v47c-genome-morphology-tree.png'), fullPage: true });
     fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ beforePlayer, highView, after, moved, pageErrors }, null, 2));
     await page.evaluate(() => window.realitySandboxSurfaceMode.exit());
   } finally {
