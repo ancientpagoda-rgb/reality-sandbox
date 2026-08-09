@@ -37,15 +37,12 @@ fs.mkdirSync(artifactDir, { recursive: true });
       };
     });
 
-    assert(before.build === 'surface-v47b-evolution-inspector', `Unexpected build ${before.build}`);
+    assert(before.build === 'surface-v47c-genome-morphology-tree', `Unexpected build ${before.build}`);
     assert(before.agent === 0 && before.predator === 0 && before.apex === 0, `Legacy fauna survived v47 bootstrap: ${JSON.stringify(before)}`);
     assert(before.resources > 0, 'v47 has no starting flora/resources.');
     assert(before.stats.plantFirstOrigin === true && before.stats.authoritativeFixedStep === true, 'v47 is not installed on the authoritative fixed step.');
     assert(before.stats.legacyFaunaRendererEnabled === false, 'Legacy fauna rendering was re-enabled.');
 
-    // 3,000 fixed steps = 180 simulated seconds. This is intentionally enough
-    // evolutionary time for at least one founder flora lineage to cross the
-    // heterotrophy/motility/sense/brain thresholds under ordinary competition.
     await page.evaluate(() => window.realitySandboxDebug.advance(3000));
 
     const after = await page.evaluate(() => {
