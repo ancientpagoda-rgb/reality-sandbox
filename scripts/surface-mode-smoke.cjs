@@ -31,13 +31,13 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxSurfaceWeatherV39?.installed &&
       window.realitySandboxSurfaceOssV40?.installed &&
       window.realitySandboxSurfaceRiversV41?.installed &&
-      window.realitySandboxSurfaceCreaturesV44?.installed &&
       window.realitySandboxSurfaceLargePlanetCoverageV43?.installed &&
       window.realitySandboxSurfaceGpuBackend?.installed
     ), null, { timeout: 120000 });
 
     await page.click('#enterSurfaceMode');
     await page.waitForFunction(() => document.documentElement.dataset.surfaceMode === 'active' && window.realitySandboxSurfaceGpu?.isPresenting?.(), null, { timeout: 30000 });
+    await page.waitForFunction(() => Boolean(window.realitySandboxSurfaceCreaturesV44?.installed), null, { timeout: 30000 });
 
     await page.waitForFunction(() => window.realitySandboxSurfaceSphereV37?.getStats?.().nearBuildsCompleted >= 1, null, { timeout: 60000 });
     await page.waitForFunction(() => window.realitySandboxSurfaceVegetationV38?.getStats?.().buildsCompleted >= 1, null, { timeout: 120000 });
