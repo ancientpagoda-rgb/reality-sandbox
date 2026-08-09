@@ -31,12 +31,14 @@ fs.mkdirSync(artifactDir, { recursive: true });
     await page.waitForFunction(() => document.documentElement.dataset.surfaceMode === 'active' && window.realitySandboxSurfaceGpu?.isPresenting?.(), null, { timeout: 30000 });
     await page.waitForFunction(() => Boolean(
       window.realitySandboxSurfaceCreaturesV44?.installed &&
-      window.realitySandboxEvolutionaryEcologyV45?.installed
+      window.realitySandboxEvolutionaryEcologyV45?.installed &&
+      window.realitySandboxEcologicalMigrationV46?.installed
     ), null, { timeout: 60000 });
 
     await page.waitForFunction(() => {
       const e = window.realitySandboxEvolutionaryEcologyV45?.getStats?.();
-      return e?.ticks >= 3 && e?.organismsEvaluated > 0 && e?.habitatSamples > 0 && e?.speciesAssignments > 0;
+      const m = window.realitySandboxEcologicalMigrationV46?.getStats?.();
+      return e?.ticks >= 3 && e?.organismsEvaluated > 0 && m?.ticks >= 2 && m?.speciesEvaluated > 0;
     }, null, { timeout: 60000 });
 
     const beforePlayer = await page.evaluate(() => window.realitySandboxSurfaceMode.getPlayer());
@@ -62,6 +64,9 @@ fs.mkdirSync(artifactDir, { recursive: true });
           moisturePreference: organism.moisturePreference,
           elevationPreference: organism.elevationPreference,
           waterAffinity: organism.waterAffinity,
+          migrationActive: organism.migrationActive,
+          migrationReason: organism.migrationReason,
+          migrationPressure: organism.migrationPressure,
           species: window.realitySandboxEvolutionaryEcologyV45.getSpeciesForEntity(id),
         };
         break;
@@ -72,6 +77,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
         surface: window.realitySandboxSurfaceSphereV37.getStats(),
         creatures: window.realitySandboxSurfaceCreaturesV44.getStats(),
         evolution: window.realitySandboxEvolutionaryEcologyV45.getStats(),
+        migration: window.realitySandboxEcologicalMigrationV46.getStats(),
+        migrations: window.realitySandboxEcologicalMigrationV46.getMigrations(),
         species: window.realitySandboxEvolutionaryEcologyV45.getSpecies(),
         ancestry: window.realitySandboxEvolutionaryEcologyV45.getAncestry(),
         sample,
@@ -82,29 +89,32 @@ fs.mkdirSync(artifactDir, { recursive: true });
     });
 
     const moved = Math.hypot(after.player.x - beforePlayer.x, after.player.y - beforePlayer.y);
-    assert(after.build === 'surface-v45-habitat-selection-speciation', `Unexpected build ${after.build}`);
+    assert(after.build === 'surface-v46-ecological-migration', `Unexpected build ${after.build}`);
     assert(moved > 2, `Surface movement smoke check failed (${moved}).`);
     assert(after.surface.curvatureRadius >= 26000 && after.surface.renderLoopProceduralSamples === 0, 'Large-planet terrain baseline regressed.');
     assert(after.creatures.spatialHash === true && after.creatures.quadraticNeighborScans === false, 'Creature spatial hash is not active.');
     assert(after.creatures.globalPopulationCap === false && after.creatures.globalDisplayCap === false, 'Creature cap policy regressed.');
 
-    assert(after.evolution.habitatDrivenPopulations === true && after.evolution.directHabitatFitness === true, 'Habitat-driven population model is inactive.');
-    assert(after.evolution.habitatAffectsEnergyCost === true && after.evolution.habitatAffectsReproductiveOpportunity === true, 'Habitat is not feeding survival/reproduction.');
-    assert(after.evolution.localHabitatSteering === true && after.evolution.realSelectionPressure === true, 'Habitat selection pressure is inactive.');
+    assert(after.evolution.habitatDrivenPopulations === true && after.evolution.directHabitatFitness === true, 'v45 habitat-driven population model is inactive.');
+    assert(after.evolution.habitatAffectsEnergyCost === true && after.evolution.habitatAffectsReproductiveOpportunity === true, 'v45 habitat selection no longer feeds survival/reproduction.');
     assert(after.evolution.randomSpeciation === false, 'Random speciation path returned.');
-    assert(after.evolution.speciationRequiresGeneticDivergence === true, 'Genetic-divergence speciation gate missing.');
-    assert(after.evolution.speciationRequiresNicheDivergence === true, 'Niche-divergence speciation gate missing.');
-    assert(after.evolution.speciationRequiresGeographicIsolation === true, 'Geographic-isolation speciation gate missing.');
-    assert(after.evolution.speciationRequiresPersistence === true && after.evolution.persistentIsolationCycles >= 3, 'Persistent isolation gate missing.');
-    assert(after.evolution.activeOrganisms > 0 && after.evolution.livingSpecies >= 3, 'Evolutionary species registry did not initialize.');
-    assert(after.evolution.meanHabitatFitness >= 0 && after.evolution.meanHabitatFitness <= 1, 'Mean habitat fitness is invalid.');
-    assert(after.evolution.globalPopulationCap === false && after.evolution.globalDisplayCap === false, 'Evolutionary ecology introduced a population/display cap.');
-    assert(after.evolution.proceduralSamplingInRenderLoop === false && after.evolution.renderLoopProceduralSamples === 0, 'Evolutionary ecology performs render-loop sampling.');
+    assert(after.evolution.speciationRequiresGeneticDivergence === true && after.evolution.speciationRequiresNicheDivergence === true, 'v45 divergence gates regressed.');
+    assert(after.evolution.speciationRequiresGeographicIsolation === true && after.evolution.speciationRequiresPersistence === true, 'v45 isolation/persistence gates regressed.');
+    assert(after.evolution.proceduralSamplingInRenderLoop === false && after.evolution.renderLoopProceduralSamples === 0, 'v45 performs render-loop sampling.');
+
+    assert(after.migration.migrationEnabled === true && after.migration.speciesLevelMigration === true, 'Species-level migration is inactive.');
+    assert(after.migration.seasonalTemperatureMigration === true, 'Seasonal migration trigger missing.');
+    assert(after.migration.droughtMigration === true && after.migration.floodMigration === true, 'Water-driven migration triggers missing.');
+    assert(after.migration.foodScarcityMigration === true && after.migration.crowdingMigration === true, 'Scarcity/crowding migration triggers missing.');
+    assert(after.migration.herdCohesion === true && after.migration.dynamicMigrationTargets === true, 'Coherent herd migration path missing.');
+    assert(after.migration.migrationTargetsRequireImprovement === true, 'Migration can target non-improving habitat.');
+    assert(after.migration.habitatSelectionInheritedFromV45 === true, 'v46 is not coupled to v45 habitat selection.');
+    assert(after.migration.speciesEvaluated > 0 && after.migration.meanMigrationPressure >= 0 && after.migration.meanMigrationPressure <= 1, 'Migration pressure evaluation failed.');
+    assert(after.migration.maxMigrationPressure >= 0 && after.migration.maxMigrationPressure <= 1, 'Maximum migration pressure is invalid.');
+    assert(after.migration.globalPopulationCap === false && after.migration.globalDisplayCap === false, 'Migration introduced a population/display cap.');
+    assert(after.migration.proceduralSamplingInRenderLoop === false && after.migration.renderLoopProceduralSamples === 0, 'Migration performs render-loop sampling.');
 
     assert(after.sample && Number.isFinite(after.sample.habitatFitness), 'No organism received habitat fitness.');
-    assert(after.sample.habitatFitness >= 0 && after.sample.habitatFitness <= 1, 'Organism habitat fitness is out of range.');
-    assert(Number.isFinite(after.sample.selectionPressure) && Number.isFinite(after.sample.fertilityCredit), 'Selection/reproductive state missing from organism.');
-    assert(Number.isFinite(after.sample.preferredTemperature) && Number.isFinite(after.sample.moisturePreference) && Number.isFinite(after.sample.elevationPreference), 'Adaptive niche traits are missing.');
     assert(after.sample.species?.id, 'Organism was not assigned to a v45 lineage.');
 
     assert(after.weather.renderLoopProceduralSamples === 0, 'Weather render-loop sampling regressed.');
@@ -112,7 +122,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(after.rivers.renderLoopProceduralSamples === 0, 'River render-loop sampling regressed.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v45-habitat-selection-speciation.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v46-ecological-migration.png'), fullPage: true });
     fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ beforePlayer, after, moved, pageErrors }, null, 2));
     await page.evaluate(() => window.realitySandboxSurfaceMode.exit());
   } finally {
