@@ -37,7 +37,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       };
     });
 
-    assert(before.build === 'surface-v47c-genome-morphology-tree', `Unexpected build ${before.build}`);
+    assert(before.build === 'surface-v47d-evolutionary-history', `Unexpected build ${before.build}`);
     assert(before.agent === 0 && before.predator === 0 && before.apex === 0, `Legacy fauna survived v47 bootstrap: ${JSON.stringify(before)}`);
     assert(before.resources > 0, 'v47 has no starting flora/resources.');
     assert(before.stats.plantFirstOrigin === true && before.stats.authoritativeFixedStep === true, 'v47 is not installed on the authoritative fixed step.');
