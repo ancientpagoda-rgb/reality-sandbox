@@ -98,6 +98,14 @@ jobs:
           REALITY_EVOLUTION_INSPECTOR_ARTIFACT_DIR: artifacts/evolution-inspector-smoke
         run: node scripts/evolution-inspector-smoke.cjs
 
+      - name: Verify v48 morphogenesis inheritance scaling
+        id: morphogenesis_test
+        continue-on-error: true
+        env:
+          REALITY_BASE_URL: http://127.0.0.1:4173/
+          REALITY_MORPHOGENESIS_ARTIFACT_DIR: artifacts/morphogenesis-smoke
+        run: node scripts/morphogenesis-performance-smoke.cjs
+
       - name: Upload browser diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -110,6 +118,7 @@ jobs:
             artifacts/surface-mode-smoke
             artifacts/origin-motile-life-smoke
             artifacts/evolution-inspector-smoke
+            artifacts/morphogenesis-smoke
             /tmp/reality-preview.log
           if-no-files-found: warn
           retention-days: 30
@@ -125,8 +134,9 @@ jobs:
             const surfaceMode = '${{ steps.surface_mode_test.outcome }}';
             const originLife = '${{ steps.origin_life_test.outcome }}';
             const inspector = '${{ steps.evolution_inspector_test.outcome }}';
-            const ok = unified === 'success' && rootRenderer === 'success' && iphoneSphere === 'success' && surfaceMode === 'success' && originLife === 'success' && inspector === 'success';
-            const detail = `iPhone:${iphoneSphere} unified:${unified} root:${rootRenderer} surface:${surfaceMode} origin:${originLife} inspector:${inspector}`;
+            const morphogenesis = '${{ steps.morphogenesis_test.outcome }}';
+            const ok = unified === 'success' && rootRenderer === 'success' && iphoneSphere === 'success' && surfaceMode === 'success' && originLife === 'success' && inspector === 'success' && morphogenesis === 'success';
+            const detail = `iPhone:${iphoneSphere} unified:${unified} root:${rootRenderer} surface:${surfaceMode} origin:${originLife} inspector:${inspector} morph:${morphogenesis}`;
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
