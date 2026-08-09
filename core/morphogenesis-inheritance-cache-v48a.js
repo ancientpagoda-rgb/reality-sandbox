@@ -74,10 +74,12 @@ function install({ origin, planet, modules, motile }) {
   if (window.realitySandboxMorphogenesisInheritanceCacheV48a?.installed) return;
 
   const { world } = planet;
+  const { resource } = world.ecs.components;
   const prototypes = new Map();
   let refreshAccumulator = 0;
   let birthsPreseeded = 0;
   let founderFallbacks = 0;
+  let plantAncestorInheritances = 0;
   let parentLineageInheritances = 0;
   let prototypeRefreshes = 0;
   let lastPopulation = motile.size;
@@ -103,10 +105,12 @@ function install({ origin, planet, modules, motile }) {
     lastPopulation = motile.size;
   }
 
-  function inheritedPrototype(lineageId) {
+  function inheritedPrototype(lineageId, organism) {
     const direct = prototypes.get(lineageId);
     if (direct) return { genes: direct, mode: 'lineage' };
 
+    // For a newly speciated motile lineage, inherit development from its
+    // immediate motile parent lineage before considering the ancient plant root.
     const ancestry = origin.getAncestry?.() || [];
     for (let index = ancestry.length - 1; index >= 0; index--) {
       const event = ancestry[index];
@@ -116,6 +120,23 @@ function install({ origin, planet, modules, motile }) {
       if (parentGenes) return { genes: parentGenes, mode: 'parent-lineage', parentId };
       break;
     }
+
+    // The first motile organism produced directly by a plant keeps the actual
+    // developmental program of that plant individual. This preserves the
+    // plant→motile body-plan continuum rather than reconstructing it from labels.
+    if (organism?.plantAncestorId != null) {
+      const plant = resource.get(organism.plantAncestorId);
+      const plantGenes = plant?.bioV48?.genes;
+      if (plantGenes) {
+        return {
+          genes: plantGenes,
+          mode: 'plant-ancestor',
+          parentId: plant.bioV47?.lineageId || null,
+          plantAncestorId: organism.plantAncestorId,
+        };
+      }
+    }
+
     return null;
   }
 
@@ -125,20 +146,26 @@ function install({ origin, planet, modules, motile }) {
   motile.set = function cachedDevelopmentalInheritance(id, organism) {
     if (organism && !organism.bioV48 && organism.genome) {
       const lineageId = String(organism.lineageId || 'unclassified');
-      const inherited = inheritedPrototype(lineageId);
+      const inherited = inheritedPrototype(lineageId, organism);
       const seed = `${world.seed || 'nysa'}:v48a:${lineageId}:${id}:${organism.generation || 0}`;
       const genes = inherited?.genes
         ? mutateGenes(inherited.genes, seed, 0.055)
         : founderGenes(organism.genome, seed);
 
       if (!inherited) founderFallbacks++;
+      else if (inherited.mode === 'plant-ancestor') plantAncestorInheritances++;
       else if (inherited.mode === 'parent-lineage') parentLineageInheritances++;
 
       organism.bioV48 = {
         genes,
         phenotype: null,
-        inheritedBy: inherited?.mode === 'parent-lineage' ? 'v48a-parent-lineage-cache' : inherited ? 'v48a-lineage-cache' : 'v48a-founder-fallback',
+        inheritedBy:
+          inherited?.mode === 'plant-ancestor' ? 'v48a-plant-ancestor' :
+          inherited?.mode === 'parent-lineage' ? 'v48a-parent-lineage-cache' :
+          inherited ? 'v48a-lineage-cache' :
+          'v48a-founder-fallback',
         developmentalParentLineageId: inherited?.parentId || null,
+        developmentalPlantAncestorId: inherited?.plantAncestorId ?? null,
       };
       if (!prototypes.has(lineageId)) prototypes.set(lineageId, copyGenes(genes));
       birthsPreseeded++;
@@ -169,12 +196,14 @@ function install({ origin, planet, modules, motile }) {
       lineagesCached: prototypes.size,
       birthsPreseeded,
       founderFallbacks,
+      plantAncestorInheritances,
       parentLineageInheritances,
       prototypeRefreshes,
       lastPopulation,
       refreshSeconds: REFRESH_SECONDS,
       birthInheritanceComplexity: 'O(1)',
       fullPopulationBirthSearchAvoided: true,
+      plantToMotileDevelopmentalContinuity: true,
       developmentalContinuityAcrossSpeciation: true,
       hardPopulationCap: false,
       authoritativeFixedStep: true,
