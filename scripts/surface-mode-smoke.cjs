@@ -27,22 +27,28 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxSurfaceRiversV41?.installed
     ), null, { timeout: 120000 });
 
+    // Regression for the actual user failure: old fauna initialization expired after
+    // ~16.8 seconds because it incorrectly waited for a camera that only exists once
+    // Surface Mode renders. Deliberately enter after that old timeout window.
+    await page.waitForTimeout(18000);
+
     await page.click('#enterSurfaceMode');
     await page.waitForFunction(() => document.documentElement.dataset.surfaceMode === 'active' && window.realitySandboxSurfaceGpu?.isPresenting?.(), null, { timeout: 30000 });
     await page.waitForFunction(() => Boolean(
       window.realitySandboxSurfaceCreaturesV44?.installed &&
       window.realitySandboxEvolutionaryEcologyV45?.installed &&
       window.realitySandboxEcologicalMigrationV46?.installed &&
-      window.realitySandboxSurfaceFaunaGuaranteeV45b?.installed
+      window.realitySandboxSurfaceFaunaGuaranteeV46c?.installed
     ), null, { timeout: 60000 });
 
     await page.waitForFunction(() => {
       const e = window.realitySandboxEvolutionaryEcologyV45?.getStats?.();
       const m = window.realitySandboxEcologicalMigrationV46?.getStats?.();
-      const f = window.realitySandboxSurfaceFaunaGuaranteeV45b?.getStats?.();
+      const f = window.realitySandboxSurfaceFaunaGuaranteeV46c?.getStats?.();
       return e?.ticks >= 3 && e?.organismsEvaluated > 0 && m?.ticks >= 2 && m?.speciesEvaluated > 0 &&
-        f?.frontSeeded === true && f?.frontAfter >= 5 && f?.updates >= 2 && f?.renderedAgents >= 5 &&
-        f?.exactGroundSamples > 0 && Number.isFinite(f?.nearestRenderedDistance) && f.nearestRenderedDistance <= 120;
+        f?.startupTimeoutRemoved === true && f?.cameraReady === true && f?.viewportSeeded === true &&
+        f?.viewportAfter >= 5 && f?.updates >= 2 && f?.renderedAgents >= 5 &&
+        f?.screenVisibleAgents >= 5 && f?.centralVisibleAgents >= 3 && f?.exactGroundSamples > 0;
     }, null, { timeout: 60000 });
 
     const beforePlayer = await page.evaluate(() => window.realitySandboxSurfaceMode.getPlayer());
@@ -80,7 +86,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
         build: window.realitySandboxSurfaceBuild,
         surface: window.realitySandboxSurfaceSphereV37.getStats(),
         creatures: window.realitySandboxSurfaceCreaturesV44.getStats(),
-        faunaGuarantee: window.realitySandboxSurfaceFaunaGuaranteeV45b.getStats(),
+        faunaGuarantee: window.realitySandboxSurfaceFaunaGuaranteeV46c.getStats(),
         evolution: window.realitySandboxEvolutionaryEcologyV45.getStats(),
         migration: window.realitySandboxEcologicalMigrationV46.getStats(),
         migrations: window.realitySandboxEcologicalMigrationV46.getMigrations(),
@@ -94,16 +100,18 @@ fs.mkdirSync(artifactDir, { recursive: true });
     });
 
     const moved = Math.hypot(after.player.x - beforePlayer.x, after.player.y - beforePlayer.y);
-    assert(after.build === 'surface-v46b-grounded-visible-fauna', `Unexpected build ${after.build}`);
+    assert(after.build === 'surface-v46c-screen-verified-fauna', `Unexpected build ${after.build}`);
     assert(moved > 2, `Surface movement smoke check failed (${moved}).`);
     assert(after.surface.curvatureRadius >= 26000 && after.surface.renderLoopProceduralSamples === 0, 'Large-planet terrain baseline regressed.');
     assert(after.creatures.spatialHash === true && after.creatures.quadraticNeighborScans === false, 'Creature spatial hash is not active.');
     assert(after.creatures.globalPopulationCap === false && after.creatures.globalDisplayCap === false, 'Creature cap policy regressed.');
 
-    assert(after.faunaGuarantee.frontSeeded === true && after.faunaGuarantee.frontAfter >= 5, 'Forward real-fauna herd was not established.');
+    assert(after.faunaGuarantee.startupTimeoutRemoved === true && after.faunaGuarantee.lazyCameraAcquisition === true, 'Fauna startup-race fix is inactive.');
+    assert(after.faunaGuarantee.viewportSeeded === true && after.faunaGuarantee.viewportAfter >= 5, 'Screen-verified real-fauna herd was not established.');
     assert(after.faunaGuarantee.renderedAgents >= 5, `Too few grounded near herbivores rendered (${after.faunaGuarantee.renderedAgents}).`);
+    assert(after.faunaGuarantee.screenSpaceVerified === true && after.faunaGuarantee.screenVisibleAgents >= 5, `Too few herbivores project into the viewport (${after.faunaGuarantee.screenVisibleAgents}).`);
+    assert(after.faunaGuarantee.centralVisibleAgents >= 3, `No reliable central-view herd (${after.faunaGuarantee.centralVisibleAgents}).`);
     assert(after.faunaGuarantee.exactRenderedTerrainGrounding === true && after.faunaGuarantee.exactGroundSamples > 0, 'Fauna are not grounded against the rendered terrain mesh.');
-    assert(Number.isFinite(after.faunaGuarantee.nearestRenderedDistance) && after.faunaGuarantee.nearestRenderedDistance <= 120, `Nearest grounded fauna is too far (${after.faunaGuarantee.nearestRenderedDistance}).`);
     assert(after.faunaGuarantee.unlitReadableMorphology === true && after.faunaGuarantee.gpuInstancing === true, 'Readable grounded GPU fauna path is inactive.');
     assert(after.faunaGuarantee.globalPopulationCap === false && after.faunaGuarantee.globalDisplayCap === false, 'Grounded fauna repair introduced a cap.');
     assert(after.faunaGuarantee.proceduralSamplingInRenderLoop === false && after.faunaGuarantee.renderLoopProceduralSamples === 0, 'Grounded fauna repair performs render-loop procedural sampling.');
@@ -135,7 +143,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(after.rivers.renderLoopProceduralSamples === 0, 'River render-loop sampling regressed.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v46b-grounded-visible-fauna.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v46c-screen-verified-fauna.png'), fullPage: true });
     fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ beforePlayer, after, moved, pageErrors }, null, 2));
     await page.evaluate(() => window.realitySandboxSurfaceMode.exit());
   } finally {
