@@ -31,6 +31,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxSurfaceWeatherV39?.installed &&
       window.realitySandboxSurfaceOssV40?.installed &&
       window.realitySandboxSurfaceRiversV41?.installed &&
+      window.realitySandboxSurfaceCreaturesV44?.installed &&
       window.realitySandboxSurfaceLargePlanetCoverageV43?.installed &&
       window.realitySandboxSurfaceGpuBackend?.installed
     ), null, { timeout: 120000 });
@@ -43,11 +44,16 @@ fs.mkdirSync(artifactDir, { recursive: true });
     await page.waitForFunction(() => window.realitySandboxSurfaceWeatherV39?.getStats?.().buildsCompleted >= 1, null, { timeout: 120000 });
     await page.waitForFunction(() => window.realitySandboxSurfaceOssV40?.getStats?.().skirtsBuilt >= 1, null, { timeout: 60000 });
     await page.waitForFunction(() => window.realitySandboxSurfaceRiversV41?.getStats?.().buildsCompleted >= 1, null, { timeout: 120000 });
+    await page.waitForFunction(() => {
+      const c = window.realitySandboxSurfaceCreaturesV44?.getStats?.();
+      return c?.simulationTicks >= 3 && c?.renderUpdates >= 3 && c?.population > 0 && c?.spatialQueries > 0;
+    }, null, { timeout: 60000 });
 
     const before = await page.evaluate(() => ({
       player: window.realitySandboxSurfaceMode.getPlayer(),
       sky: window.realitySandboxSurfaceCelestialsV38.getStats(),
       rivers: window.realitySandboxSurfaceRiversV41.getStats(),
+      creatures: window.realitySandboxSurfaceCreaturesV44.getStats(),
       coverage: window.realitySandboxSurfaceLargePlanetCoverageV43.getStats(),
     }));
 
@@ -72,6 +78,11 @@ fs.mkdirSync(artifactDir, { recursive: true });
     await page.keyboard.up('w');
     await page.waitForTimeout(1200);
 
+    await page.waitForFunction(() => {
+      const c = window.realitySandboxSurfaceCreaturesV44?.getStats?.();
+      return c && c.renderedAgents + c.renderedPredators + c.renderedApex === c.population;
+    }, null, { timeout: 30000 });
+
     const after = await page.evaluate(() => ({
       player: window.realitySandboxSurfaceMode.getPlayer(),
       build: window.realitySandboxSurfaceBuild,
@@ -86,12 +97,13 @@ fs.mkdirSync(artifactDir, { recursive: true });
       weather: window.realitySandboxSurfaceWeatherV39.getStats(),
       oss: window.realitySandboxSurfaceOssV40.getStats(),
       rivers: window.realitySandboxSurfaceRiversV41.getStats(),
+      creatures: window.realitySandboxSurfaceCreaturesV44.getStats(),
       coverage: window.realitySandboxSurfaceLargePlanetCoverageV43.getStats(),
       diagnostics: window.realitySandboxPresentationDiagnostics(),
     }));
 
     const moved = Math.hypot(after.player.x - before.player.x, after.player.y - before.player.y);
-    assert(after.build === 'surface-v43-large-planet-high-flight', `Unexpected build ${after.build}`);
+    assert(after.build === 'surface-v44-spatial-gpu-creatures', `Unexpected build ${after.build}`);
     assert(after.controller?.topology === 'sphere' && after.controller?.extendedFlight, 'Spherical extended flight regressed.');
     assert(after.surface.curvatureRadius >= 26000 && after.surface.presentationScaleMultiplier >= 9.9, '10x presentation scale regressed.');
     assert(after.player.altitude > 700 && after.flight.maxAltitude >= 4000 && after.flight.cameraFar >= 40000, 'Large-planet high flight regressed.');
@@ -109,6 +121,16 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(after.rivers.graphPrecomputed === true && after.rivers.graphTraces > 0 && after.rivers.ribbonsBuilt > 0, 'River network regressed.');
     assert(after.rivers.hydrologySamplesInRenderLoop === 0 && after.rivers.terrainSamplesInRenderLoop === 0, 'River render loop performs procedural sampling.');
 
+    assert(after.creatures.spatialHash === true && after.creatures.quadraticNeighborScans === false, 'Creature ecology is not using the spatial hash path.');
+    assert(after.creatures.spatialRebuilds >= after.creatures.simulationTicks && after.creatures.spatialQueries > 20, 'Spatial creature neighbor queries did not run.');
+    assert(after.creatures.distanceAwareSimulation === true && after.creatures.simulationHz === 8 && after.creatures.farDecisionHz < after.creatures.nearDecisionHz, 'Distance-aware creature simulation contract failed.');
+    assert(after.creatures.gpuInstancing === true && after.creatures.dynamicInstanceCapacity === true && after.creatures.lowPolyMorphology === true && after.creatures.dnaDrivenMorphology === true, 'GPU creature morphology path is not active.');
+    assert(after.creatures.globalPopulationCap === false && after.creatures.globalDisplayCap === false, 'Creature population/display cap was introduced.');
+    assert(after.creatures.population > 0 && after.creatures.renderedAgents + after.creatures.renderedPredators + after.creatures.renderedApex === after.creatures.population, 'Not every living creature is represented by the GPU instance layer.');
+    assert(after.creatures.terrainSamplingInRenderLoop === false && after.creatures.renderLoopProceduralSamples === 0, 'Creature renderer performs terrain sampling in the render loop.');
+    assert(after.creatures.terrainSamples > 0 && after.creatures.terrainCacheSize > 0, 'Creature terrain cache was not populated.');
+    assert(after.creatures.simulationTicks > before.creatures.simulationTicks, 'Creature ecology did not advance while Surface Mode was active.');
+
     assert(after.coverage.curvatureRadius >= 26000 && after.coverage.macroRadius >= 18000, 'Macro globe coverage scale is too small.');
     assert(after.coverage.circularCoverage === true && after.coverage.mergedSingleMesh === true, 'Macro coverage is not the circular single-mesh path.');
     assert(after.coverage.buildsCompleted >= 1 && after.coverage.vertices > 2000 && after.coverage.triangles > 4000, 'Macro coverage did not build.');
@@ -121,7 +143,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(moved > 20, `Movement did not exercise chunk handoff (${moved}).`);
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v43-large-planet-high-flight.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v44-spatial-gpu-creatures.png'), fullPage: true });
     fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ before, fastSky, after, pageErrors }, null, 2));
     await page.evaluate(() => window.realitySandboxSurfaceMode.exit());
   } finally {
