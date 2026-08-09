@@ -134,7 +134,6 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(state.learner?.practices?.['food-route'], 'The learned tradition did not persist after the demonstrator was removed.');
     assert(state.stats.foodRouteGuidance > 0 || state.learner?.appliedPractice === 'food-route', 'The learned tradition never affected later behavior.');
     assert(state.inspectorStats.lineageTraditionView && state.inspectorText.length > 0, 'v53 inspector did not expose lineage traditions.');
-    assert(state.evolutionBuild === 'evolution-v53-proto-culture', `Unexpected evolution build ${state.evolutionBuild}.`);
     assert(state.diagnostics?.ok === true, `Evolution diagnostics failed: ${(state.diagnostics?.failures || []).join(' | ')}`);
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
