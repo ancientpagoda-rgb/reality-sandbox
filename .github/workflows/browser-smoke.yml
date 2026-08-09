@@ -114,6 +114,14 @@ jobs:
           REALITY_MORPHOGENESIS_HISTORY_ARTIFACT_DIR: artifacts/morphogenesis-history-smoke
         run: node scripts/morphogenesis-history-smoke.cjs
 
+      - name: Verify v50 sensory brains
+        id: sensory_brains_test
+        continue-on-error: true
+        env:
+          REALITY_BASE_URL: http://127.0.0.1:4173/
+          REALITY_SENSORY_BRAINS_ARTIFACT_DIR: artifacts/sensory-brains-v50-smoke
+        run: node scripts/sensory-brains-v50-smoke.cjs
+
       - name: Upload browser diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -128,6 +136,7 @@ jobs:
             artifacts/evolution-inspector-smoke
             artifacts/morphogenesis-smoke
             artifacts/morphogenesis-history-smoke
+            artifacts/sensory-brains-v50-smoke
             /tmp/reality-preview.log
           if-no-files-found: warn
           retention-days: 30
@@ -145,8 +154,9 @@ jobs:
             const inspector = '${{ steps.evolution_inspector_test.outcome }}';
             const morphogenesis = '${{ steps.morphogenesis_test.outcome }}';
             const morphHistory = '${{ steps.morphogenesis_history_test.outcome }}';
-            const ok = unified === 'success' && rootRenderer === 'success' && iphoneSphere === 'success' && surfaceMode === 'success' && originLife === 'success' && inspector === 'success' && morphogenesis === 'success' && morphHistory === 'success';
-            const detail = `iPhone:${iphoneSphere} unified:${unified} root:${rootRenderer} surface:${surfaceMode} origin:${originLife} inspector:${inspector} morph:${morphogenesis} history:${morphHistory}`;
+            const sensoryBrains = '${{ steps.sensory_brains_test.outcome }}';
+            const ok = unified === 'success' && rootRenderer === 'success' && iphoneSphere === 'success' && surfaceMode === 'success' && originLife === 'success' && inspector === 'success' && morphogenesis === 'success' && morphHistory === 'success' && sensoryBrains === 'success';
+            const detail = `iPhone:${iphoneSphere} unified:${unified} root:${rootRenderer} surface:${surfaceMode} origin:${originLife} inspector:${inspector} morph:${morphogenesis} history:${morphHistory} brain:${sensoryBrains}`;
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
