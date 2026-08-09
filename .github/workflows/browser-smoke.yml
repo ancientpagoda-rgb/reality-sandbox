@@ -82,6 +82,14 @@ jobs:
           REALITY_SURFACE_MODE_ARTIFACT_DIR: artifacts/surface-mode-smoke
         run: node scripts/surface-mode-smoke.cjs
 
+      - name: Verify plant-to-motile evolution
+        id: origin_life_test
+        continue-on-error: true
+        env:
+          REALITY_BASE_URL: http://127.0.0.1:4173/
+          REALITY_ORIGIN_LIFE_ARTIFACT_DIR: artifacts/origin-motile-life-smoke
+        run: node scripts/origin-motile-life-smoke.cjs
+
       - name: Upload browser diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -92,6 +100,7 @@ jobs:
             artifacts/root-renderer-smoke
             artifacts/iphone-sphere-smoke
             artifacts/surface-mode-smoke
+            artifacts/origin-motile-life-smoke
             /tmp/reality-preview.log
           if-no-files-found: warn
           retention-days: 30
@@ -105,8 +114,9 @@ jobs:
             const rootRenderer = '${{ steps.root_renderer_test.outcome }}';
             const iphoneSphere = '${{ steps.iphone_sphere_test.outcome }}';
             const surfaceMode = '${{ steps.surface_mode_test.outcome }}';
-            const ok = unified === 'success' && rootRenderer === 'success' && iphoneSphere === 'success' && surfaceMode === 'success';
-            const detail = `iPhone:${iphoneSphere} unified:${unified} root:${rootRenderer} surface:${surfaceMode}`;
+            const originLife = '${{ steps.origin_life_test.outcome }}';
+            const ok = unified === 'success' && rootRenderer === 'success' && iphoneSphere === 'success' && surfaceMode === 'success' && originLife === 'success';
+            const detail = `iPhone:${iphoneSphere} unified:${unified} root:${rootRenderer} surface:${surfaceMode} origin:${originLife}`;
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
