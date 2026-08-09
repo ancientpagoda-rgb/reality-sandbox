@@ -17,7 +17,7 @@ const DISTANT_SAMPLES_PER_SLICE = 80;
 const DISTANT_START_DELAY_MS = 360;
 const FOV_DEGREES = 100;
 const TILE_OVERLAP = 1.003;
-const CURVATURE_RADIUS_FACTOR = 2.2;
+const CURVATURE_RADIUS_FACTOR = 22.0;
 const NEAR_CACHE_LIMIT = 3;
 const REAR_VIEW_DOT_THRESHOLD = -0.22;
 
@@ -763,6 +763,8 @@ function install({ planet, modules, mode, layer, inputCanvas }) {
       sphereCurvatureEnabled: true,
       sphericalPoleSampling: true,
       curvatureRadius,
+      curvatureRadiusFactor: CURVATURE_RADIUS_FACTOR,
+      presentationScaleMultiplier: 10,
       activeChunkKey,
       requestedChunkKey,
       nearSegments,
@@ -781,6 +783,7 @@ function install({ planet, modules, mode, layer, inputCanvas }) {
 
   window.realitySandboxSurfaceSphereV37 = api;
   document.documentElement.dataset.surfaceSphereV37 = 'view-priority-best-available';
+  document.documentElement.dataset.surfacePresentationScale = '10x';
 
   const previousDiagnostics = window.realitySandboxPresentationDiagnostics;
   window.realitySandboxPresentationDiagnostics = () => ({
