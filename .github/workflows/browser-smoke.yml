@@ -138,6 +138,14 @@ jobs:
           REALITY_LEARNING_MEMORY_ARTIFACT_DIR: artifacts/learning-memory-v52-smoke
         run: node scripts/learning-memory-v52-smoke.cjs
 
+      - name: Verify v53 proto-culture
+        id: proto_culture_test
+        continue-on-error: true
+        env:
+          REALITY_BASE_URL: http://127.0.0.1:4173/
+          REALITY_PROTO_CULTURE_ARTIFACT_DIR: artifacts/proto-culture-v53-smoke
+        run: node scripts/proto-culture-v53-smoke.cjs
+
       - name: Upload browser diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -155,6 +163,7 @@ jobs:
             artifacts/sensory-brains-v50-smoke
             artifacts/social-signaling-v51-smoke
             artifacts/learning-memory-v52-smoke
+            artifacts/proto-culture-v53-smoke
             /tmp/reality-preview.log
           if-no-files-found: warn
           retention-days: 30
@@ -175,8 +184,9 @@ jobs:
             const sensoryBrains = '${{ steps.sensory_brains_test.outcome }}';
             const socialSignaling = '${{ steps.social_signaling_test.outcome }}';
             const learningMemory = '${{ steps.learning_memory_test.outcome }}';
-            const ok = unified === 'success' && rootRenderer === 'success' && iphoneSphere === 'success' && surfaceMode === 'success' && originLife === 'success' && inspector === 'success' && morphogenesis === 'success' && morphHistory === 'success' && sensoryBrains === 'success' && socialSignaling === 'success' && learningMemory === 'success';
-            const detail = `iPhone:${iphoneSphere} unified:${unified} root:${rootRenderer} surface:${surfaceMode} origin:${originLife} inspector:${inspector} morph:${morphogenesis} history:${morphHistory} brain:${sensoryBrains} social:${socialSignaling} memory:${learningMemory}`;
+            const protoCulture = '${{ steps.proto_culture_test.outcome }}';
+            const ok = unified === 'success' && rootRenderer === 'success' && iphoneSphere === 'success' && surfaceMode === 'success' && originLife === 'success' && inspector === 'success' && morphogenesis === 'success' && morphHistory === 'success' && sensoryBrains === 'success' && socialSignaling === 'success' && learningMemory === 'success' && protoCulture === 'success';
+            const detail = `iPhone:${iphoneSphere} unified:${unified} root:${rootRenderer} surface:${surfaceMode} origin:${originLife} inspector:${inspector} morph:${morphogenesis} history:${morphHistory} brain:${sensoryBrains} social:${socialSignaling} memory:${learningMemory} culture:${protoCulture}`;
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
