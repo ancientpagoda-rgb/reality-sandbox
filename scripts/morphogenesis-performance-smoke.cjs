@@ -22,7 +22,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxDebug?.ready &&
       window.realitySandboxOriginMotileLifeV47?.installed &&
       window.realitySandboxMorphogenesisV48?.installed &&
-      window.realitySandboxMorphogenesisInheritanceCacheV48a?.installed
+      window.realitySandboxMorphogenesisInheritanceCacheV48a?.installed &&
+      window.realitySandboxMorphogenesisSelectionV48b?.installed
     ), null, { timeout: 120000 });
 
     await page.evaluate(() => window.realitySandboxDebug.advance(3000));
@@ -32,6 +33,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       const origin = window.realitySandboxOriginMotileLifeV47;
       const morphogenesis = window.realitySandboxMorphogenesisV48;
       const cache = window.realitySandboxMorphogenesisInheritanceCacheV48a;
+      const selection = window.realitySandboxMorphogenesisSelectionV48b;
       const ecs = planet.world.ecs;
       const c = ecs.components;
       const existing = origin.getMotiles()[0];
@@ -66,6 +68,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
         morphogenesis: morphogenesis.getStats(),
         cacheBefore: before,
         cacheAfter: afterInsert,
+        selection: selection.getStats(),
         inheritedBy,
         genes,
         geneKeys: genes ? Object.keys(genes).sort() : [],
@@ -86,6 +89,12 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(result.genes && result.geneKeys.length === 9, `Cached descendant has incomplete developmental genes: ${result.geneKeys.join(', ')}`);
     assert(result.geneKeys.includes('multicellularity') && result.geneKeys.includes('neuralComplexity') && result.geneKeys.includes('terrestrialAffinity'), 'Core v48 developmental genes are missing.');
     assert(result.lineagePhenotypes.length >= 1, 'v48 produced no lineage phenotype summary after deep-time advance.');
+    assert(result.selection.authoritativeFixedStep && result.selection.developmentalHabitatSelection, 'v48b habitat selection is not on the authoritative fixed step.');
+    assert(result.selection.habitatAffectsEnergyBudget && result.selection.habitatAffectsReproductionIndirectly, 'v48b habitat fit is not coupled to ecological success.');
+    assert(result.selection.selectionSteps >= 1 && result.selection.organismsEvaluated >= 1, 'v48b did not evaluate evolved motiles.');
+    assert(result.selection.aquaticSelections + result.selection.terrestrialSelections >= result.selection.organismsEvaluated, 'v48b failed to classify developmental habitat routes.');
+    assert(Number.isFinite(result.selection.meanHabitatFitness) && result.selection.meanHabitatFitness >= 0 && result.selection.meanHabitatFitness <= 1, 'v48b habitat fitness is invalid.');
+    assert(result.selection.hardPopulationCap === false && result.selection.surfaceRendererEnabled === false, 'v48b introduced a cap or Surface fauna renderer.');
     assert(result.legacyFauna.agent === 0 && result.legacyFauna.predator === 0 && result.legacyFauna.apex === 0, 'Legacy hard-coded fauna returned during v48 performance smoke.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
