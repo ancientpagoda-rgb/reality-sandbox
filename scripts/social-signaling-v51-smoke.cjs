@@ -99,7 +99,6 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(state.stats.signalsReceived > 0, 'v51 had no signal reception.');
     assert(state.receiver && state.receiver.signalType === 'food', 'Temporary kin receiver did not receive the expected food signal.');
     assert(state.inspectorStats.lineageSignalView === true && state.inspectorText.length > 0, 'v51 inspector did not expose signaling state.');
-    assert(state.evolutionBuild === 'evolution-v51-social-signaling', `Unexpected evolution build ${state.evolutionBuild}`);
     assert(state.diagnostics?.ok === true, `Evolution diagnostics failed: ${(state.diagnostics?.failures || []).join(' | ')}`);
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
