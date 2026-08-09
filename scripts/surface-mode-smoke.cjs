@@ -32,13 +32,17 @@ fs.mkdirSync(artifactDir, { recursive: true });
     await page.waitForFunction(() => Boolean(
       window.realitySandboxSurfaceCreaturesV44?.installed &&
       window.realitySandboxEvolutionaryEcologyV45?.installed &&
-      window.realitySandboxEcologicalMigrationV46?.installed
+      window.realitySandboxEcologicalMigrationV46?.installed &&
+      window.realitySandboxSurfaceFaunaGuaranteeV45b?.installed
     ), null, { timeout: 60000 });
 
     await page.waitForFunction(() => {
       const e = window.realitySandboxEvolutionaryEcologyV45?.getStats?.();
       const m = window.realitySandboxEcologicalMigrationV46?.getStats?.();
-      return e?.ticks >= 3 && e?.organismsEvaluated > 0 && m?.ticks >= 2 && m?.speciesEvaluated > 0;
+      const f = window.realitySandboxSurfaceFaunaGuaranteeV45b?.getStats?.();
+      return e?.ticks >= 3 && e?.organismsEvaluated > 0 && m?.ticks >= 2 && m?.speciesEvaluated > 0 &&
+        f?.frontSeeded === true && f?.frontAfter >= 5 && f?.updates >= 2 && f?.renderedAgents >= 5 &&
+        f?.exactGroundSamples > 0 && Number.isFinite(f?.nearestRenderedDistance) && f.nearestRenderedDistance <= 120;
     }, null, { timeout: 60000 });
 
     const beforePlayer = await page.evaluate(() => window.realitySandboxSurfaceMode.getPlayer());
@@ -76,6 +80,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
         build: window.realitySandboxSurfaceBuild,
         surface: window.realitySandboxSurfaceSphereV37.getStats(),
         creatures: window.realitySandboxSurfaceCreaturesV44.getStats(),
+        faunaGuarantee: window.realitySandboxSurfaceFaunaGuaranteeV45b.getStats(),
         evolution: window.realitySandboxEvolutionaryEcologyV45.getStats(),
         migration: window.realitySandboxEcologicalMigrationV46.getStats(),
         migrations: window.realitySandboxEcologicalMigrationV46.getMigrations(),
@@ -89,11 +94,19 @@ fs.mkdirSync(artifactDir, { recursive: true });
     });
 
     const moved = Math.hypot(after.player.x - beforePlayer.x, after.player.y - beforePlayer.y);
-    assert(after.build === 'surface-v46-ecological-migration', `Unexpected build ${after.build}`);
+    assert(after.build === 'surface-v46b-grounded-visible-fauna', `Unexpected build ${after.build}`);
     assert(moved > 2, `Surface movement smoke check failed (${moved}).`);
     assert(after.surface.curvatureRadius >= 26000 && after.surface.renderLoopProceduralSamples === 0, 'Large-planet terrain baseline regressed.');
     assert(after.creatures.spatialHash === true && after.creatures.quadraticNeighborScans === false, 'Creature spatial hash is not active.');
     assert(after.creatures.globalPopulationCap === false && after.creatures.globalDisplayCap === false, 'Creature cap policy regressed.');
+
+    assert(after.faunaGuarantee.frontSeeded === true && after.faunaGuarantee.frontAfter >= 5, 'Forward real-fauna herd was not established.');
+    assert(after.faunaGuarantee.renderedAgents >= 5, `Too few grounded near herbivores rendered (${after.faunaGuarantee.renderedAgents}).`);
+    assert(after.faunaGuarantee.exactRenderedTerrainGrounding === true && after.faunaGuarantee.exactGroundSamples > 0, 'Fauna are not grounded against the rendered terrain mesh.');
+    assert(Number.isFinite(after.faunaGuarantee.nearestRenderedDistance) && after.faunaGuarantee.nearestRenderedDistance <= 120, `Nearest grounded fauna is too far (${after.faunaGuarantee.nearestRenderedDistance}).`);
+    assert(after.faunaGuarantee.unlitReadableMorphology === true && after.faunaGuarantee.gpuInstancing === true, 'Readable grounded GPU fauna path is inactive.');
+    assert(after.faunaGuarantee.globalPopulationCap === false && after.faunaGuarantee.globalDisplayCap === false, 'Grounded fauna repair introduced a cap.');
+    assert(after.faunaGuarantee.proceduralSamplingInRenderLoop === false && after.faunaGuarantee.renderLoopProceduralSamples === 0, 'Grounded fauna repair performs render-loop procedural sampling.');
 
     assert(after.evolution.habitatDrivenPopulations === true && after.evolution.directHabitatFitness === true, 'v45 habitat-driven population model is inactive.');
     assert(after.evolution.habitatAffectsEnergyCost === true && after.evolution.habitatAffectsReproductiveOpportunity === true, 'v45 habitat selection no longer feeds survival/reproduction.');
@@ -122,7 +135,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(after.rivers.renderLoopProceduralSamples === 0, 'River render-loop sampling regressed.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v46-ecological-migration.png'), fullPage: true });
+    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v46b-grounded-visible-fauna.png'), fullPage: true });
     fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ beforePlayer, after, moved, pageErrors }, null, 2));
     await page.evaluate(() => window.realitySandboxSurfaceMode.exit());
   } finally {
