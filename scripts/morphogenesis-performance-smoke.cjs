@@ -23,7 +23,9 @@ fs.mkdirSync(artifactDir, { recursive: true });
       window.realitySandboxOriginMotileLifeV47?.installed &&
       window.realitySandboxMorphogenesisV48?.installed &&
       window.realitySandboxMorphogenesisInheritanceCacheV48a?.installed &&
-      window.realitySandboxMorphogenesisSelectionV48b?.installed
+      window.realitySandboxMorphogenesisSelectionV48b?.installed &&
+      window.realitySandboxClosedNutrientCycleV49?.installed &&
+      window.realitySandboxEvolutionDiagnosticsV48d?.installed
     ), null, { timeout: 120000 });
 
     await page.evaluate(() => window.realitySandboxDebug.advance(3000));
@@ -34,6 +36,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
       const morphogenesis = window.realitySandboxMorphogenesisV48;
       const cache = window.realitySandboxMorphogenesisInheritanceCacheV48a;
       const selection = window.realitySandboxMorphogenesisSelectionV48b;
+      const nutrientCycle = window.realitySandboxClosedNutrientCycleV49;
+      const diagnostics = window.realitySandboxEvolutionDiagnosticsV48d;
       const ecs = planet.world.ecs;
       const c = ecs.components;
       const existing = origin.getMotiles()[0];
@@ -94,14 +98,22 @@ fs.mkdirSync(artifactDir, { recursive: true });
       }
 
       const afterInsert = cache.getStats();
+      const nutrient = nutrientCycle.getStats();
+      const samplePosition = existing.position || { x: 100, y: 100 };
+      const nutrientSample = nutrientCycle.sample(samplePosition.x, samplePosition.y);
+      const invariantResult = diagnostics.invariants();
 
       return {
         missingMotile: false,
         build: window.realitySandboxSurfaceBuild,
+        evolutionBuild: window.realitySandboxEvolutionBuild,
         morphogenesis: morphogenesis.getStats(),
         cacheBefore: before,
         cacheAfter: afterInsert,
         selection: selection.getStats(),
+        nutrient,
+        nutrientSample,
+        diagnostics: invariantResult,
         inheritedBy,
         genes,
         geneKeys: genes ? Object.keys(genes).sort() : [],
@@ -111,8 +123,9 @@ fs.mkdirSync(artifactDir, { recursive: true });
       };
     });
 
-    assert(!result.missingMotile, 'v48 performance smoke had no evolved motile organism to clone.');
-    assert(result.build === 'surface-v48-morphogenesis-body-plans', `Unexpected build ${result.build}.`);
+    assert(!result.missingMotile, 'v48/v49 performance smoke had no evolved motile organism to clone.');
+    assert(result.build === 'surface-v48-morphogenesis-body-plans', `Unexpected Surface build ${result.build}.`);
+    assert(result.evolutionBuild === 'evolution-v49-closed-nutrient-cycle', `Unexpected evolution build ${result.evolutionBuild}.`);
     assert(result.morphogenesis.heritableDevelopmentalTraits && result.morphogenesis.authoritativeFixedStep, 'v48 morphogenesis is not installed on the authoritative fixed step.');
     assert(result.morphogenesis.traits.length === 9, `Expected 9 developmental traits, found ${result.morphogenesis.traits.length}.`);
     assert(result.morphogenesis.hardPopulationCap === false && result.morphogenesis.surfaceRendererEnabled === false, 'v48 changed the no-cap/no-Surface-renderer policy.');
@@ -133,7 +146,22 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(result.selection.aquaticSelections + result.selection.terrestrialSelections >= result.selection.organismsEvaluated, 'v48b failed to classify developmental habitat routes.');
     assert(Number.isFinite(result.selection.meanHabitatFitness) && result.selection.meanHabitatFitness >= 0 && result.selection.meanHabitatFitness <= 1, 'v48b habitat fitness is invalid.');
     assert(result.selection.hardPopulationCap === false && result.selection.surfaceRendererEnabled === false, 'v48b introduced a cap or Surface fauna renderer.');
-    assert(result.legacyFauna.agent === 0 && result.legacyFauna.predator === 0 && result.legacyFauna.apex === 0, 'Legacy hard-coded fauna returned during v48 performance smoke.');
+
+    assert(result.nutrient.installed && result.nutrient.authoritativeFixedStep, 'v49 closed nutrient cycle is not installed on the authoritative fixed step.');
+    assert(result.nutrient.detritusToSoil && result.nutrient.metabolicWasteToSoil && result.nutrient.soilToPlantBiomass, 'v49 nutrient return loop is incomplete.');
+    assert(result.nutrient.toxinSoilFeedback && result.nutrient.weatheringAndLeaching && result.nutrient.localNutrientField, 'v49 soil chemistry or geochemical inputs are incomplete.');
+    assert(result.nutrient.hardPopulationCap === false && result.nutrient.hardDisplayCap === false && result.nutrient.surfaceRendererEnabled === false, 'v49 changed population/display/Surface-renderer policy.');
+    assert(result.nutrient.steps >= 1 && result.nutrient.diffusionPasses >= 1, 'v49 nutrient field never advanced or diffused.');
+    assert(result.nutrient.plantUptake > 0, 'v49 plants never drew nutrients from soil.');
+    assert(result.nutrient.weatheringInputs > 0, 'v49 weathering never supplied mineral nutrients.');
+    assert(result.nutrient.metabolicWasteDeposits > 0, 'v49 motile metabolism never returned nutrients to soil.');
+    assert(Number.isFinite(result.nutrient.meanNutrient) && result.nutrient.meanNutrient >= 0, `v49 mean nutrient is invalid: ${result.nutrient.meanNutrient}.`);
+    assert(Number.isFinite(result.nutrient.minNutrient) && Number.isFinite(result.nutrient.maxNutrient) && result.nutrient.maxNutrient >= result.nutrient.minNutrient, 'v49 nutrient range is invalid.');
+    assert(Number.isFinite(result.nutrientSample?.nutrient) && result.nutrientSample.nutrient >= 0, 'v49 local nutrient sample is invalid.');
+    assert(Number.isFinite(result.nutrientSample?.toxin) && result.nutrientSample.toxin >= 0, 'v49 local soil-toxin sample is invalid.');
+    assert(result.diagnostics?.ok === true, `Evolution invariants failed: ${(result.diagnostics?.failures || []).join(' | ')}`);
+
+    assert(result.legacyFauna.agent === 0 && result.legacyFauna.predator === 0 && result.legacyFauna.apex === 0, 'Legacy hard-coded fauna returned during v48/v49 performance smoke.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
     fs.writeFileSync(path.join(artifactDir, 'morphogenesis-performance.json'), JSON.stringify({ result, pageErrors }, null, 2));
