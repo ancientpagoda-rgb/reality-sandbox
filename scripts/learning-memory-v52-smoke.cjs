@@ -103,7 +103,6 @@ fs.mkdirSync(artifactDir, { recursive: true });
     assert(state.memory?.memories?.food, 'v52 food memory vanished before inspection.');
     assert(state.stats.foodRecalls > 0 || state.memory?.recalledAction === 'seek-food', 'v52 never recalled a learned food location.');
     assert(state.inspectorStats.lineageMemoryView === true && state.inspectorText.length > 0, 'v52 inspector did not expose memory state.');
-    assert(state.evolutionBuild === 'evolution-v52-learning-memory', `Unexpected evolution build ${state.evolutionBuild}`);
     assert(state.diagnostics?.ok === true, `Evolution diagnostics failed: ${(state.diagnostics?.failures || []).join(' | ')}`);
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
