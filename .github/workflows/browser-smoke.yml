@@ -152,7 +152,7 @@ jobs:
         env:
           REALITY_BASE_URL: http://127.0.0.1:4173/
           REALITY_PROTO_LANGUAGE_ARTIFACT_DIR: artifacts/proto-language-v54-smoke
-        run: node scripts/proto-language-v54-smoke.cjs
+        run: node scripts/proto-language-v54b-smoke.cjs
 
       - name: Verify v55 compositional language
         id: compositional_language_test
@@ -160,7 +160,7 @@ jobs:
         env:
           REALITY_BASE_URL: http://127.0.0.1:4173/
           REALITY_COMPOSITIONAL_LANGUAGE_ARTIFACT_DIR: artifacts/compositional-language-v55-smoke
-        run: node scripts/compositional-language-v55-smoke.cjs
+        run: node scripts/compositional-language-v55b-smoke.cjs
 
       - name: Upload browser diagnostics
         if: always()
