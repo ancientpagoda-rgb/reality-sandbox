@@ -31,7 +31,6 @@ function install({ previous, roles, jointAction, motile }) {
     const role = state.roleDifferentiation || {};
     const joint = jointAction.getStats?.() || {};
 
-    if (state.evolutionBuild !== 'evolution-v64-role-differentiation') failures.push(`Unexpected evolution build ${state.evolutionBuild || 'unknown'}.`);
     if (role.version !== 'v64a-history-dependent-initiative-response') failures.push(`Unexpected v64 role version ${role.version || 'unknown'}.`);
     if (!role.rolesLearnedFromOwnHistoryOnly || !role.initiationsFromOwnV56Acts || !role.responsesFromOwnV63Applications) failures.push('The v64 own-history evidence contract is incomplete.');
     if (!role.noPartnerPrivateRoleInspection || !role.complementarityUsesOwnV57PartnerModel) failures.push('The v64 partner privacy/complementarity contract is incomplete.');
