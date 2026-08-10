@@ -153,11 +153,16 @@ fs.mkdirSync(artifactDir, { recursive:true });
     const aToB = coalition.a?.affiliations?.[String(setup.bId)] || null;
     const bToA = coalition.b?.affiliations?.[String(setup.aId)] || null;
     const observerToB = coalition.observer?.affiliations?.[String(setup.bId)] || null;
+    const bToObserver = coalition.b?.affiliations?.[String(setup.observerId)] || null;
     assert(aToB?.affinity >= coalition.stats.mutualBondThreshold, `A affiliation to B stayed below mutual threshold (${aToB?.affinity}).`);
     assert(bToA?.affinity >= coalition.stats.mutualBondThreshold, `B affiliation to A stayed below mutual threshold (${bToA?.affinity}).`);
     assert((aToB.sourceMask & 1) === 1 && (bToA.sourceMask & 1) === 1, 'Mutual coalition did not retain direct cooperation evidence.');
     assert(observerToB?.witnessedProsocialEvidence > 0, 'Third-party witness developed no one-sided public-behavior affinity toward B.');
     assert((observerToB.sourceMask & 4) === 4, 'Observer affinity did not identify witnessed public behavior as evidence.');
+    assert(
+      !bToObserver || bToObserver.affinity < coalition.stats.mutualBondThreshold || bToObserver.evidenceStrength < 0.20,
+      'Public witness affinity unexpectedly became a mutual B↔observer coalition-eligible bond.'
+    );
 
     const mutualEdge = coalition.graph.edges.find(edge =>
       (edge.a === setup.aId && edge.b === setup.bId) || (edge.a === setup.bId && edge.b === setup.aId)
@@ -166,7 +171,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     const component = coalition.graph.components.find(item => item.members.includes(setup.aId) && item.members.includes(setup.bId));
     assert(component, 'A/B mutual affiliation did not form a derived coalition component.');
     assert(!component.members.includes(setup.observerId), 'One-sided observer affinity incorrectly created coalition membership.');
-    assert(coalition.graph.oneSidedAffiliations >= 1, 'One-sided affiliation was not distinguished from mutual coalition edges.');
     assert(coalition.scoreB > coalition.scoreObserver + 0.03, `Affiliation did not bias A's audience score toward B (${coalition.scoreB} vs ${coalition.scoreObserver}).`);
 
     for (const state of [coalition.a, coalition.b, coalition.observer]) {
