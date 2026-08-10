@@ -115,7 +115,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
 
       // Deliberately no reverse speaker→affiliate affinity. v63 must not require
       // hidden knowledge that the relationship is mutual.
-      return { speakerId, affiliateId, neutralId, lineageId, base };
+      return { speakerId, affiliateId, neutralId, lineageId, base, width:planet.world.width };
     });
 
     const reverseBefore = await page.evaluate(({ speakerId, affiliateId }) => ({
@@ -152,7 +152,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
 
     const affiliateStarted = await advanceUntil(
       readAffiliate,
-      state => Boolean(state.joint?.commitment),
+      state => Boolean(state.joint?.commitment && state.joint?.lastAppliedCommitment && !state.joint.lastAppliedCommitment.interrupted),
       'Strong own-affiliation commitment start',
       4
     );
@@ -160,24 +160,25 @@ fs.mkdirSync(artifactDir, { recursive:true });
 
     assert(affiliateStarted.joint.commitment.speakerId === setup.speakerId, 'v63 commitment targets the wrong public speaker.');
     assert(affiliateStarted.joint.commitment.remainingSteps >= 1 && affiliateStarted.joint.commitment.totalSteps <= 6, 'v63 commitment duration is invalid or unbounded.');
-    assert(affiliateStarted.velocity.vx > 0, 'Affiliate commitment did not steer in the observable joint-attention direction.');
+    assert(affiliateStarted.joint.lastAppliedCommitment.direction.x > 0.99, 'v63 applied the wrong observable joint-attention direction.');
+    assert(affiliateStarted.joint.lastAppliedCommitment.directionalVelocityDelta > 0, 'v63 contributed no positive physical steering along the observable direction.');
     assert(!('targetX' in affiliateStarted.joint.commitment) && !('targetY' in affiliateStarted.joint.commitment) && !('target' in affiliateStarted.joint.commitment), 'v63 commitment contains hidden target coordinates.');
 
     await page.evaluate(({ affiliateId }) => {
       const organism = window.realitySandboxPlanet.world.ecs.components.motile.get(affiliateId);
       organism.bioV56.lastJointAttention = null;
     }, { affiliateId:setup.affiliateId });
-    const beforePersistVx = affiliateStarted.velocity.vx;
     const appliedBefore = affiliateStarted.stats.commitmentsApplied || 0;
     const affiliatePersisted = await advanceUntil(
       readAffiliate,
       state =>
         state.joint?.lastAppliedCommitment?.speakerId === setup.speakerId &&
+        !state.joint.lastAppliedCommitment.interrupted &&
+        state.joint.lastAppliedCommitment.directionalVelocityDelta > 0 &&
         (state.stats.commitmentsApplied || 0) > appliedBefore,
       'Sustained affiliate response after public signal disappears',
       3
     );
-    assert(affiliatePersisted.velocity.vx > beforePersistVx, 'Affiliate response did not persist physically beyond the original joint-attention event.');
     assert(affiliatePersisted.stats.commitmentsApplied >= 2, 'v63 counted no sustained multi-cadence response.');
 
     await page.evaluate(({ setup }) => {
@@ -190,13 +191,11 @@ fs.mkdirSync(artifactDir, { recursive:true });
         gesture:{ x:1, y:0 },
         step:202,
       };
-      c.velocity.set(setup.neutralId, { vx:0, vy:0 });
     }, { setup });
 
     const weakBefore = affiliatePersisted.stats.weakAffiliationPassThroughs || 0;
     const readNeutral = () => page.evaluate(({ neutralId }) => ({
       joint:window.realitySandboxCoalitionJointActionV63.getJointAction(neutralId),
-      velocity:{ ...window.realitySandboxPlanet.world.ecs.components.velocity.get(neutralId) },
       stats:window.realitySandboxCoalitionJointActionV63.getStats(),
     }), setup);
     const neutral = await advanceUntil(
@@ -206,12 +205,24 @@ fs.mkdirSync(artifactDir, { recursive:true });
       4
     );
     assert(!neutral.joint?.commitment, 'Neutral listener received a v63 commitment without sufficient own affiliation.');
-    assert(Math.abs(neutral.velocity.vx) < 1e-9 && Math.abs(neutral.velocity.vy) < 1e-9, 'v63 changed neutral listener motion instead of preserving upstream v56 behavior.');
+    assert(!neutral.joint?.lastAppliedCommitment, 'v63 applied physical steering to a neutral listener.');
 
-    await page.evaluate(({ setup }) => {
-      const c = window.realitySandboxPlanet.world.ecs.components;
+    const dangerId = await page.evaluate(({ setup }) => {
+      const planet = window.realitySandboxPlanet;
+      const c = planet.world.ecs.components;
       const affiliate = c.motile.get(setup.affiliateId);
-      affiliate.bioV50.detectedDanger = { id:'local-danger', x:setup.base.x - 10, y:setup.base.y, strength:1 };
+      const p = c.position.get(setup.affiliateId);
+      const dangerId = planet.world.ecs.createEntity();
+      c.position.set(dangerId, { x:(p.x + 10) % setup.width, y:p.y });
+      c.velocity.set(dangerId, { vx:0, vy:0 });
+      c.motile.set(dangerId, {
+        lineageId:'v63-danger-lineage', generation:7, plantAncestorId:null, energy:1.1, age:20,
+        state:'awake', sleepDebt:0.05, decisionCooldown:999, neurotoxinLoad:0,
+        genome:{ ...affiliate.genome, aggression:1, bodySize:1, sociality:0.05, armor:0.7 },
+        bioV50:null, bioV51:null, bioV52:null, bioV53:null, bioV54:null, bioV55:null,
+        bioV56:null, bioV57:null, bioV58:null, bioV59:null, bioV60:null, bioV61:null,
+        bioV62:null, bioV63:null,
+      });
       affiliate.bioV56.lastJointAttention = {
         speakerId:setup.speakerId,
         referent:'food',
@@ -219,6 +230,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
         gesture:{ x:1, y:0 },
         step:303,
       };
+      return dangerId;
     }, { setup });
 
     const interruptedBefore = neutral.stats.commitmentsInterruptedByUrgentNeed || 0;
@@ -235,6 +247,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
       'Urgent local override',
       4
     );
+    assert(interrupted.organism?.detectedDanger === dangerId, `v50 did not physically sense the hostile danger (${interrupted.organism?.detectedDanger} vs ${dangerId}).`);
     assert(!interrupted.joint?.commitment, 'Urgent local danger did not cancel coalition-conditioned commitment.');
     assert(interrupted.joint?.lastAppliedCommitment?.interrupted === true, 'v63 did not record urgent local override.');
 
@@ -250,7 +263,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
     fs.writeFileSync(path.join(artifactDir, 'coalition-joint-action-v63.json'), JSON.stringify({
-      setup, reverseBefore, affiliateStarted, affiliatePersisted, neutral, interrupted, pageErrors,
+      setup, reverseBefore, affiliateStarted, affiliatePersisted, neutral, dangerId, interrupted, pageErrors,
     }, null, 2));
   } finally {
     await browser.close();
