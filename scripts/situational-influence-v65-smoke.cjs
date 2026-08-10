@@ -184,8 +184,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
         listener.bioV58.ledgers[String(speakerBId)] = aidLedger(speakerBId);
       }
 
-      // Seed the immediately visible affiliation state as well; v62 will now
-      // refresh it from the persistent direct-aid ledgers rather than erasing it.
       function affiliate(listener, speakerId) {
         listener.bioV62.affiliations[String(speakerId)] = {
           partnerId:speakerId,
@@ -239,22 +237,42 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(initial.stats.concentratedInfluencers >= 1, 'Derived graph did not detect concentrated situational influence.');
     assert(initial.v63Stats.multipleCommitmentModifiersSupported && initial.v63Stats.commitmentModifierCount >= 2, 'v63 did not retain composable v64+v65 modifiers.');
 
-    await page.evaluate(({ setup }) => {
+    function wakeL1ForSyntheticEpisode(step, speakerId) {
+      return page.evaluate(({ setup, step, speakerId }) => {
+        const c = window.realitySandboxPlanet.world.ecs.components;
+        const l1 = c.motile.get(setup.listener1Id);
+        l1.state = 'awake';
+        l1.sleepDebt = 0;
+        l1.decisionCooldown = 999;
+        if (l1.bioV50) l1.bioV50.detectedDanger = null;
+        l1.bioV63 && (l1.bioV63.commitment = null);
+        l1.bioV56.lastJointAttention = {
+          speakerId,
+          referent:'food', modifier:'there', gesture:{ x:1, y:0 }, step,
+        };
+      }, { setup, step, speakerId });
+    }
+
+    const readL1 = () => page.evaluate(({ listener1Id, speakerAId, speakerBId }) => {
       const c = window.realitySandboxPlanet.world.ecs.components;
-      const l1 = c.motile.get(setup.listener1Id);
-      l1.bioV56.lastJointAttention = {
-        speakerId:setup.speakerAId,
-        referent:'food', modifier:'there', gesture:{ x:1, y:0 }, step:501,
+      const organism = c.motile.get(listener1Id);
+      return {
+        joint:window.realitySandboxCoalitionJointActionV63.getJointAction(listener1Id),
+        influence:window.realitySandboxSituationalInfluenceV65.getInfluenceState(listener1Id),
+        role:window.realitySandboxRoleDifferentiationV64.getRole(listener1Id),
+        affA:window.realitySandboxProtoCoalitionsV62.getAffiliation(listener1Id)?.affiliations?.[String(speakerAId)] || null,
+        affB:window.realitySandboxProtoCoalitionsV62.getAffiliation(listener1Id)?.affiliations?.[String(speakerBId)] || null,
+        organism:{
+          state:organism?.state,
+          sleepDebt:organism?.sleepDebt,
+          decisionCooldown:organism?.decisionCooldown,
+          detectedDanger:organism?.bioV50?.detectedDanger || null,
+        },
+        stats:window.realitySandboxSituationalInfluenceV65.getStats(),
       };
-    }, { setup });
+    }, setup);
 
-    const readL1 = () => page.evaluate(({ listener1Id }) => ({
-      joint:window.realitySandboxCoalitionJointActionV63.getJointAction(listener1Id),
-      influence:window.realitySandboxSituationalInfluenceV65.getInfluenceState(listener1Id),
-      role:window.realitySandboxRoleDifferentiationV64.getRole(listener1Id),
-      stats:window.realitySandboxSituationalInfluenceV65.getStats(),
-    }), setup);
-
+    await wakeL1ForSyntheticEpisode(501, setup.speakerAId);
     const trustedA = await advanceUntil(
       readL1,
       state => state.joint?.commitment?.sourceJointAttentionStep === 501,
@@ -267,16 +285,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(trustedA.joint.commitment.totalSteps === 6, `Trusted A commitment did not reach bounded 6-cadence persistence (${trustedA.joint.commitment.totalSteps}).`);
     assert(trustedA.influence?.lastInfluenceAdjustment?.speakerId === setup.speakerAId && trustedA.influence.lastInfluenceAdjustment.influenceScore > 0, 'Positive A influence adjustment was not recorded.');
 
-    await page.evaluate(({ setup }) => {
-      const c = window.realitySandboxPlanet.world.ecs.components;
-      const l1 = c.motile.get(setup.listener1Id);
-      l1.bioV63.commitment = null;
-      l1.bioV56.lastJointAttention = {
-        speakerId:setup.speakerBId,
-        referent:'food', modifier:'there', gesture:{ x:1, y:0 }, step:502,
-      };
-    }, { setup });
-
+    await wakeL1ForSyntheticEpisode(502, setup.speakerBId);
     const distrustedB = await advanceUntil(
       readL1,
       state => state.joint?.commitment?.sourceJointAttentionStep === 502,
@@ -315,15 +324,10 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(reversed.l2A.score > 0.30, 'L2 private evidence changed when only L1 history was reversed.');
     assert(reversed.stats.concentratedInfluencers === 0, 'Concentrated influence persisted after independent listener histories diverged.');
 
-    await page.evaluate(({ setup }) => {
-      const c = window.realitySandboxPlanet.world.ecs.components;
-      const l1 = c.motile.get(setup.listener1Id);
-      l1.bioV63.commitment = null;
-      l1.bioV56.lastJointAttention = {
-        speakerId:setup.speakerBId,
-        referent:'food', modifier:'there', gesture:{ x:1, y:0 }, step:503,
-      };
-    }, { setup });
+    await wakeL1ForSyntheticEpisode(503, setup.speakerBId);
+    const preFinal = await readL1();
+    assert(preFinal.organism.state === 'awake', `L1 was not awake at the final synthetic boundary (${preFinal.organism.state}).`);
+    assert(preFinal.affB?.affinity >= 0.30 && preFinal.affB?.evidenceStrength >= 0.18, `L1→B affiliation gate fell below v63 threshold before final replay (${JSON.stringify(preFinal.affB)}).`);
 
     const trustedBAfter = await advanceUntil(
       readL1,
@@ -369,7 +373,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
     fs.writeFileSync(path.join(artifactDir, 'situational-influence-v65.json'), JSON.stringify({
-      setup, initial, trustedA, distrustedB, reversed, trustedBAfter, raw, final, pageErrors,
+      setup, initial, trustedA, distrustedB, reversed, preFinal, trustedBAfter, raw, final, pageErrors,
     }, null, 2));
   } finally {
     await browser.close();
