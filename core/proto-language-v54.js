@@ -134,11 +134,27 @@ function install({ culture, memory, social, brain, origin, planet, modules }) {
     return grid;
   }
 
+  function strongestKnownPractice(organism) {
+    const practices = organism.bioV53?.practices || {};
+    let best = null;
+    let strength = 0;
+    for (const meaning of MEANINGS) {
+      const candidate = clamp(practices[meaning]?.strength);
+      if (candidate > strength) {
+        best = meaning;
+        strength = candidate;
+      }
+    }
+    return strength >= 0.42 ? best : null;
+  }
+
   function inferContext(organism) {
     const c = organism.bioV53;
     const m = organism.bioV52;
     const b = organism.bioV50 || {};
     if (c?.appliedPractice && MEANINGS.includes(c.appliedPractice)) return c.appliedPractice;
+    const knownPractice = strongestKnownPractice(organism);
+    if (knownPractice) return knownPractice;
     if (m?.recalledAction === 'seek-food') return 'food-route';
     if (m?.recalledAction === 'avoid-danger') return 'danger-avoidance';
     if (m?.recalledAction === 'seek-prey') return 'pack-hunt';
@@ -356,6 +372,7 @@ function install({ culture, memory, social, brain, origin, planet, modules }) {
       semanticallyNeutralTokens:true,
       meaningAcquiredByAssociation:true,
       learnedSymbolMeanings:true,
+      retainedCulturalKnowledgeCanBeReferenced:true,
       physicallyLocalTransmission:true,
       kinBiasedTransmission:true,
       culturallyBlankLexiconAtBirth:true,
