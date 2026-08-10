@@ -25,6 +25,7 @@ function install({ intent, coalitions, planet, modules }) {
   const { motile, velocity } = planet.world.ecs.components;
   let accumulator = 0;
   let stepCount = 0;
+  let commitmentModifier = null;
 
   const stats = {
     steps:0,
@@ -34,6 +35,7 @@ function install({ intent, coalitions, planet, modules }) {
     commitmentsApplied:0,
     commitmentsCompleted:0,
     commitmentsInterruptedByUrgentNeed:0,
+    commitmentModifierApplications:0,
     activeCommitments:0,
     coordinatingOrganisms:0,
     coordinatingLineages:0,
@@ -77,14 +79,59 @@ function install({ intent, coalitions, planet, modules }) {
   }
 
   function urgentLocalNeed(organism) {
-    // A routine food/scavenge/prey target is not an emergency: bounded social
-    // commitment may temporarily persist alongside ordinary foraging. Immediate
-    // interruption is reserved for actually detected danger.
     return Boolean(organism.bioV50?.detectedDanger);
   }
 
   function affiliationTo(id, speakerId) {
     return coalitions.getAffiliation?.(id)?.affiliations?.[String(speakerId)] || null;
+  }
+
+  function applyExternalModifier(id, joint, affiliation, baseDuration, baseStrength) {
+    let duration = baseDuration;
+    let strength = baseStrength;
+    let durationAdjustment = 0;
+    let strengthAdjustment = 0;
+    if (typeof commitmentModifier !== 'function') {
+      return { duration, strength, durationAdjustment, strengthAdjustment };
+    }
+
+    try {
+      const result = commitmentModifier({
+        organismId:id,
+        speakerId:joint.speakerId,
+        baseDuration,
+        baseStrength,
+        maxDuration:MAX_COMMITMENT_STEPS,
+        jointAttention:{
+          speakerId:joint.speakerId,
+          referent:joint.referent || null,
+          modifier:joint.modifier || null,
+          gesture:{ ...joint.gesture },
+          step:joint.step,
+        },
+        affiliation:{
+          affinity:Number(affiliation.affinity) || 0,
+          evidenceStrength:Number(affiliation.evidenceStrength) || 0,
+        },
+      }) || null;
+      if (result && Number.isFinite(result.durationAdjustment)) {
+        durationAdjustment = Math.max(-MAX_COMMITMENT_STEPS, Math.min(MAX_COMMITMENT_STEPS, Math.round(result.durationAdjustment)));
+        duration = Math.max(1, Math.min(MAX_COMMITMENT_STEPS, baseDuration + durationAdjustment));
+        durationAdjustment = duration - baseDuration;
+      }
+      if (result && Number.isFinite(result.strengthAdjustment)) {
+        const requested = Number(result.strengthAdjustment) || 0;
+        strength = clamp(baseStrength + requested);
+        strengthAdjustment = strength - baseStrength;
+      }
+      if (durationAdjustment !== 0 || Math.abs(strengthAdjustment) > 1e-12) stats.commitmentModifierApplications++;
+    } catch (_error) {
+      duration = baseDuration;
+      strength = baseStrength;
+      durationAdjustment = 0;
+      strengthAdjustment = 0;
+    }
+    return { duration, strength, durationAdjustment, strengthAdjustment };
   }
 
   function observeJointAttention(id, organism, state, ph) {
@@ -107,7 +154,7 @@ function install({ intent, coalitions, planet, modules }) {
       return;
     }
 
-    const duration = Math.max(1, Math.min(
+    const baseDuration = Math.max(1, Math.min(
       MAX_COMMITMENT_STEPS,
       1 + Math.floor(
         ph.coordinationPersistence * 3 +
@@ -115,12 +162,13 @@ function install({ intent, coalitions, planet, modules }) {
         clamp(affiliation.evidenceStrength) * 1.5
       )
     ));
-    const strength = clamp(
+    const baseStrength = clamp(
       0.18 +
       ph.affiliateResponsiveness * 0.30 +
       clamp(affiliation.affinity) * 0.34 +
       clamp(affiliation.evidenceStrength) * 0.16
     );
+    const modified = applyExternalModifier(id, joint, affiliation, baseDuration, baseStrength);
 
     state.commitment = {
       speakerId:joint.speakerId,
@@ -129,9 +177,13 @@ function install({ intent, coalitions, planet, modules }) {
       direction,
       affinity:affiliation.affinity,
       evidenceStrength:affiliation.evidenceStrength,
-      strength,
-      totalSteps:duration,
-      remainingSteps:duration,
+      baseDuration,
+      baseStrength,
+      durationAdjustment:modified.durationAdjustment,
+      strengthAdjustment:modified.strengthAdjustment,
+      strength:modified.strength,
+      totalSteps:modified.duration,
+      remainingSteps:modified.duration,
       sourceJointAttentionStep:joint.step,
       createdAtStep:stepCount,
     };
@@ -148,6 +200,7 @@ function install({ intent, coalitions, planet, modules }) {
     if (urgentLocalNeed(organism)) {
       state.lastAppliedCommitment = {
         speakerId:commitment.speakerId,
+        sourceJointAttentionStep:commitment.sourceJointAttentionStep,
         interrupted:true,
         reason:'urgent-local-need',
         step:stepCount,
@@ -177,6 +230,7 @@ function install({ intent, coalitions, planet, modules }) {
     commitment.remainingSteps--;
     state.lastAppliedCommitment = {
       speakerId:commitment.speakerId,
+      sourceJointAttentionStep:commitment.sourceJointAttentionStep,
       direction:{ ...commitment.direction },
       strength,
       velocityBefore,
@@ -251,6 +305,10 @@ function install({ intent, coalitions, planet, modules }) {
 
   const api = {
     installed:true,
+    setCommitmentModifier(fn) {
+      commitmentModifier = typeof fn === 'function' ? fn : null;
+      return typeof commitmentModifier === 'function';
+    },
     getStats:() => ({
       ...stats,
       installed:true,
@@ -267,6 +325,8 @@ function install({ intent, coalitions, planet, modules }) {
       maxCommitmentSteps:MAX_COMMITMENT_STEPS,
       affiliationThreshold:AFFILIATION_THRESHOLD,
       evidenceThreshold:EVIDENCE_THRESHOLD,
+      commitmentModifierSupported:true,
+      commitmentModifierInstalled:typeof commitmentModifier === 'function',
       authoritativeFixedStep:true,
       noHardPopulationCap:true,
       noHardDisplayCap:true,

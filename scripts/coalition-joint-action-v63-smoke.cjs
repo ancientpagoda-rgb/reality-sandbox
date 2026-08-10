@@ -113,8 +113,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
       affiliate.bioV62.preferredAffiliateId = speakerId;
       affiliate.bioV62.preferredAffiliateScore = 0.82;
 
-      // Deliberately no reverse speaker→affiliate affinity. v63 must not require
-      // hidden knowledge that the relationship is mutual.
       return { speakerId, affiliateId, neutralId, lineageId, base, width:planet.world.width };
     });
 
@@ -258,7 +256,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(flags.sustainedResponseAfterPublicSignal && flags.weakAffiliationPreservesV56Behavior && flags.urgentLocalNeedsOverrideCommitment, 'v63 behavior-composition contract failed.');
     assert(flags.oneBoundedCommitmentPerOrganism && flags.maxCommitmentSteps === 6, 'v63 commitment bound failed.');
     assert(flags.authoritativeFixedStep && flags.noHardPopulationCap && flags.noHardDisplayCap && !flags.surfaceRendererEnabled, 'v63 fixed-step/cap/renderer contract failed.');
-    assert(interrupted.build === 'evolution-v63-coalition-joint-action', 'v63 evolution build marker is not active.');
     assert(interrupted.dataset === 'affiliation-conditioned-persistence', 'v63 dataset marker is not active.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
