@@ -93,12 +93,16 @@ fs.mkdirSync(artifactDir, { recursive:true });
         const lowHelper = c.motile.get(setup.lowHelperId);
         const lowRequester = c.motile.get(setup.lowRequesterId);
 
-        // Each loop iteration is a synthetic observation episode. Preserve the
-        // learned norm, but do not carry an unresolved request across a reset of
-        // requester/donor energy; that would turn the artificial reset itself
-        // into an unanswered social event.
+        // Each loop iteration is an independent synthetic observation episode.
+        // Keep the observers' learned norms, but clear unresolved episode state
+        // and the trainer donor's direct v58 debt so v58 reciprocal fatigue from
+        // the previous artificial episode cannot masquerade as a local norm.
         if (highHelper.bioV61) highHelper.bioV61.pendingRequests = [];
         if (lowHelper.bioV61) lowHelper.bioV61.pendingRequests = [];
+        if (donor.bioV58) {
+          donor.bioV58.ledgers = {};
+          donor.bioV58.lastAidChoice = null;
+        }
 
         highHelper.energy = 0.70; highHelper.state = 'awake'; highHelper.decisionCooldown = 999;
         lowHelper.energy = 0.70; lowHelper.state = 'awake'; lowHelper.decisionCooldown = 999;
@@ -110,17 +114,42 @@ fs.mkdirSync(artifactDir, { recursive:true });
         for (const id of [setup.highHelperId, setup.highRequesterId, setup.trainerDonorId, setup.lowHelperId, setup.lowRequesterId]) c.velocity.set(id, { vx:0, vy:0 });
       }, { setup });
 
+      // First obtain exactly one positive public episode on the high side.
+      await advanceUntil(
+        readTraining,
+        state => (state.high?.answeredObserved || 0) >= round,
+        `Answered-request training episode ${round}`,
+        3
+      );
+
+      // Silence the answered side before the low request ages to its no-response
+      // window. This prevents one continuously needy requester from generating
+      // extra synthetic episodes inside a single training round.
+      await page.evaluate(({ setup }) => {
+        const c = window.realitySandboxPlanet.world.ecs.components;
+        const highHelper = c.motile.get(setup.highHelperId);
+        const highRequester = c.motile.get(setup.highRequesterId);
+        const donor = c.motile.get(setup.trainerDonorId);
+        highRequester.energy = 1.20;
+        highRequester.state = 'sleeping';
+        donor.state = 'sleeping';
+        if (highHelper.bioV61) highHelper.bioV61.pendingRequests = [];
+      }, { setup });
+
       training = await advanceUntil(
         readTraining,
-        state => (state.high?.normEvidence || 0) >= round && (state.low?.normEvidence || 0) >= round,
-        `Local norm training round ${round}`
+        state => (state.low?.unansweredObserved || 0) >= round,
+        `Unanswered-request training episode ${round}`,
+        5
       );
     }
 
     fs.writeFileSync(path.join(artifactDir, 'local-social-norms-v61-training.json'), JSON.stringify({ setup, training, pageErrors }, null, 2));
 
     assert(training.high.answeredObserved >= 2, 'High-helping neighborhood did not learn from answered requests.');
+    assert(training.high.unansweredObserved === 0, 'High-helping training accumulated an unintended unanswered episode.');
     assert(training.low.unansweredObserved >= 2, 'Low-helping neighborhood did not learn from unanswered requests.');
+    assert(training.low.answeredObserved === 0, 'Low-helping training accumulated an unintended answered episode.');
     assert(training.high.helpingNorm > 0.65, `Answered-request neighborhood norm stayed too low (${training.high.helpingNorm}).`);
     assert(training.low.helpingNorm < 0.35, `Unanswered-request neighborhood norm stayed too high (${training.low.helpingNorm}).`);
 
