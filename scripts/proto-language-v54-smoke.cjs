@@ -29,6 +29,8 @@ fs.mkdirSync(artifactDir, { recursive:true });
       const donor = window.realitySandboxOriginMotileLifeV47.getMotiles().find(x => x.position) || null;
       if (!donor) return { ok:false, reason:'no motile speaker available' };
       for (const id of [...c.motile.keys()]) if (id !== donor.id) planet.world.ecs.destroyEntity(id);
+      for (const [, res] of c.resource.entries()) res.amount = 0;
+      for (const [, det] of c.detritus.entries()) det.amount = 0;
 
       const teacher = c.motile.get(donor.id);
       const base = donor.position || { x:planet.world.width * 0.45, y:planet.world.height * 0.48 };
@@ -68,7 +70,8 @@ fs.mkdirSync(artifactDir, { recursive:true });
     });
     assert(setup.ok, `v54 deterministic setup failed: ${setup.reason || 'unknown'}`);
 
-    await page.evaluate(() => window.realitySandboxDebug.advance(5));
+    // debug.advance() takes fixed 0.06 s simulation ticks, not seconds.
+    await page.evaluate(() => window.realitySandboxDebug.advance(90));
 
     const learned = await page.evaluate(({ teacherId, learnerId }) => ({
       teacher:window.realitySandboxProtoLanguageV54.getLanguage(teacherId),
@@ -115,7 +118,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
       return { listenerId };
     }, setup);
 
-    await page.evaluate(() => window.realitySandboxDebug.advance(4));
+    await page.evaluate(() => window.realitySandboxDebug.advance(75));
 
     const state = await page.evaluate(({ learnerId, lineageId, listenerId }) => {
       const language = window.realitySandboxProtoLanguageV54;
