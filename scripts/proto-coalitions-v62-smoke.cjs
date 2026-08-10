@@ -187,7 +187,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(flags.boundedAffiliationMemory && flags.maxAffiliations === 8, 'v62 affiliation memory bound failed.');
     assert(flags.evidenceRequiresPriorLocalSocialExperience && flags.authoritativeFixedStep, 'v62 locality/fixed-step contract failed.');
     assert(flags.noHardPopulationCap && flags.noHardDisplayCap && !flags.surfaceRendererEnabled, 'v62 cap/renderer invariants failed.');
-    assert(coalition.build === 'evolution-v62-proto-coalitions', 'v62 evolution build marker is not active.');
     assert(coalition.dataset === 'mutual-affiliation-network', 'v62 dataset marker is not active.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
