@@ -60,6 +60,14 @@ jobs:
           REALITY_LOCAL_NORMS_ARTIFACT_DIR: artifacts/local-social-norms-v61-smoke
         run: node scripts/local-social-norms-v61-smoke.cjs
 
+      - name: Verify v61 inspector and aggregate diagnostics
+        id: integration_test
+        continue-on-error: true
+        env:
+          REALITY_BASE_URL: http://127.0.0.1:4173/
+          REALITY_LOCAL_NORMS_ARTIFACT_DIR: artifacts/local-social-norms-v61-smoke
+        run: node scripts/local-social-norms-v61-integration-smoke.cjs
+
       - name: Upload v61 diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -76,15 +84,16 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const outcome = '${{ steps.norm_test.outcome }}';
-            const ok = outcome === 'success';
+            const behavior = '${{ steps.norm_test.outcome }}';
+            const integration = '${{ steps.integration_test.outcome }}';
+            const ok = behavior === 'success' && integration === 'success';
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha: context.sha,
               state: ok ? 'success' : 'failure',
               context: 'browser/v61-local-social-norms',
-              description: ok ? 'Local social norm learning passed' : `v61 local norms: ${outcome}`,
+              description: ok ? 'Local norms + diagnostics passed' : `v61 behavior:${behavior} integration:${integration}`,
               target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions`,
             });
-            if (!ok) core.setFailed(`v61 local social norms smoke ${outcome}`);
+            if (!ok) core.setFailed(`v61 local social norms behavior=${behavior} integration=${integration}`);
