@@ -25,7 +25,7 @@ function install({ intent, coalitions, planet, modules }) {
   const { motile, velocity } = planet.world.ecs.components;
   let accumulator = 0;
   let stepCount = 0;
-  let commitmentModifier = null;
+  let commitmentModifiers = [];
 
   const stats = {
     steps:0,
@@ -86,52 +86,68 @@ function install({ intent, coalitions, planet, modules }) {
     return coalitions.getAffiliation?.(id)?.affiliations?.[String(speakerId)] || null;
   }
 
-  function applyExternalModifier(id, joint, affiliation, baseDuration, baseStrength) {
+  function applyExternalModifiers(id, joint, affiliation, baseDuration, baseStrength) {
     let duration = baseDuration;
     let strength = baseStrength;
-    let durationAdjustment = 0;
-    let strengthAdjustment = 0;
-    if (typeof commitmentModifier !== 'function') {
-      return { duration, strength, durationAdjustment, strengthAdjustment };
+    const contributions = [];
+
+    for (let index = 0; index < commitmentModifiers.length; index++) {
+      const modifier = commitmentModifiers[index];
+      if (typeof modifier !== 'function') continue;
+      const beforeDuration = duration;
+      const beforeStrength = strength;
+      let durationAdjustment = 0;
+      let strengthAdjustment = 0;
+      try {
+        const result = modifier({
+          organismId:id,
+          speakerId:joint.speakerId,
+          baseDuration,
+          baseStrength,
+          currentDuration:duration,
+          currentStrength:strength,
+          maxDuration:MAX_COMMITMENT_STEPS,
+          jointAttention:{
+            speakerId:joint.speakerId,
+            referent:joint.referent || null,
+            modifier:joint.modifier || null,
+            gesture:{ ...joint.gesture },
+            step:joint.step,
+          },
+          affiliation:{
+            affinity:Number(affiliation.affinity) || 0,
+            evidenceStrength:Number(affiliation.evidenceStrength) || 0,
+          },
+        }) || null;
+        if (result && Number.isFinite(result.durationAdjustment)) {
+          const requested = Math.max(-MAX_COMMITMENT_STEPS, Math.min(MAX_COMMITMENT_STEPS, Math.round(result.durationAdjustment)));
+          duration = Math.max(1, Math.min(MAX_COMMITMENT_STEPS, duration + requested));
+          durationAdjustment = duration - beforeDuration;
+        }
+        if (result && Number.isFinite(result.strengthAdjustment)) {
+          const requested = Number(result.strengthAdjustment) || 0;
+          strength = clamp(strength + requested);
+          strengthAdjustment = strength - beforeStrength;
+        }
+      } catch (_error) {
+        duration = beforeDuration;
+        strength = beforeStrength;
+        durationAdjustment = 0;
+        strengthAdjustment = 0;
+      }
+      if (durationAdjustment !== 0 || Math.abs(strengthAdjustment) > 1e-12) {
+        stats.commitmentModifierApplications++;
+        contributions.push({ index, durationAdjustment, strengthAdjustment });
+      }
     }
 
-    try {
-      const result = commitmentModifier({
-        organismId:id,
-        speakerId:joint.speakerId,
-        baseDuration,
-        baseStrength,
-        maxDuration:MAX_COMMITMENT_STEPS,
-        jointAttention:{
-          speakerId:joint.speakerId,
-          referent:joint.referent || null,
-          modifier:joint.modifier || null,
-          gesture:{ ...joint.gesture },
-          step:joint.step,
-        },
-        affiliation:{
-          affinity:Number(affiliation.affinity) || 0,
-          evidenceStrength:Number(affiliation.evidenceStrength) || 0,
-        },
-      }) || null;
-      if (result && Number.isFinite(result.durationAdjustment)) {
-        durationAdjustment = Math.max(-MAX_COMMITMENT_STEPS, Math.min(MAX_COMMITMENT_STEPS, Math.round(result.durationAdjustment)));
-        duration = Math.max(1, Math.min(MAX_COMMITMENT_STEPS, baseDuration + durationAdjustment));
-        durationAdjustment = duration - baseDuration;
-      }
-      if (result && Number.isFinite(result.strengthAdjustment)) {
-        const requested = Number(result.strengthAdjustment) || 0;
-        strength = clamp(baseStrength + requested);
-        strengthAdjustment = strength - baseStrength;
-      }
-      if (durationAdjustment !== 0 || Math.abs(strengthAdjustment) > 1e-12) stats.commitmentModifierApplications++;
-    } catch (_error) {
-      duration = baseDuration;
-      strength = baseStrength;
-      durationAdjustment = 0;
-      strengthAdjustment = 0;
-    }
-    return { duration, strength, durationAdjustment, strengthAdjustment };
+    return {
+      duration,
+      strength,
+      durationAdjustment:duration - baseDuration,
+      strengthAdjustment:strength - baseStrength,
+      modifierContributions:contributions,
+    };
   }
 
   function observeJointAttention(id, organism, state, ph) {
@@ -168,7 +184,7 @@ function install({ intent, coalitions, planet, modules }) {
       clamp(affiliation.affinity) * 0.34 +
       clamp(affiliation.evidenceStrength) * 0.16
     );
-    const modified = applyExternalModifier(id, joint, affiliation, baseDuration, baseStrength);
+    const modified = applyExternalModifiers(id, joint, affiliation, baseDuration, baseStrength);
 
     state.commitment = {
       speakerId:joint.speakerId,
@@ -181,6 +197,7 @@ function install({ intent, coalitions, planet, modules }) {
       baseStrength,
       durationAdjustment:modified.durationAdjustment,
       strengthAdjustment:modified.strengthAdjustment,
+      modifierContributions:modified.modifierContributions.map(item => ({ ...item })),
       strength:modified.strength,
       totalSteps:modified.duration,
       remainingSteps:modified.duration,
@@ -306,8 +323,13 @@ function install({ intent, coalitions, planet, modules }) {
   const api = {
     installed:true,
     setCommitmentModifier(fn) {
-      commitmentModifier = typeof fn === 'function' ? fn : null;
-      return typeof commitmentModifier === 'function';
+      commitmentModifiers = typeof fn === 'function' ? [fn] : [];
+      return commitmentModifiers.length > 0;
+    },
+    addCommitmentModifier(fn) {
+      if (typeof fn !== 'function') return commitmentModifiers.length;
+      commitmentModifiers.push(fn);
+      return commitmentModifiers.length;
     },
     getStats:() => ({
       ...stats,
@@ -326,7 +348,9 @@ function install({ intent, coalitions, planet, modules }) {
       affiliationThreshold:AFFILIATION_THRESHOLD,
       evidenceThreshold:EVIDENCE_THRESHOLD,
       commitmentModifierSupported:true,
-      commitmentModifierInstalled:typeof commitmentModifier === 'function',
+      multipleCommitmentModifiersSupported:true,
+      commitmentModifierInstalled:commitmentModifiers.length > 0,
+      commitmentModifierCount:commitmentModifiers.length,
       authoritativeFixedStep:true,
       noHardPopulationCap:true,
       noHardDisplayCap:true,
@@ -342,6 +366,7 @@ function install({ intent, coalitions, planet, modules }) {
         commitment:state.commitment ? {
           ...state.commitment,
           direction:{ ...state.commitment.direction },
+          modifierContributions:state.commitment.modifierContributions?.map(item => ({ ...item })) || [],
         } : null,
         lastAppliedCommitment:copyApplied(state.lastAppliedCommitment),
       };

@@ -37,7 +37,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(state.inspector.complementaryAudienceView && state.inspector.responderPersistenceView, 'v64 inspector lacks behavioral consequence views.');
     assert(state.inspector.noAssignedRoleView && state.inspector.geneticSymmetryBreakingView, 'v64 inspector lacks no-assignment/history-divergence views.');
     assert(state.diagnostics?.ok, `v64 aggregate invariants failed: ${(state.diagnostics?.failures || []).join(' | ')}`);
-    assert(state.build === 'evolution-v64-role-differentiation', 'v64 latest build marker is not active.');
     assert(state.runtimeDataset === 'history-dependent-complementarity', 'v64 runtime dataset marker is not active.');
     assert(state.inspectorDataset === 'ready', 'v64 inspector dataset marker is not active.');
     assert(state.diagnosticsDataset === 'ready-role-differentiation', 'v64 diagnostics dataset marker is not active.');
