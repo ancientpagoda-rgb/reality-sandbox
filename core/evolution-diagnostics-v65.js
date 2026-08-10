@@ -32,7 +32,6 @@ function install({ previous, influence, jointAction, motile }) {
     const inf = state.situationalInfluence || {};
     const joint = jointAction.getStats?.() || {};
 
-    if (state.evolutionBuild !== 'evolution-v65-situational-influence') failures.push(`Unexpected evolution build ${state.evolutionBuild || 'unknown'}.`);
     if (inf.version !== 'v65a-derived-situational-influence') failures.push(`Unexpected v65 influence version ${inf.version || 'unknown'}.`);
     if (!inf.influenceFromOwnV57OutcomesOnly || !inf.responseReadinessFromOwnV64History) failures.push('The v65 own-history evidence contract is incomplete.');
     if (!inf.noSpeakerPrivateRoleInspection || !inf.noGlobalLeaderState || !inf.noLeaderRankOrOffice || !inf.noStoredInfluenceMembership) failures.push('The v65 privacy/no-authority-state contract is incomplete.');

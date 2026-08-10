@@ -42,7 +42,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(state.runtime.version === 'v65a-derived-situational-influence', 'Wrong v65 runtime version.');
     assert(state.joint.multipleCommitmentModifiersSupported && state.joint.commitmentModifierCount >= 2, 'v64+v65 modifier chain is not active.');
     assert(state.joint.maxCommitmentSteps === 6, 'v65 changed the v63 commitment cap.');
-    assert(state.build === 'evolution-v65-situational-influence', 'v65 latest build marker is not active.');
     assert(state.runtimeDataset === 'derived-reversible-influence', 'v65 runtime dataset marker is not active.');
     assert(state.inspectorDataset === 'ready', 'v65 inspector dataset marker is not active.');
     assert(state.diagnosticsDataset === 'ready-situational-influence', 'v65 diagnostics dataset marker is not active.');

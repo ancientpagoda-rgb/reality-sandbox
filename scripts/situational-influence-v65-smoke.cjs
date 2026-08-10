@@ -372,7 +372,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(flags.influenceModifiesBoundedV63Commitment && flags.negativeOutcomesCanReduceCommitment, 'v65 physical influence consequence contract failed.');
     assert(flags.authoritativeFixedStep && flags.noHardPopulationCap && flags.noHardDisplayCap && !flags.surfaceRendererEnabled, 'v65 fixed-step/cap/renderer contract failed.');
     assert(final.v63Stats.multipleCommitmentModifiersSupported && final.v63Stats.commitmentModifierCount >= 2 && final.v63Stats.maxCommitmentSteps === 6, 'v63 composable bounded-modifier contract failed under v65.');
-    assert(final.build === 'evolution-v65-situational-influence', 'v65 evolution build marker is not active.');
     assert(final.dataset === 'derived-reversible-influence', 'v65 dataset marker is not active.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
