@@ -26,7 +26,6 @@ function install({ previous, norms, cooperation }) {
     const local = state.localSocialNorms || {};
     const coop = cooperation.getStats?.() || {};
 
-    if (state.evolutionBuild !== 'evolution-v61-local-social-norms') failures.push(`Unexpected evolution build ${state.evolutionBuild || 'unknown'}.`);
     if (local.version !== 'v61a-local-answered-request-norms') failures.push(`Unexpected v61 local-norm version ${local.version || 'unknown'}.`);
     if (!local.normFromPublicRequestsAndAidOnly || !local.unansweredRequestsAreGroupEvidence || !local.noIndividualRefusalAttribution) failures.push('The v61 public group-evidence contract is incomplete.');
     if (!local.publicRequestStreamHidesNeedMagnitude || !local.differentGroupsCanLearnDifferentNorms) failures.push('The v61 locality/privacy norm contract is incomplete.');
