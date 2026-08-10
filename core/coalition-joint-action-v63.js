@@ -166,13 +166,24 @@ function install({ intent, coalitions, planet, modules }) {
     const strength = clamp(commitment.strength);
     const blend = 0.92 - strength * 0.12;
     const speed = ph.locomotorSpeed * (0.46 + strength * 0.28);
+    const velocityBefore = { vx:vel.vx, vy:vel.vy };
+    const directionalVelocityBefore =
+      velocityBefore.vx * commitment.direction.x + velocityBefore.vy * commitment.direction.y;
     vel.vx = vel.vx * blend + commitment.direction.x * speed * (1 - blend);
     vel.vy = vel.vy * blend + commitment.direction.y * speed * (1 - blend);
+    const velocityAfter = { vx:vel.vx, vy:vel.vy };
+    const directionalVelocityAfter =
+      velocityAfter.vx * commitment.direction.x + velocityAfter.vy * commitment.direction.y;
     commitment.remainingSteps--;
     state.lastAppliedCommitment = {
       speakerId:commitment.speakerId,
       direction:{ ...commitment.direction },
       strength,
+      velocityBefore,
+      velocityAfter,
+      directionalVelocityBefore,
+      directionalVelocityAfter,
+      directionalVelocityDelta:directionalVelocityAfter - directionalVelocityBefore,
       remainingSteps:Math.max(0, commitment.remainingSteps),
       interrupted:false,
       step:stepCount,
@@ -228,6 +239,16 @@ function install({ intent, coalitions, planet, modules }) {
     return result;
   };
 
+  function copyApplied(applied) {
+    if (!applied) return null;
+    return {
+      ...applied,
+      direction:applied.direction ? { ...applied.direction } : undefined,
+      velocityBefore:applied.velocityBefore ? { ...applied.velocityBefore } : undefined,
+      velocityAfter:applied.velocityAfter ? { ...applied.velocityAfter } : undefined,
+    };
+  }
+
   const api = {
     installed:true,
     getStats:() => ({
@@ -262,10 +283,7 @@ function install({ intent, coalitions, planet, modules }) {
           ...state.commitment,
           direction:{ ...state.commitment.direction },
         } : null,
-        lastAppliedCommitment:state.lastAppliedCommitment ? {
-          ...state.lastAppliedCommitment,
-          direction:state.lastAppliedCommitment.direction ? { ...state.lastAppliedCommitment.direction } : undefined,
-        } : null,
+        lastAppliedCommitment:copyApplied(state.lastAppliedCommitment),
       };
     },
     getPopulationJointAction() {
