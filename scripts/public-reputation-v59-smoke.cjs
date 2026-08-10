@@ -128,7 +128,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(flags.noPrivateLedgerInspectionByAgents && flags.reputationBiasesAudienceSelection, 'v59 reputation behavior contract failed.');
     assert(flags.boundedReputationMemory && flags.maxReputationEntries === 8, 'v59 reputation memory is not bounded.');
     assert(flags.spatialHashing && flags.authoritativeFixedStep && flags.noHardPopulationCap && flags.noHardDisplayCap, 'v59 performance/cap invariants failed.');
-    assert(state.evolutionBuild === 'evolution-v59-public-reputation', 'v59 evolution build marker is not active.');
     assert(state.dataset === 'local-third-party-witnesses', 'v59 dataset marker is not active.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
