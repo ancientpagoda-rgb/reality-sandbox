@@ -207,10 +207,14 @@ function install({ language, planet, modules }) {
         const d = distance(p, op);
         if (d > ph.intentRadius) continue;
         const otherPh = phenotype(other.genome);
-        const score =
+        const baseScore =
           otherPh.audienceAwareness * 0.34 +
           otherPh.feedbackLearning * 0.24 +
           (1 - d / Math.max(1, ph.intentRadius)) * 0.42;
+        const socialScorer = window.realitySandboxSocialModelsV57?.scoreAudience;
+        const score = typeof socialScorer === 'function'
+          ? socialScorer(id, otherId, baseScore, d, ph.intentRadius)
+          : baseScore;
         if (score > bestScore) {
           bestScore = score;
           best = { id:otherId, p:{ x:op.x, y:op.y }, distance:d };

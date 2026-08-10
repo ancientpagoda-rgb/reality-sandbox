@@ -18,18 +18,19 @@ async function waitForRuntime() {
     const protoLanguage = window.realitySandboxProtoLanguageV54;
     const compositionalLanguage = window.realitySandboxCompositionalLanguageV55;
     const communicativeIntent = window.realitySandboxCommunicativeIntentV56;
+    const socialModels = window.realitySandboxSocialModelsV57;
     if (
       origin?.installed && inspector?.installed && morphology?.installed && milestones?.installed &&
       population?.installed && deepTime?.installed && morphogenesis?.installed && inheritance?.installed &&
       selection?.installed && history?.installed && nutrientCycle?.installed && sensoryBrains?.installed &&
       socialSignaling?.installed && learningMemory?.installed && protoCulture?.installed && protoLanguage?.installed &&
-      compositionalLanguage?.installed && communicativeIntent?.installed
+      compositionalLanguage?.installed && communicativeIntent?.installed && socialModels?.installed
     ) {
       return {
         origin, inspector, morphology, milestones, population, deepTime,
         morphogenesis, inheritance, selection, history, nutrientCycle,
         sensoryBrains, socialSignaling, learningMemory, protoCulture,
-        protoLanguage, compositionalLanguage, communicativeIntent,
+        protoLanguage, compositionalLanguage, communicativeIntent, socialModels,
       };
     }
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -67,6 +68,7 @@ function install(parts) {
     const languageStats = parts.protoLanguage.getStats();
     const compositionStats = parts.compositionalLanguage.getStats();
     const intentStats = parts.communicativeIntent.getStats();
+    const socialStats = parts.socialModels.getStats();
     return {
       ready:true,
       build:window.realitySandboxSurfaceBuild,
@@ -90,6 +92,7 @@ function install(parts) {
       protoLanguage:languageStats,
       compositionalLanguage:compositionStats,
       communicativeIntent:intentStats,
+      socialModels:socialStats,
       lineageCounts:{
         total:parts.origin.getLineages().length,
         motile:parts.origin.getLineages().filter(lineage => lineage.type === 'motile').length,
@@ -111,7 +114,8 @@ function install(parts) {
         cultureStats.noHardPopulationCap === true &&
         languageStats.noHardPopulationCap === true &&
         compositionStats.noHardPopulationCap === true &&
-        intentStats.noHardPopulationCap === true,
+        intentStats.noHardPopulationCap === true &&
+        socialStats.noHardPopulationCap === true,
       surfaceFaunaRendererDisabled:
         parts.origin.getStats().legacyFaunaRendererEnabled === false &&
         parts.morphogenesis.getStats().surfaceRendererEnabled === false &&
@@ -123,7 +127,8 @@ function install(parts) {
         cultureStats.surfaceRendererEnabled === false &&
         languageStats.surfaceRendererEnabled === false &&
         compositionStats.surfaceRendererEnabled === false &&
-        intentStats.surfaceRendererEnabled === false,
+        intentStats.surfaceRendererEnabled === false &&
+        socialStats.surfaceRendererEnabled === false,
     };
   }
 
@@ -132,7 +137,7 @@ function install(parts) {
     const failures = [];
     if (!state.retiredFaunaModulesAbsent) failures.push('A retired Surface-fauna experiment is loaded.');
     if (!state.noHardPopulationCap) failures.push('An evolution module reports a hard population cap.');
-    if (!state.surfaceFaunaRendererDisabled) failures.push('A v47-v56 fauna renderer is unexpectedly enabled.');
+    if (!state.surfaceFaunaRendererDisabled) failures.push('A v47-v57 fauna renderer is unexpectedly enabled.');
     if (!state.origin.plantFirstOrigin) failures.push('Plant-first origin mode is inactive.');
     if (
       !state.origin.authoritativeFixedStep || !state.morphogenesis.authoritativeFixedStep ||
@@ -141,12 +146,12 @@ function install(parts) {
       !state.sensoryBrains.authoritativeFixedStep || !state.socialSignaling.authoritativeFixedStep ||
       !state.learningMemory.authoritativeFixedStep || !state.protoCulture.authoritativeFixedStep ||
       !state.protoLanguage.authoritativeFixedStep || !state.compositionalLanguage.authoritativeFixedStep ||
-      !state.communicativeIntent.authoritativeFixedStep
+      !state.communicativeIntent.authoritativeFixedStep || !state.socialModels.authoritativeFixedStep
     ) failures.push('An evolution subsystem is outside the authoritative fixed step.');
     if (state.morphogenesis.traits?.length !== 9) failures.push('v48 developmental trait schema is incomplete.');
     if (state.inheritance.birthInheritanceComplexity !== 'O(1)') failures.push('v48 developmental inheritance is not using the O(1) lineage cache.');
     if (!state.deepTime.reducedOrderEvolutionaryTime) failures.push('Evolutionary deep-time scaling is inactive.');
-    if (state.evolutionBuild !== 'evolution-v56-communicative-intent') failures.push(`Unexpected evolution build ${state.evolutionBuild}.`);
+    if (state.evolutionBuild !== 'evolution-v57-social-models') failures.push(`Unexpected evolution build ${state.evolutionBuild}.`);
 
     if (!state.nutrientCycle.detritusToSoil || !state.nutrientCycle.metabolicWasteToSoil || !state.nutrientCycle.soilToPlantBiomass || !state.nutrientCycle.weatheringAndLeaching || !state.nutrientCycle.toxinSoilFeedback) failures.push('The v49 closed nutrient cycle is incomplete.');
     if (!Number.isFinite(state.nutrientCycle.meanNutrient) || state.nutrientCycle.meanNutrient < 0) failures.push('The v49 nutrient field is invalid.');
@@ -192,12 +197,30 @@ function install(parts) {
     if (state.communicativeIntent.version !== 'v56b-outcome-biased-communicative-intent') failures.push(`Unexpected v56 intent version ${state.communicativeIntent.version || 'unknown'}.`);
     if (!Array.isArray(state.communicativeIntent.pairSpace) || state.communicativeIntent.pairSpace.length !== 9 || state.communicativeIntent.maxIntentEntries !== 9) failures.push('The v56 bounded communicative pair space is invalid.');
 
+    if (
+      !state.socialModels.individualPartnerModels ||
+      !state.socialModels.evidenceFromOwnInteractionsOnly ||
+      !state.socialModels.noPrivateStateInspection ||
+      !state.socialModels.learnedPartnerResponsiveness ||
+      !state.socialModels.speakerReliabilityFromOwnConsequences ||
+      !state.socialModels.inferredPartnerKnowledgeRequiresObservedOutcome ||
+      !state.socialModels.trustNotGrantedByDecodeAlone ||
+      !state.socialModels.socialModelsBiasAudienceSelection ||
+      !state.socialModels.selectiveSocialAttention ||
+      !state.socialModels.socialModelsAffectBehavior ||
+      !state.socialModels.boundedPartnerModels ||
+      !state.socialModels.spatialHashing
+    ) failures.push('The v57 observed-outcome social-model phenotype is incomplete.');
+    if (state.socialModels.version !== 'v57b-observed-outcome-social-models') failures.push(`Unexpected v57 social-model version ${state.socialModels.version || 'unknown'}.`);
+    if (state.socialModels.maxPartnerModels !== 8) failures.push('The v57 per-organism partner-model bound is invalid.');
+    if (!Array.isArray(state.socialModels.partnerKnowledgeDimensions) || state.socialModels.partnerKnowledgeDimensions.length !== 3) failures.push('The v57 inferred partner-knowledge schema is invalid.');
+
     return { ok:failures.length === 0, failures, snapshot:state };
   }
 
   const api = { installed:true, snapshot, invariants };
   window.realitySandboxEvolutionDiagnosticsV48d = api;
-  document.documentElement.dataset.evolutionDiagnosticsV48d = 'ready-v56b-outcome-intent';
+  document.documentElement.dataset.evolutionDiagnosticsV48d = 'ready-v57b-social-models';
 
   if (window.realitySandboxDebug && typeof window.realitySandboxDebug === 'object') {
     window.realitySandboxDebug.evolution = snapshot;
@@ -207,7 +230,7 @@ function install(parts) {
   const previousPresentationDiagnostics = window.realitySandboxPresentationDiagnostics;
   window.realitySandboxPresentationDiagnostics = () => ({
     ...(typeof previousPresentationDiagnostics === 'function' ? previousPresentationDiagnostics() : {}),
-    evolutionV56:snapshot(),
+    evolutionV57:snapshot(),
   });
 }
 
