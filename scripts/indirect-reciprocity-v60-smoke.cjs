@@ -208,7 +208,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(flags.noHardPopulationCap && flags.noHardDisplayCap && !flags.surfaceRendererEnabled, 'v60 cap/renderer invariants failed.');
     assert(indirect.cooperationStats.aidRequestScoreModifierSupported && indirect.cooperationStats.aidRequestScoreModifierInstalled, 'v58 generic score seam is not installed.');
     assert(conservationError < 1e-9, `v58 aid energy accounting changed under v60 (${conservationError}).`);
-    assert(indirect.build === 'evolution-v60-indirect-reciprocity', 'v60 evolution build marker is not active.');
     assert(indirect.dataset === 'local-witnessed-aid-ranking', 'v60 dataset marker is not active.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
   } finally {

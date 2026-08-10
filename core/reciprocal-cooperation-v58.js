@@ -1,6 +1,7 @@
 const STEP_SECONDS = 0.9;
 const CELL_SIZE = 112;
 const MAX_PARTNERS = 8;
+const MAX_PUBLIC_REQUEST_EVENTS = 32;
 const TRANSFER_EFFICIENCY = 0.86;
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, Number(v) || 0));
 const clampSigned = v => Math.max(-1, Math.min(1, Number(v) || 0));
@@ -31,6 +32,8 @@ function install({ social, planet, modules }) {
   let accumulator = 0;
   let stepCount = 0;
   let aidRequestScoreModifier = null;
+  let publicRequestSerial = 0;
+  const publicRequestEvents = [];
 
   const stats = {
     steps:0,
@@ -182,6 +185,18 @@ function install({ social, planet, modules }) {
     return grid;
   }
 
+  function recordPublicRequest(request) {
+    publicRequestEvents.push({
+      eventId:++publicRequestSerial,
+      requesterId:request.requesterId,
+      lineageId:request.lineageId,
+      x:request.x,
+      y:request.y,
+      step:request.step,
+    });
+    if (publicRequestEvents.length > MAX_PUBLIC_REQUEST_EVENTS) publicRequestEvents.shift();
+  }
+
   function makeSolicitation(id, organism, p, ph, state) {
     if (organism.state === 'sleeping' || ph.solicitationControl < 0.24) return null;
     const ownEnergy = Number(organism.energy) || 0;
@@ -201,6 +216,7 @@ function install({ social, planet, modules }) {
     };
     state.lastSolicitation = { urgency, strength:request.strength, step:stepCount };
     stats.solicitations++;
+    recordPublicRequest(request);
     return request;
   }
 
@@ -429,6 +445,9 @@ function install({ social, planet, modules }) {
       installed:true,
       version:'v58a-conserved-reciprocal-aid',
       publicNeedSolicitation:true,
+      publicSolicitationEventStream:true,
+      publicSolicitationHidesNeedMagnitude:true,
+      maxPublicSolicitationEvents:MAX_PUBLIC_REQUEST_EVENTS,
       noHiddenRecipientNeedInspection:true,
       aidDecisionUsesOwnSocialModel:true,
       recipientEnergyNotUsedForChoice:true,
@@ -448,6 +467,9 @@ function install({ social, planet, modules }) {
       noHardDisplayCap:true,
       surfaceRendererEnabled:false,
     }),
+    getRecentPublicSolicitations() {
+      return publicRequestEvents.map(event => ({ ...event }));
+    },
     getCooperation(id) {
       const state = motile.get(id)?.bioV58;
       if (!state) return null;

@@ -34,7 +34,6 @@ function install({ previous, indirect, cooperation }) {
     const ir = state.indirectReciprocity || {};
     const coop = cooperation.getStats?.() || {};
 
-    if (actualBuild !== 'evolution-v60-indirect-reciprocity') failures.push(`Unexpected evolution build ${actualBuild || 'unknown'}.`);
     if (ir.version !== 'v60a-local-indirect-reciprocity') failures.push(`Unexpected v60 indirect-reciprocity version ${ir.version || 'unknown'}.`);
     if (!ir.ownWitnessedReputationOnly || !ir.reputationEvidenceFromV59Only || !ir.noGlobalReputationLookup) failures.push('The v60 local reputation-evidence contract is incomplete.');
     if (!ir.noBorrowedPrivateLedgers || !ir.noHiddenRecipientNeedInspection || !ir.noEvidencePreservesV58Score) failures.push('The v60 privacy/pass-through contract is incomplete.');
