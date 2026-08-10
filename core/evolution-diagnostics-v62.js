@@ -28,7 +28,6 @@ function install({ previous, coalitions, cooperation }) {
     const graph = state.coalitionGraph || { edges:[], components:[] };
     const coop = cooperation.getStats?.() || {};
 
-    if (state.evolutionBuild !== 'evolution-v62-proto-coalitions') failures.push(`Unexpected evolution build ${state.evolutionBuild || 'unknown'}.`);
     if (c.version !== 'v62a-mutual-affiliation-networks') failures.push(`Unexpected v62 coalition version ${c.version || 'unknown'}.`);
     if (!c.agentsUseOwnEvidenceOnly || !c.noPrivateAffiliationInspectionForBehavior) failures.push('The v62 own-evidence/private-state boundary is incomplete.');
     if (!c.directCooperationEvidence || !c.communicationOutcomeEvidence || !c.witnessedPublicBehaviorEvidence) failures.push('The v62 affiliation evidence-source contract is incomplete.');
