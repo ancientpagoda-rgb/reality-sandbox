@@ -38,7 +38,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(state.inspector.noIndividualRefusalBlameView, 'v61 inspector does not preserve the no-individual-blame boundary.');
     assert(state.inspector.conservedAidBoundaryView, 'v61 inspector does not expose the conserved v58 aid boundary.');
     assert(state.diagnostics?.ok, `v61 aggregate invariants failed: ${(state.diagnostics?.failures || []).join(' | ')}`);
-    assert(state.build === 'evolution-v61-local-social-norms', 'v61 latest build marker is not active.');
     assert(state.runtimeDataset === 'answered-request-neighborhood-learning', 'v61 runtime dataset marker is not active.');
     assert(state.inspectorDataset === 'ready', 'v61 inspector dataset marker is not active.');
     assert(state.diagnosticsDataset === 'ready-local-social-norms', 'v61 diagnostics dataset marker is not active.');

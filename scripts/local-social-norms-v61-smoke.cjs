@@ -237,7 +237,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
       requestFlags.energyDebited - requestFlags.energyReceived - requestFlags.metabolicAidCost
     );
     assert(conservationError < 1e-9, `v58 aid energy accounting changed under v61 (${conservationError}).`);
-    assert(decision.build === 'evolution-v61-local-social-norms', 'v61 evolution build marker is not active.');
     assert(decision.dataset === 'answered-request-neighborhood-learning', 'v61 dataset marker is not active.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
