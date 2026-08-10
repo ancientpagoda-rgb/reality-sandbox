@@ -57,7 +57,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
     });
     assert(setup.ok, `v52 deterministic setup failed: ${setup.reason || 'unknown'}`);
 
-    await page.evaluate(() => window.realitySandboxDebug.advance(5));
+    // debug.advance() takes fixed 0.06 s simulation ticks, not seconds.
+    await page.evaluate(() => window.realitySandboxDebug.advance(90));
 
     const learned = await page.evaluate(({ organismId }) => window.realitySandboxLearningMemoryV52.getMemory(organismId), setup);
     assert(learned?.memories?.food?.strength > 0.1, 'v52 did not form a food memory from direct experience.');
@@ -75,7 +76,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       organism.bioV50 = { ...(organism.bioV50 || {}), mode:'explore', targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null, hunger:0.8 };
     }, setup);
 
-    await page.evaluate(() => window.realitySandboxDebug.advance(3));
+    await page.evaluate(() => window.realitySandboxDebug.advance(60));
 
     const state = await page.evaluate(({ organismId, lineageId }) => {
       const memory = window.realitySandboxLearningMemoryV52;
