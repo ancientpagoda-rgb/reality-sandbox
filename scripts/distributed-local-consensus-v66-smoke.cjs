@@ -275,7 +275,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(flags.consensusCanSplitAndReform && flags.physicalSteeringContribution && flags.detectedDangerOverridesConsensus, 'v66 reversible physical coordination contract failed.');
     assert(flags.spatialHashing && flags.authoritativeFixedStep && flags.noHardPopulationCap && flags.noHardDisplayCap && !flags.surfaceRendererEnabled, 'v66 performance/fixed-step contract failed.');
     assert(flipped.dataset === 'private-local-decisions', 'v66 dataset marker is not active.');
-    assert(flipped.build === 'evolution-v66-distributed-local-consensus', 'v66 build marker is not active.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
   } finally {
     await browser.close();

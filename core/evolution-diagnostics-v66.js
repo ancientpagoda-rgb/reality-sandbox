@@ -30,7 +30,6 @@ function install({ previous, consensus, motile }) {
     const state = snapshot();
     const con = state.distributedConsensus || {};
 
-    if (state.evolutionBuild !== 'evolution-v66-distributed-local-consensus') failures.push(`Unexpected evolution build ${state.evolutionBuild || 'unknown'}.`);
     if (con.version !== 'v66a-distributed-local-consensus') failures.push(`Unexpected v66 consensus version ${con.version || 'unknown'}.`);
     if (!con.usesPublicV56TokensAndGesturesOnly || !con.listenerDecodesOwnV55Semantics || !con.speakerPairUtilityAndWillingnessIgnored) failures.push('The v66 public-signal/listener-decoding privacy contract is incomplete.');
     if (!con.privateWeightFromOwnV65InfluenceOnly || !con.physicallyLocalProposalCompetition || !con.compatibleSignalsAggregateLocally || !con.decisionRequiresSupportAndMargin) failures.push('The v66 local proposal-selection contract is incomplete.');

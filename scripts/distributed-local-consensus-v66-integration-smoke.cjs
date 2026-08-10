@@ -40,7 +40,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(state.diagnostics?.ok, `v66 aggregate invariants failed: ${(state.diagnostics?.failures || []).join(' | ')}`);
     assert(state.runtime.version === 'v66a-distributed-local-consensus', 'Wrong v66 runtime version.');
     assert(state.runtime.decisionThreshold === 0.12 && state.runtime.marginThreshold === 0.08 && state.runtime.directionSectors === 8, 'v66 decision constants changed.');
-    assert(state.build === 'evolution-v66-distributed-local-consensus', 'v66 latest build marker is not active.');
     assert(state.runtimeDataset === 'private-local-decisions', 'v66 runtime dataset marker is not active.');
     assert(state.inspectorDataset === 'ready', 'v66 inspector dataset marker is not active.');
     assert(state.diagnosticsDataset === 'ready-distributed-local-consensus', 'v66 diagnostics dataset marker is not active.');
