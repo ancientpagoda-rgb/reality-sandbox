@@ -60,6 +60,14 @@ jobs:
           REALITY_COALITION_JOINT_ACTION_ARTIFACT_DIR: artifacts/coalition-joint-action-v63-smoke
         run: node scripts/coalition-joint-action-v63-smoke.cjs
 
+      - name: Verify v63 inspector and aggregate diagnostics
+        id: integration_test
+        continue-on-error: true
+        env:
+          REALITY_BASE_URL: http://127.0.0.1:4173/
+          REALITY_COALITION_JOINT_ACTION_ARTIFACT_DIR: artifacts/coalition-joint-action-v63-smoke
+        run: node scripts/coalition-joint-action-v63-integration-smoke.cjs
+
       - name: Upload v63 diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -76,15 +84,16 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const outcome = '${{ steps.joint_action_test.outcome }}';
-            const ok = outcome === 'success';
+            const behavior = '${{ steps.joint_action_test.outcome }}';
+            const integration = '${{ steps.integration_test.outcome }}';
+            const ok = behavior === 'success' && integration === 'success';
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha: context.sha,
               state: ok ? 'success' : 'failure',
               context: 'browser/v63-coalition-joint-action',
-              description: ok ? 'Affiliation-conditioned joint action passed' : `v63 joint action: ${outcome}`,
+              description: ok ? 'Joint action behavior + diagnostics passed' : `v63 behavior:${behavior} integration:${integration}`,
               target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions`,
             });
-            if (!ok) core.setFailed(`v63 coalition joint action smoke ${outcome}`);
+            if (!ok) core.setFailed(`v63 coalition joint action behavior:${behavior} integration:${integration}`);
