@@ -192,6 +192,8 @@ fs.mkdirSync(artifactDir, { recursive:true });
       l3:window.realitySandboxDistributedConsensusV66.getDecision(listener3Id),
       field:window.realitySandboxDistributedConsensusV66.getDecisionField(),
       stats:window.realitySandboxDistributedConsensusV66.getStats(),
+      build:window.realitySandboxEvolutionBuild,
+      dataset:document.documentElement.dataset.distributedConsensusV66,
       influences:{
         l1A:window.realitySandboxSituationalInfluenceV65.getInfluence(listener1Id, window.__v66setup?.speakerAId || 0),
       },
@@ -272,8 +274,8 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(flags.noGlobalVoteLedger && flags.noGovernmentAuthorityOrLeaderObject && flags.noStoredGroupDecision, 'v66 no-governance/no-global-decision contract failed.');
     assert(flags.consensusCanSplitAndReform && flags.physicalSteeringContribution && flags.detectedDangerOverridesConsensus, 'v66 reversible physical coordination contract failed.');
     assert(flags.spatialHashing && flags.authoritativeFixedStep && flags.noHardPopulationCap && flags.noHardDisplayCap && !flags.surfaceRendererEnabled, 'v66 performance/fixed-step contract failed.');
-    assert(document.documentElement.dataset.distributedConsensusV66 === 'private-local-decisions', 'v66 dataset marker is not active.');
-    assert(window.realitySandboxEvolutionBuild === 'evolution-v66-distributed-local-consensus', 'v66 build marker is not active.');
+    assert(flipped.dataset === 'private-local-decisions', 'v66 dataset marker is not active.');
+    assert(flipped.build === 'evolution-v66-distributed-local-consensus', 'v66 build marker is not active.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
   } finally {
     await browser.close();
