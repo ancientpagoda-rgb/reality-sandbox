@@ -60,11 +60,11 @@ fs.mkdirSync(artifactDir, { recursive:true });
         sleepDebt:0.1,
         decisionCooldown:0,
         neurotoxinLoad:0,
-        genome:{ ...teacher.genome, brainSpeed:0.45, sense:0.45, sociality:0 },
+        genome:{ ...teacher.genome, brainSpeed:1, sense:1, sociality:1 },
         bioV50:{ mode:'explore', drives:{ explore:1 }, hunger:0.8, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null },
         bioV51:null,
-        bioV52:{ learningRate:0.45, retention:0.7, memories:{ food:null, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:0.85, formedAtStep:0, lastSocialReceivedAtStep:null },
-        bioV53:{ openness:0.4, conformity:0.2, practices:{ 'food-route':null, 'danger-avoidance':null, 'pack-hunt':null }, appliedPractice:null, learnedFrom:null, lastEnergy:0.85, culturalAge:0 },
+        bioV52:{ learningRate:1, retention:0.94, memories:{ food:null, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:0.85, formedAtStep:0, lastSocialReceivedAtStep:null },
+        bioV53:{ openness:1, conformity:1, practices:{ 'food-route':null, 'danger-avoidance':null, 'pack-hunt':null }, appliedPractice:null, learnedFrom:null, lastEnergy:0.85, culturalAge:0 },
       });
       return { ok:true, teacherId:donor.id, learnerId, lineageId:teacher.lineageId, target };
     });
@@ -109,11 +109,11 @@ fs.mkdirSync(artifactDir, { recursive:true });
         sleepDebt:0.1,
         decisionCooldown:0,
         neurotoxinLoad:0,
-        genome:{ ...learner.genome, brainSpeed:0.45, sense:0.45, sociality:0 },
+        genome:{ ...learner.genome, brainSpeed:1, sense:1, sociality:1 },
         bioV50:{ mode:'explore', drives:{ explore:1 }, hunger:0.8, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null },
         bioV51:null,
-        bioV52:{ learningRate:0.45, retention:0.7, memories:{ food:null, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:0.85, formedAtStep:0, lastSocialReceivedAtStep:null },
-        bioV53:{ openness:0.4, conformity:0.2, practices:{ 'food-route':{ x:target.x, y:target.y, targetId:null, strength:0.8, modelId:learnerId, learnedAtStep:0, updatedAtStep:0 }, 'danger-avoidance':null, 'pack-hunt':null }, appliedPractice:null, learnedFrom:learnerId, lastEnergy:0.85, culturalAge:0 },
+        bioV52:{ learningRate:1, retention:0.94, memories:{ food:null, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:0.85, formedAtStep:0, lastSocialReceivedAtStep:null },
+        bioV53:{ openness:1, conformity:1, practices:{ 'food-route':{ x:target.x, y:target.y, targetId:null, strength:0.8, modelId:learnerId, learnedAtStep:0, updatedAtStep:0 }, 'danger-avoidance':null, 'pack-hunt':null }, appliedPractice:null, learnedFrom:learnerId, lastEnergy:0.85, culturalAge:0 },
       });
       return { listenerId };
     }, setup);
@@ -141,6 +141,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
 
     assert(state.stats.installed === true, 'v54 proto-language is not installed.');
     assert(state.stats.semanticallyNeutralTokens && state.stats.meaningAcquiredByAssociation && state.stats.learnedSymbolMeanings, 'v54 symbols have hard-coded or unlearned meaning.');
+    assert(state.stats.retainedCulturalKnowledgeCanBeReferenced === true, 'v54 cannot refer to retained cultural knowledge.');
     assert(state.stats.physicallyLocalTransmission && state.stats.kinBiasedTransmission && state.stats.spatialHashing, 'v54 language transmission is not physically local/spatially hashed.');
     assert(state.stats.culturallyBlankLexiconAtBirth && state.stats.learnedConventionsCanBeProduced, 'v54 conventions are not culturally learned.');
     assert(state.stats.boundedLexicon && state.stats.maxLexiconEntries === state.stats.tokenInventory.length, 'v54 lexicon is not bounded.');
