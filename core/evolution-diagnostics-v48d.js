@@ -29,13 +29,13 @@ function install(parts) {
 
   function retiredFaunaModules() {
     return {
-      surfaceCreaturesV44: Boolean(window.realitySandboxSurfaceCreaturesV44),
-      localFaunaV44d: Boolean(window.realitySandboxSurfaceLocalFaunaV44d),
-      creatureVisibilityV44b: Boolean(window.realitySandboxSurfaceCreatureVisibilityV44b),
-      creatureReadabilityV44c: Boolean(window.realitySandboxSurfaceCreatureReadabilityV44c),
-      faunaGuaranteeV45b: Boolean(window.realitySandboxSurfaceFaunaGuaranteeV45b),
-      faunaExactV46d: Boolean(window.realitySandboxSurfaceFaunaExactV46d),
-      renderBridgeV46d: Boolean(window.realitySandboxSurfaceRenderBridgeV46d),
+      surfaceCreaturesV44:Boolean(window.realitySandboxSurfaceCreaturesV44),
+      localFaunaV44d:Boolean(window.realitySandboxSurfaceLocalFaunaV44d),
+      creatureVisibilityV44b:Boolean(window.realitySandboxSurfaceCreatureVisibilityV44b),
+      creatureReadabilityV44c:Boolean(window.realitySandboxSurfaceCreatureReadabilityV44c),
+      faunaGuaranteeV45b:Boolean(window.realitySandboxSurfaceFaunaGuaranteeV45b),
+      faunaExactV46d:Boolean(window.realitySandboxSurfaceFaunaExactV46d),
+      renderBridgeV46d:Boolean(window.realitySandboxSurfaceRenderBridgeV46d),
     };
   }
 
@@ -134,7 +134,7 @@ function install(parts) {
     if (!state.protoLanguage.semanticallyNeutralTokens || !state.protoLanguage.meaningAcquiredByAssociation || !state.protoLanguage.learnedSymbolMeanings || !state.protoLanguage.retainedCulturalKnowledgeCanBeReferenced || !state.protoLanguage.physicallyLocalTransmission || !state.protoLanguage.kinBiasedTransmission || !state.protoLanguage.culturallyBlankLexiconAtBirth || !state.protoLanguage.learnedConventionsCanBeProduced || !state.protoLanguage.symbolUseAffectsBehavior || !state.protoLanguage.boundedLexicon || !state.protoLanguage.spatialHashing) failures.push('The v54 proto-language phenotype is incomplete.');
     if (!Array.isArray(state.protoLanguage.tokenInventory) || state.protoLanguage.tokenInventory.length !== state.protoLanguage.maxLexiconEntries) failures.push('The v54 symbol inventory/lexicon bound is invalid.');
     if (!Array.isArray(state.protoLanguage.meaningTypes) || state.protoLanguage.meaningTypes.length !== 3) failures.push('The v54 learned-meaning schema is incomplete.');
-    if (!state.compositionalLanguage.independentPrimitiveMeanings || !state.compositionalLanguage.compositionalGeneralization || !state.compositionalLanguage.learnedWordOrder || !state.compositionalLanguage.syntaxLearnedFromObservedSequence || !state.compositionalLanguage.culturallyBlankCompositionalLexiconAtBirth || !state.compositionalLanguage.nonGeneticCompositionalTransmission || !state.compositionalLanguage.physicallyLocalTransmission || !state.compositionalLanguage.kinBiasedTransmission || !state.compositionalLanguage.boundedPrimitiveLexicon || !state.compositionalLanguage.constantPairMemory || !state.compositionalLanguage.spatialHashing) failures.push('The v55 compositional-language phenotype is incomplete.');
+    if (!state.compositionalLanguage.independentPrimitiveMeanings || !state.compositionalLanguage.compositionalGeneralization || !state.compositionalLanguage.learnedWordOrder || !state.compositionalLanguage.wordOrderConstrainsDecoding || !state.compositionalLanguage.syntaxLearnedFromObservedSequence || !state.compositionalLanguage.retainedCulturalKnowledgeCanBeComposed || !state.compositionalLanguage.culturallyBlankCompositionalLexiconAtBirth || !state.compositionalLanguage.nonGeneticCompositionalTransmission || !state.compositionalLanguage.physicallyLocalTransmission || !state.compositionalLanguage.kinBiasedTransmission || !state.compositionalLanguage.boundedPrimitiveLexicon || !state.compositionalLanguage.constantPairMemory || !state.compositionalLanguage.spatialHashing) failures.push('The v55 compositional-language phenotype is incomplete.');
     if (!Array.isArray(state.compositionalLanguage.primitiveInventory) || state.compositionalLanguage.primitiveInventory.length !== 6) failures.push('The v55 primitive inventory is invalid.');
     if (!Array.isArray(state.compositionalLanguage.referentTypes) || state.compositionalLanguage.referentTypes.length !== 3 || !Array.isArray(state.compositionalLanguage.modifierTypes) || state.compositionalLanguage.modifierTypes.length !== 3 || state.compositionalLanguage.maxPairSpace !== 9) failures.push('The v55 compositional pair space is invalid.');
     return { ok:failures.length === 0, failures, snapshot:state };
