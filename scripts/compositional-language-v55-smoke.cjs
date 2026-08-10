@@ -80,11 +80,13 @@ fs.mkdirSync(artifactDir, { recursive:true });
     const firstLesson = await page.evaluate(({ teacherId, learnerId }) => ({
       teacher:window.realitySandboxCompositionalLanguageV55.getComposition(teacherId),
       learner:window.realitySandboxCompositionalLanguageV55.getComposition(learnerId),
+      learnerCulture:window.realitySandboxProtoCultureV53.getCulture(learnerId),
     }), setup);
     const foodToken = tokenForPrimitive(firstLesson.learner, 'food');
     const thereToken = tokenForPrimitive(firstLesson.learner, 'there');
     assert(foodToken && thereToken && foodToken !== thereToken, 'Learner did not acquire independent food/there primitive symbols.');
     assert(firstLesson.learner?.syntaxOrder, 'Learner did not acquire a word-order convention.');
+    assert(!firstLesson.learnerCulture?.practices?.['food-route'], 'Learner acquired the v53 whole tradition despite being outside v53 observation range.');
 
     await page.evaluate(({ teacherId, dangerTarget }) => {
       const c = window.realitySandboxPlanet.world.ecs.components;
@@ -122,11 +124,12 @@ fs.mkdirSync(artifactDir, { recursive:true });
       const learner = c.motile.get(learnerId);
       const lp = c.position.get(learnerId);
       learner.bioV50 = { ...(learner.bioV50 || {}), mode:'explore', drives:{ explore:1 }, hunger:0, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null };
+      learner.bioV52.memories = { food:{ x:foodTarget.x, y:foodTarget.y, strength:1, targetId:null, source:'direct', updatedAtStep:0 }, danger:null, hunt:null };
       learner.bioV52.recalledAction = null;
       learner.bioV52.recalledMemory = null;
       learner.bioV53.practices['danger-avoidance'] = null;
-      learner.bioV53.practices['food-route'] = { x:foodTarget.x, y:foodTarget.y, targetId:null, strength:1, modelId:learnerId, learnedAtStep:0, updatedAtStep:0 };
-      learner.bioV53.appliedPractice = 'food-route';
+      learner.bioV53.practices['food-route'] = null;
+      learner.bioV53.appliedPractice = null;
       c.velocity.set(learnerId, { vx:0, vy:0 });
 
       const listenerId = planet.world.ecs.createEntity();
@@ -138,12 +141,12 @@ fs.mkdirSync(artifactDir, { recursive:true });
         plantAncestorId:learner.plantAncestorId,
         energy:1.1,
         age:5,
-        state:'awake',
+        state:'sleeping',
         sleepDebt:0.1,
         decisionCooldown:0,
         neurotoxinLoad:0,
         genome:{ ...learner.genome, brainSpeed:1, sense:1, sociality:1, motility:0 },
-        bioV50:{ mode:'explore', drives:{ explore:1 }, hunger:0, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null },
+        bioV50:{ mode:'rest', drives:{ rest:1 }, hunger:0, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null },
         bioV51:null,
         bioV52:{ learningRate:1, retention:0.94, memories:{ food:{ x:foodTarget.x, y:foodTarget.y, strength:0.9, targetId:null, source:'direct', updatedAtStep:0 }, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:1.1, formedAtStep:0, lastSocialReceivedAtStep:null },
         bioV53:{ openness:1, conformity:1, practices:{ 'food-route':null, 'danger-avoidance':null, 'pack-hunt':null }, appliedPractice:null, learnedFrom:null, lastEnergy:1.1, culturalAge:0 },
@@ -153,6 +156,19 @@ fs.mkdirSync(artifactDir, { recursive:true });
       return { listenerId };
     }, setup);
 
+    // Sleeping listener can acquire the sequence but cannot emit or act on it yet.
+    await page.evaluate(() => window.realitySandboxDebug.advance(30));
+    const asleepLearning = await page.evaluate(({ listenerId }) => window.realitySandboxCompositionalLanguageV55.getComposition(listenerId), reproduction);
+    assert(tokenForPrimitive(asleepLearning, 'food') === foodToken && tokenForPrimitive(asleepLearning, 'there') === thereToken, 'Sleeping listener did not acquire the reproduced primitive convention.');
+    assert(!asleepLearning?.lastPhrase, 'Listener produced a phrase before being awakened.');
+
+    await page.evaluate(({ listenerId }) => {
+      const c = window.realitySandboxPlanet.world.ecs.components;
+      const listener = c.motile.get(listenerId);
+      listener.state = 'awake';
+      listener.sleepDebt = 0.1;
+      c.velocity.set(listenerId, { vx:0, vy:0 });
+    }, reproduction);
     await page.evaluate(() => window.realitySandboxDebug.advance(30));
 
     const state = await page.evaluate(({ learnerId, listenerId, lineageId }) => {
@@ -187,7 +203,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(state.stats.maxPairSpace === 9 && state.stats.primitiveInventory.length === 6, 'v55 primitive/pair space is invalid.');
     assert(state.stats.phraseEmissions > 0 && state.stats.phraseHearings > 0 && state.stats.successfulCompositions > 0, 'v55 recorded no compositional communication cycle.');
     assert(reproducedFood === foodToken && reproducedThere === thereToken, 'Learner did not reproduce the learned food+there primitive convention.');
-    assert(listenerFood === foodToken && listenerThere === thereToken, 'Later listener did not acquire the reproduced primitive convention.');
+    assert(listenerFood === foodToken && listenerThere === thereToken, 'Later listener did not retain the reproduced primitive convention.');
     assert(state.listener?.syntaxOrder === state.learner?.syntaxOrder, 'Later listener did not acquire the learned word-order convention.');
     assert(state.stats.compositionalGuidanceEvents > 0 || state.listener?.appliedComposition?.referent === 'food', 'A learned two-symbol composition never affected behavior.');
     assert(state.stats.sharedPrimitiveConventions > 0 && state.stats.sharedSyntaxConventions > 0, 'No primitive/syntax convention became shared.');
@@ -196,7 +212,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(state.diagnostics?.ok === true, `Evolution diagnostics failed: ${(state.diagnostics?.failures || []).join(' | ')}`);
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
-    fs.writeFileSync(path.join(artifactDir, 'compositional-language-v55.json'), JSON.stringify({ setup, firstLesson, generalized, reproduction, state, pageErrors }, null, 2));
+    fs.writeFileSync(path.join(artifactDir, 'compositional-language-v55.json'), JSON.stringify({ setup, firstLesson, generalized, reproduction, asleepLearning, state, pageErrors }, null, 2));
     await page.screenshot({ path:path.join(artifactDir, 'compositional-language-v55.png'), fullPage:true });
   } finally {
     await browser.close();
