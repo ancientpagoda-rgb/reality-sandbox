@@ -31,6 +31,8 @@ fs.mkdirSync(artifactDir, { recursive:true });
     await page.waitForFunction(() => Boolean(
       window.realitySandboxDebug?.ready &&
       window.realitySandboxSocialModelsV57?.installed &&
+      window.realitySandboxReciprocalCooperationV58?.installed &&
+      window.realitySandboxProtoCoalitionsV62?.installed &&
       window.realitySandboxCoalitionJointActionV63?.installed &&
       window.realitySandboxRoleDifferentiationV64?.installed &&
       window.realitySandboxSituationalInfluenceV65?.installed
@@ -71,6 +73,18 @@ fs.mkdirSync(artifactDir, { recursive:true });
         };
       }
 
+      function baseV58() {
+        return {
+          helpingTendency:0.70,
+          reciprocityLearning:0.70,
+          solicitationControl:0.70,
+          ledgers:{},
+          lastSolicitation:null,
+          lastAidChoice:null,
+          lastAidReceived:null,
+        };
+      }
+
       function baseV62() {
         return {
           affiliationLearning:0.75, loyalty:0.70, partnerSelectivity:0.70,
@@ -106,7 +120,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
           genome:{ ...genome },
           bioV50:{ mode:'rest', drives:{ rest:1 }, hunger:0, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null },
           bioV51:null, bioV52:null, bioV53:null, bioV54:null, bioV55:null,
-          bioV56:baseV56(), bioV57:baseV57(), bioV58:null, bioV59:null, bioV60:null,
+          bioV56:baseV56(), bioV57:baseV57(), bioV58:baseV58(), bioV59:null, bioV60:null,
           bioV61:null, bioV62:baseV62(), bioV63:null, bioV64:null, bioV65:null,
         });
         return id;
@@ -145,6 +159,19 @@ fs.mkdirSync(artifactDir, { recursive:true });
         };
       }
 
+      function aidLedger(partnerId) {
+        return {
+          partnerId,
+          given:0.30,
+          received:0.30,
+          giftsGiven:1,
+          giftsReceived:1,
+          reciprocity:0,
+          familiarity:0.80,
+          lastInteractionStep:0,
+        };
+      }
+
       const l1 = c.motile.get(listener1Id);
       const l2 = c.motile.get(listener2Id);
       l1.bioV57.models[String(speakerAId)] = model(speakerAId, 0.80, 3, 0);
@@ -152,6 +179,13 @@ fs.mkdirSync(artifactDir, { recursive:true });
       l2.bioV57.models[String(speakerAId)] = model(speakerAId, 0.76, 3, 0);
       l2.bioV57.models[String(speakerBId)] = model(speakerBId, -0.20, 0, 1);
 
+      for (const listener of [l1, l2]) {
+        listener.bioV58.ledgers[String(speakerAId)] = aidLedger(speakerAId);
+        listener.bioV58.ledgers[String(speakerBId)] = aidLedger(speakerBId);
+      }
+
+      // Seed the immediately visible affiliation state as well; v62 will now
+      // refresh it from the persistent direct-aid ledgers rather than erasing it.
       function affiliate(listener, speakerId) {
         listener.bioV62.affiliations[String(speakerId)] = {
           partnerId:speakerId,
@@ -178,6 +212,8 @@ fs.mkdirSync(artifactDir, { recursive:true });
       l1B:window.realitySandboxSituationalInfluenceV65.getInfluence(listener1Id, speakerBId),
       l2A:window.realitySandboxSituationalInfluenceV65.getInfluence(listener2Id, speakerAId),
       l2B:window.realitySandboxSituationalInfluenceV65.getInfluence(listener2Id, speakerBId),
+      l1AffA:window.realitySandboxProtoCoalitionsV62.getAffiliation(listener1Id)?.affiliations?.[String(speakerAId)] || null,
+      l1AffB:window.realitySandboxProtoCoalitionsV62.getAffiliation(listener1Id)?.affiliations?.[String(speakerBId)] || null,
       graph:window.realitySandboxSituationalInfluenceV65.getInfluenceGraph(),
       stats:window.realitySandboxSituationalInfluenceV65.getStats(),
       v63Stats:window.realitySandboxCoalitionJointActionV63.getStats(),
@@ -185,8 +221,11 @@ fs.mkdirSync(artifactDir, { recursive:true });
 
     const initial = await advanceUntil(
       readInfluence,
-      state => state.graph.incoming.some(item => item.speakerId === setup.speakerAId && item.observers >= 2),
-      'Independent convergence on reliable speaker A',
+      state =>
+        state.graph.incoming.some(item => item.speakerId === setup.speakerAId && item.observers >= 2) &&
+        state.l1AffA?.affinity >= 0.30 && state.l1AffA?.evidenceStrength >= 0.18 &&
+        state.l1AffB?.affinity >= 0.30 && state.l1AffB?.evidenceStrength >= 0.18,
+      'Independent convergence on reliable speaker A with persistent affiliations',
       4
     );
     fs.writeFileSync(path.join(artifactDir, 'situational-influence-v65-initial.json'), JSON.stringify({ setup, initial, pageErrors }, null, 2));
