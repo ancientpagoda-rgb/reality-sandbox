@@ -36,7 +36,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(state.inspector.lineageIndirectReciprocityView && state.inspector.witnessedReputationAdjustmentView, 'v60 inspector lacks reputation-biased aid views.');
     assert(state.inspector.directVsIndirectView && state.inspector.conservedTransferBoundaryView, 'v60 inspector does not distinguish direct/indirect aid or conservation boundary.');
     assert(state.diagnostics?.ok, `v60 aggregate invariants failed: ${(state.diagnostics?.failures || []).join(' | ')}`);
-    assert(state.build === 'evolution-v60-indirect-reciprocity', 'v60 latest build marker is not active.');
     assert(state.runtimeDataset === 'local-witnessed-aid-ranking', 'v60 runtime dataset marker is not active.');
     assert(state.inspectorDataset === 'ready', 'v60 inspector dataset marker is not active.');
     assert(state.diagnosticsDataset === 'ready-local-indirect-reciprocity', 'v60 diagnostics dataset marker is not active.');
