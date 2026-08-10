@@ -182,6 +182,14 @@ jobs:
           REALITY_SOCIAL_MODELS_ARTIFACT_DIR: artifacts/social-models-v57-smoke
         run: node scripts/social-models-v57-smoke.cjs
 
+      - name: Verify v58 reciprocal cooperation
+        id: reciprocal_cooperation_test
+        continue-on-error: true
+        env:
+          REALITY_BASE_URL: http://127.0.0.1:4173/
+          REALITY_RECIPROCAL_COOPERATION_ARTIFACT_DIR: artifacts/reciprocal-cooperation-v58-smoke
+        run: node scripts/reciprocal-cooperation-v58-smoke.cjs
+
       - name: Upload browser diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -204,6 +212,7 @@ jobs:
             artifacts/compositional-language-v55-smoke
             artifacts/communicative-intent-v56-smoke
             artifacts/social-models-v57-smoke
+            artifacts/reciprocal-cooperation-v58-smoke
             /tmp/reality-preview.log
           if-no-files-found: warn
           retention-days: 30
@@ -229,6 +238,7 @@ jobs:
             const compositionalLanguage = '${{ steps.compositional_language_test.outcome }}';
             const communicativeIntent = '${{ steps.communicative_intent_test.outcome }}';
             const socialModels = '${{ steps.social_models_test.outcome }}';
+            const reciprocalCooperation = '${{ steps.reciprocal_cooperation_test.outcome }}';
             const parts = {
               'browser/iphone-sphere': iphoneSphere,
               'browser/unified-core': unified,
@@ -246,6 +256,7 @@ jobs:
               'browser/v55-compositional-language': compositionalLanguage,
               'browser/v56-communicative-intent': communicativeIntent,
               'browser/v57-social-models': socialModels,
+              'browser/v58-reciprocal-cooperation': reciprocalCooperation,
             };
             for (const [contextName, outcome] of Object.entries(parts)) {
               await github.rest.repos.createCommitStatus({
@@ -259,7 +270,7 @@ jobs:
               });
             }
             const ok = Object.values(parts).every(outcome => outcome === 'success');
-            const detail = `iPhone:${iphoneSphere} unified:${unified} root:${rootRenderer} surface:${surfaceMode} origin:${originLife} inspector:${inspector} morph:${morphogenesis} history:${morphHistory} brain:${sensoryBrains} social:${socialSignaling} memory:${learningMemory} culture:${protoCulture} language:${protoLanguage} composition:${compositionalLanguage} intent:${communicativeIntent} models:${socialModels}`;
+            const detail = `iPhone:${iphoneSphere} unified:${unified} root:${rootRenderer} surface:${surfaceMode} origin:${originLife} inspector:${inspector} morph:${morphogenesis} history:${morphHistory} brain:${sensoryBrains} social:${socialSignaling} memory:${learningMemory} culture:${protoCulture} language:${protoLanguage} composition:${compositionalLanguage} intent:${communicativeIntent} models:${socialModels} cooperation:${reciprocalCooperation}`;
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
