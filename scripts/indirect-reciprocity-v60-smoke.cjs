@@ -16,6 +16,16 @@ fs.mkdirSync(artifactDir, { recursive:true });
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
 
+  async function advanceUntil(readSnapshot, ready, label, maxCadences = 4) {
+    let snapshot = null;
+    for (let cadence = 0; cadence < maxCadences; cadence++) {
+      await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), STEP_TICKS);
+      snapshot = await readSnapshot();
+      if (ready(snapshot)) return snapshot;
+    }
+    throw new Error(`${label} did not occur within ${maxCadences} subsystem cadences. ${JSON.stringify(snapshot)}`);
+  }
+
   try {
     await page.goto(baseUrl, { waitUntil:'domcontentloaded', timeout:120000 });
     await page.waitForFunction(() => Boolean(
@@ -53,21 +63,9 @@ fs.mkdirSync(artifactDir, { recursive:true });
       const lineageId = 'v60-test-lineage';
       const base = { x:planet.world.width * 0.42, y:planet.world.height * 0.53 };
       const genome = {
-        photosynthesis:0,
-        heterotrophy:0.08,
-        motility:0,
-        sense:0.8,
-        brainSpeed:1,
-        sociality:0.9,
-        dormancy:0.4,
-        toxin:0,
-        neurotoxin:0,
-        scavenging:0,
-        aggression:0,
-        armor:0.2,
-        seedInvestment:0.2,
-        metabolism:0.01,
-        bodySize:0.5,
+        photosynthesis:0, heterotrophy:0.08, motility:0, sense:0.8, brainSpeed:1,
+        sociality:0.9, dormancy:0.4, toxin:0, neurotoxin:0, scavenging:0,
+        aggression:0, armor:0.2, seedInvestment:0.2, metabolism:0.01, bodySize:0.5,
       };
 
       function add(x, energy, sleeping = false) {
@@ -75,27 +73,14 @@ fs.mkdirSync(artifactDir, { recursive:true });
         c.position.set(id, { x, y:base.y });
         c.velocity.set(id, { vx:0, vy:0 });
         c.motile.set(id, {
-          lineageId,
-          generation:4,
-          plantAncestorId:null,
-          energy,
-          age:14,
-          state:sleeping ? 'sleeping' : 'awake',
-          sleepDebt:0.05,
-          decisionCooldown:999,
-          neurotoxinLoad:0,
-          genome:{ ...genome },
+          lineageId, generation:4, plantAncestorId:null, energy, age:14,
+          state:sleeping ? 'sleeping' : 'awake', sleepDebt:0.05, decisionCooldown:999,
+          neurotoxinLoad:0, genome:{ ...genome },
           bioV50:{ mode:'rest', drives:{ rest:1 }, hunger:0, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null },
           bioV51:null,
           bioV52:{ learningRate:0.9, retention:0.9, memories:{ food:null, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:energy, formedAtStep:0, lastSocialReceivedAtStep:null },
           bioV53:{ openness:0.9, conformity:0.8, practices:{ 'food-route':null, 'danger-avoidance':null, 'pack-hunt':null }, appliedPractice:null, learnedFrom:null, lastEnergy:energy, culturalAge:0 },
-          bioV54:null,
-          bioV55:null,
-          bioV56:null,
-          bioV57:null,
-          bioV58:null,
-          bioV59:null,
-          bioV60:null,
+          bioV54:null, bioV55:null, bioV56:null, bioV57:null, bioV58:null, bioV59:null, bioV60:null,
         });
         return id;
       }
@@ -107,9 +92,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
       return { observerId, reputedId, nearerId, recipientId, lineageId, base, width:planet.world.width };
     });
 
-    await page.evaluate(() => { window.__v60ScoreTrace = []; });
-    await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), STEP_TICKS);
-    const baseline = await page.evaluate(({ observerId, reputedId, nearerId }) => ({
+    const readBaseline = () => page.evaluate(({ observerId, reputedId, nearerId }) => ({
       observer:window.realitySandboxReciprocalCooperationV58.getCooperation(observerId),
       reputationForFarther:window.realitySandboxPublicReputationV59.getReputation(observerId, reputedId),
       reputationForNearer:window.realitySandboxPublicReputationV59.getReputation(observerId, nearerId),
@@ -117,8 +100,14 @@ fs.mkdirSync(artifactDir, { recursive:true });
       scoreTrace:window.__v60ScoreTrace.filter(row => row.helperId === observerId),
     }), setup);
 
-    assert(baseline.observer?.lastAidChoice?.requesterId === setup.nearerId, 'No-evidence baseline did not choose the nearer requester.');
-    assert(Math.abs(baseline.observer?.lastAidChoice?.externalScoreAdjustment || 0) < 1e-12, 'v60 changed the v58 score without reputation evidence.');
+    await page.evaluate(() => { window.__v60ScoreTrace = []; });
+    const baseline = await advanceUntil(
+      readBaseline,
+      state => [setup.reputedId, setup.nearerId].includes(state.observer?.lastAidChoice?.requesterId),
+      'Baseline aid choice'
+    );
+    assert(baseline.observer.lastAidChoice.requesterId === setup.nearerId, 'No-evidence baseline did not choose the nearer requester.');
+    assert(Math.abs(baseline.observer.lastAidChoice.externalScoreAdjustment || 0) < 1e-12, 'v60 changed the v58 score without reputation evidence.');
     assert(!baseline.reputationForFarther && !baseline.reputationForNearer, 'Baseline observer already had a requester reputation.');
 
     await page.evaluate(({ setup }) => {
@@ -127,18 +116,10 @@ fs.mkdirSync(artifactDir, { recursive:true });
       const reputed = c.motile.get(setup.reputedId);
       const nearer = c.motile.get(setup.nearerId);
       const recipient = c.motile.get(setup.recipientId);
-
-      observer.energy = 0.50;
-      observer.state = 'awake';
-      observer.bioV58.ledgers = {};
-      observer.bioV58.lastAidChoice = null;
-      reputed.energy = 1.45;
-      reputed.state = 'awake';
-      recipient.energy = 0.24;
-      recipient.state = 'awake';
-      nearer.energy = 1.05;
-      nearer.state = 'sleeping';
-
+      observer.energy = 0.50; observer.state = 'awake'; observer.bioV58.ledgers = {}; observer.bioV58.lastAidChoice = null;
+      reputed.energy = 1.45; reputed.state = 'awake';
+      recipient.energy = 0.24; recipient.state = 'awake';
+      nearer.energy = 1.05; nearer.state = 'sleeping';
       c.position.set(setup.reputedId, { x:(setup.base.x - 50 + setup.width) % setup.width, y:setup.base.y });
       c.position.set(setup.recipientId, { x:(setup.base.x + 50) % setup.width, y:setup.base.y });
       c.position.set(setup.observerId, { ...setup.base });
@@ -147,8 +128,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
       window.__v60ScoreTrace = [];
     }, { setup });
 
-    await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), STEP_TICKS);
-    const witnessed = await page.evaluate(({ observerId, reputedId, recipientId }) => ({
+    const readWitnessed = () => page.evaluate(({ observerId, reputedId, recipientId }) => ({
       reputation:window.realitySandboxPublicReputationV59.getReputation(observerId, reputedId),
       observerCooperation:window.realitySandboxReciprocalCooperationV58.getCooperation(observerId),
       reputedCooperation:window.realitySandboxReciprocalCooperationV58.getCooperation(reputedId),
@@ -157,9 +137,13 @@ fs.mkdirSync(artifactDir, { recursive:true });
       scoreTrace:window.__v60ScoreTrace,
     }), setup);
 
-    assert(witnessed.reputedCooperation?.lastAidChoice?.requesterId === setup.recipientId, 'Reputed organism did not perform the witnessed public aid.');
-    assert(witnessed.recipientCooperation?.lastAidReceived?.helperId === setup.reputedId, 'Witness phase produced no completed physical aid transfer.');
-    assert(witnessed.reputation?.aidWitnesses >= 1 && witnessed.reputation?.prosociality > 0, 'Observer did not learn a positive v59 reputation from the public aid event.');
+    const witnessed = await advanceUntil(
+      readWitnessed,
+      state => state.recipientCooperation?.lastAidReceived?.helperId === setup.reputedId && state.reputation?.aidWitnesses >= 1,
+      'Witnessed public aid and reputation update'
+    );
+    assert(witnessed.recipientCooperation.lastAidReceived.helperId === setup.reputedId, 'Witness phase produced no completed physical aid transfer.');
+    assert(witnessed.reputation.aidWitnesses >= 1 && witnessed.reputation.prosociality > 0, 'Observer did not learn a positive v59 reputation from the public aid event.');
     assert(!witnessed.observerCooperation?.ledgers?.[String(setup.reputedId)], 'Third-party witness acquired a direct v58 debt ledger for the helper.');
     const publicEvent = witnessed.publicEvents.find(event => event.helperId === setup.reputedId && event.recipientId === setup.recipientId);
     assert(publicEvent, 'Public v59 aid event was not recorded.');
@@ -171,18 +155,10 @@ fs.mkdirSync(artifactDir, { recursive:true });
       const reputed = c.motile.get(setup.reputedId);
       const nearer = c.motile.get(setup.nearerId);
       const recipient = c.motile.get(setup.recipientId);
-
-      observer.energy = 1.45;
-      observer.state = 'awake';
-      observer.bioV58.ledgers = {};
-      observer.bioV58.lastAidChoice = null;
-      reputed.energy = 0.24;
-      reputed.state = 'awake';
-      nearer.energy = 0.24;
-      nearer.state = 'awake';
-      recipient.energy = 1.1;
-      recipient.state = 'sleeping';
-
+      observer.energy = 1.45; observer.state = 'awake'; observer.bioV58.ledgers = {}; observer.bioV58.lastAidChoice = null;
+      reputed.energy = 0.24; reputed.state = 'awake';
+      nearer.energy = 0.24; nearer.state = 'awake';
+      recipient.energy = 1.1; recipient.state = 'sleeping';
       c.position.set(setup.observerId, { ...setup.base });
       c.position.set(setup.reputedId, { x:(setup.base.x - 92 + setup.width) % setup.width, y:setup.base.y });
       c.position.set(setup.nearerId, { x:(setup.base.x + 64) % setup.width, y:setup.base.y });
@@ -191,8 +167,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
       window.__v60ScoreTrace = [];
     }, { setup });
 
-    await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), STEP_TICKS);
-    const indirect = await page.evaluate(({ observerId, reputedId, nearerId }) => ({
+    const readIndirect = () => page.evaluate(({ observerId, reputedId, nearerId }) => ({
       observer:window.realitySandboxReciprocalCooperationV58.getCooperation(observerId),
       reputationForFarther:window.realitySandboxPublicReputationV59.getReputation(observerId, reputedId),
       reputationForNearer:window.realitySandboxPublicReputationV59.getReputation(observerId, nearerId),
@@ -204,13 +179,22 @@ fs.mkdirSync(artifactDir, { recursive:true });
       scoreTrace:window.__v60ScoreTrace.filter(row => row.helperId === observerId),
     }), setup);
 
+    const indirect = await advanceUntil(
+      readIndirect,
+      state => [setup.reputedId, setup.nearerId].includes(state.observer?.lastAidChoice?.requesterId),
+      'Post-reputation aid choice'
+    );
+
+    const conservationError = Math.abs(
+      indirect.cooperationStats.energyDebited - indirect.cooperationStats.energyReceived - indirect.cooperationStats.metabolicAidCost
+    );
     fs.writeFileSync(path.join(artifactDir, 'indirect-reciprocity-v60.json'), JSON.stringify({
-      setup, baseline, witnessed, indirect, pageErrors,
+      setup, baseline, witnessed, indirect, conservationError, pageErrors,
     }, null, 2));
 
-    assert(indirect.observer?.lastAidChoice?.requesterId === setup.reputedId, `Witnessed reputation did not reverse the baseline request ranking. ${JSON.stringify(indirect.scoreTrace)}`);
-    assert(indirect.observer?.lastAidChoice?.reciprocal === false, 'Indirect-reciprocity choice was incorrectly attributed to direct reciprocity.');
-    assert((indirect.observer?.lastAidChoice?.externalScoreAdjustment || 0) > 0, 'Chosen reputed requester received no v60 score adjustment.');
+    assert(indirect.observer.lastAidChoice.requesterId === setup.reputedId, `Witnessed reputation did not reverse the baseline request ranking. ${JSON.stringify(indirect.scoreTrace)}`);
+    assert(indirect.observer.lastAidChoice.reciprocal === false, 'Indirect-reciprocity choice was incorrectly attributed to direct reciprocity.');
+    assert((indirect.observer.lastAidChoice.externalScoreAdjustment || 0) > 0, 'Chosen reputed requester received no v60 score adjustment.');
     assert(indirect.v60?.lastIndirectAidChoice?.requesterId === setup.reputedId, 'v60 did not record the indirectly biased aid choice.');
     assert(indirect.reputationForFarther?.aidWitnesses >= 1, 'Farther requester lost its witnessed reputation before choice.');
     assert(!indirect.reputationForNearer, 'Nearer requester gained invented reputation evidence.');
@@ -223,12 +207,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(flags.indirectlyBiasedAidChoices >= 1 && flags.indirectlyBiasedAidEvents >= 1, 'v60 counted no indirectly biased aid event.');
     assert(flags.noHardPopulationCap && flags.noHardDisplayCap && !flags.surfaceRendererEnabled, 'v60 cap/renderer invariants failed.');
     assert(indirect.cooperationStats.aidRequestScoreModifierSupported && indirect.cooperationStats.aidRequestScoreModifierInstalled, 'v58 generic score seam is not installed.');
-
-    const conservationError = Math.abs(
-      indirect.cooperationStats.energyDebited -
-      indirect.cooperationStats.energyReceived -
-      indirect.cooperationStats.metabolicAidCost
-    );
     assert(conservationError < 1e-9, `v58 aid energy accounting changed under v60 (${conservationError}).`);
     assert(indirect.build === 'evolution-v60-indirect-reciprocity', 'v60 evolution build marker is not active.');
     assert(indirect.dataset === 'local-witnessed-aid-ranking', 'v60 dataset marker is not active.');
