@@ -82,7 +82,8 @@ fs.mkdirSync(artifactDir, { recursive: true });
     });
     assert(setup.ok, `v53 deterministic setup failed: ${setup.reason || 'unknown'}`);
 
-    await page.evaluate(() => window.realitySandboxDebug.advance(4));
+    // debug.advance() takes fixed 0.06 s simulation ticks, not seconds.
+    await page.evaluate(() => window.realitySandboxDebug.advance(75));
 
     const learned = await page.evaluate(({ learnerId }) => window.realitySandboxProtoCultureV53.getCulture(learnerId), setup);
     assert(learned?.practices?.['food-route']?.strength > 0.24, 'Naive kin did not adopt the demonstrated food-route tradition.');
@@ -105,7 +106,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
       c.velocity.set(learnerId, { vx:0, vy:0 });
     }, setup);
 
-    await page.evaluate(() => window.realitySandboxDebug.advance(3));
+    await page.evaluate(() => window.realitySandboxDebug.advance(60));
 
     const state = await page.evaluate(({ learnerId, lineageId }) => {
       const culture = window.realitySandboxProtoCultureV53;
