@@ -62,6 +62,7 @@ function install({ consensus, planet, modules }) {
         lastObservedDirection:null,
         lastObservedAppliedDelta:0,
         pendingPlan:null,
+        lastFormedPlan:null,
         lastPlanApplication:null,
       };
     }
@@ -152,6 +153,10 @@ function install({ consensus, planet, modules }) {
       executeAfterStep:stepCount + 1,
     };
     state.pendingPlan = plan;
+    state.lastFormedPlan = {
+      ...plan,
+      predictedDirection:{ ...plan.predictedDirection },
+    };
     stats.plansFormed++;
     return plan;
   }
@@ -304,6 +309,7 @@ function install({ consensus, planet, modules }) {
       noRouteAuthorityOrTaskAssignment:true,
       privatePlansCanDivergeUnderIdenticalGenomes:true,
       prospectiveActionCanOccurWithoutSecondPublicSignal:true,
+      lastFormedPlanObservable:true,
       detectedDangerOverridesPlan:true,
       maxTransitionRecords:MAX_TRANSITIONS,
       minTransitionSuccesses:MIN_TRANSITION_SUCCESSES,
@@ -329,6 +335,10 @@ function install({ consensus, planet, modules }) {
         pendingPlan:state.pendingPlan ? {
           ...state.pendingPlan,
           predictedDirection:{ ...state.pendingPlan.predictedDirection },
+        } : null,
+        lastFormedPlan:state.lastFormedPlan ? {
+          ...state.lastFormedPlan,
+          predictedDirection:{ ...state.lastFormedPlan.predictedDirection },
         } : null,
         lastPlanApplication:state.lastPlanApplication ? {
           ...state.lastPlanApplication,
