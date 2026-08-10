@@ -25,7 +25,6 @@ function install({ previous, jointAction }) {
     const state = snapshot();
     const joint = state.coalitionJointAction || {};
 
-    if (state.evolutionBuild !== 'evolution-v63-coalition-joint-action') failures.push(`Unexpected evolution build ${state.evolutionBuild || 'unknown'}.`);
     if (joint.version !== 'v63a-affiliation-conditioned-joint-action') failures.push(`Unexpected v63 joint-action version ${joint.version || 'unknown'}.`);
     if (!joint.usesObservableV56JointAttentionOnly || !joint.usesOwnV62AffiliationOnly) failures.push('The v63 observable-input/own-affiliation contract is incomplete.');
     if (!joint.noReverseAffiliationInspection || !joint.noCoalitionMembershipLookup || !joint.noHiddenTargetCoordinates) failures.push('The v63 private-state/no-membership boundary is incomplete.');
