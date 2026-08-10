@@ -49,24 +49,24 @@ function install({ language, culture, memory, brain, origin, planet, modules }) 
   for (const referent of REFERENTS) for (const modifier of MODIFIERS) pairIndex.set(`${referent}:${modifier}`, pairCursor++);
 
   const stats = {
-    steps: 0,
-    phraseEmissions: 0,
-    phraseHearings: 0,
-    primitiveAssociationsLearned: 0,
-    primitiveAssociationsReinforced: 0,
-    primitiveRepairs: 0,
-    primitiveInnovations: 0,
-    syntaxInnovations: 0,
-    syntaxCopies: 0,
-    successfulCompositions: 0,
-    novelCompositions: 0,
-    compositionalGuidanceEvents: 0,
-    activePrimitiveEntries: 0,
-    sharedPrimitiveConventions: 0,
-    sharedSyntaxConventions: 0,
-    compositionalLineages: 0,
-    meanCombinatorialCapacity: 0,
-    meanSyntaxLearning: 0,
+    steps:0,
+    phraseEmissions:0,
+    phraseHearings:0,
+    primitiveAssociationsLearned:0,
+    primitiveAssociationsReinforced:0,
+    primitiveRepairs:0,
+    primitiveInnovations:0,
+    syntaxInnovations:0,
+    syntaxCopies:0,
+    successfulCompositions:0,
+    novelCompositions:0,
+    compositionalGuidanceEvents:0,
+    activePrimitiveEntries:0,
+    sharedPrimitiveConventions:0,
+    sharedSyntaxConventions:0,
+    compositionalLineages:0,
+    meanCombinatorialCapacity:0,
+    meanSyntaxLearning:0,
   };
 
   function keyFor(x, y) {
@@ -104,28 +104,28 @@ function install({ language, culture, memory, brain, origin, planet, modules }) 
     const sociality = clamp(g.sociality);
     const motility = clamp(g.motility);
     return {
-      combinatorialCapacity: clamp(0.04 + brainSpeed * 0.48 + sense * 0.25 + sociality * 0.23),
-      syntaxLearning: clamp(0.06 + brainSpeed * 0.38 + sociality * 0.34 + sense * 0.22),
-      phraseRadius: 44 + sense * 146 + sociality * 76,
-      locomotorSpeed: 7 + motility * 36,
+      combinatorialCapacity:clamp(0.04 + brainSpeed * 0.48 + sense * 0.25 + sociality * 0.23),
+      syntaxLearning:clamp(0.06 + brainSpeed * 0.38 + sociality * 0.34 + sense * 0.22),
+      phraseRadius:44 + sense * 146 + sociality * 76,
+      locomotorSpeed:7 + motility * 36,
     };
   }
 
   function ensureState(organism, ph) {
     if (!organism.bioV55) {
       organism.bioV55 = {
-        combinatorialCapacity: ph.combinatorialCapacity,
-        syntaxLearning: ph.syntaxLearning,
-        lexicon: {},
-        production: {},
-        syntaxOrder: null,
-        syntaxConfidence: 0,
-        inventionCounter: 0,
-        observedPairMask: 0,
-        lastPhrase: null,
-        lastHeardPhrase: null,
-        interpretedComposition: null,
-        appliedComposition: null,
+        combinatorialCapacity:ph.combinatorialCapacity,
+        syntaxLearning:ph.syntaxLearning,
+        lexicon:{},
+        production:{},
+        syntaxOrder:null,
+        syntaxConfidence:0,
+        inventionCounter:0,
+        observedPairMask:0,
+        lastPhrase:null,
+        lastHeardPhrase:null,
+        interpretedComposition:null,
+        appliedComposition:null,
       };
     }
     organism.bioV55.combinatorialCapacity = ph.combinatorialCapacity;
@@ -153,11 +153,27 @@ function install({ language, culture, memory, brain, origin, planet, modules }) 
     return null;
   }
 
+  function strongestKnownPractice(organism) {
+    const practices = organism.bioV53?.practices || {};
+    let bestMeaning = null;
+    let bestStrength = 0;
+    for (const meaning of ['food-route','danger-avoidance','pack-hunt']) {
+      const strength = clamp(practices[meaning]?.strength);
+      if (strength > bestStrength) {
+        bestMeaning = meaning;
+        bestStrength = strength;
+      }
+    }
+    return bestStrength >= 0.42 ? bestMeaning : null;
+  }
+
   function inferPair(organism) {
     const cultureState = organism.bioV53;
     const memoryState = organism.bioV52;
     const brainState = organism.bioV50 || {};
     if (cultureState?.appliedPractice) return canonicalPairForMeaning(cultureState.appliedPractice);
+    const knownPractice = strongestKnownPractice(organism);
+    if (knownPractice) return canonicalPairForMeaning(knownPractice);
     if (memoryState?.recalledAction === 'seek-food') return canonicalPairForMeaning('food-route');
     if (memoryState?.recalledAction === 'avoid-danger') return canonicalPairForMeaning('danger-avoidance');
     if (memoryState?.recalledAction === 'seek-prey') return canonicalPairForMeaning('pack-hunt');
@@ -288,10 +304,11 @@ function install({ language, culture, memory, brain, origin, planet, modules }) 
     const modifierToken = tokenForPrimitive(id, state, ph, pair.modifier, referentToken);
     const order = ensureSyntax(id, state);
     const tokens = orderedTokens(order, referentToken, modifierToken);
-    const strength = clamp(0.30 + ph.combinatorialCapacity * 0.42 + ph.syntaxLearning * 0.20 + clamp(organism.bioV53?.practices?.[pair.referent === 'food' ? 'food-route' : pair.referent === 'danger' ? 'danger-avoidance' : 'pack-hunt']?.strength) * 0.08);
+    const practiceName = pair.referent === 'food' ? 'food-route' : pair.referent === 'danger' ? 'danger-avoidance' : 'pack-hunt';
+    const strength = clamp(0.30 + ph.combinatorialCapacity * 0.42 + ph.syntaxLearning * 0.20 + clamp(organism.bioV53?.practices?.[practiceName]?.strength) * 0.08);
     state.lastPhrase = { tokens:tokens.slice(), pair:{ ...pair }, order, step:stepCount };
     stats.phraseEmissions++;
-    return { emitterId:id, lineageId:organism.lineageId, tokens, pair, order, x:p.x, y:p.y, radius:ph.phraseRadius, strength };
+    return { emitterId:id, lineageId:organism.lineageId, tokens, pair, order, radius:ph.phraseRadius, strength };
   }
 
   function learnSyntax(state, order, reception) {
@@ -315,18 +332,31 @@ function install({ language, culture, memory, brain, origin, planet, modules }) 
   }
 
   function decodeTokens(state, tokens) {
-    if (!Array.isArray(tokens) || tokens.length !== 2) return null;
+    if (!Array.isArray(tokens) || tokens.length !== 2 || !state.syntaxOrder || state.syntaxConfidence < 0.24) return null;
     const entries = tokens.map(token => state.lexicon[token]);
     if (entries.some(entry => !entry || entry.confidence < 0.34)) return null;
-    const primitives = entries.map(entry => entry.primitive);
-    const referent = primitives.find(value => REFERENTS.includes(value));
-    const modifier = primitives.find(value => MODIFIERS.includes(value));
-    if (!referent || !modifier) return null;
+
+    const first = entries[0].primitive;
+    const second = entries[1].primitive;
+    let referent;
+    let modifier;
+    if (state.syntaxOrder === 'referent-modifier') {
+      if (!REFERENTS.includes(first) || !MODIFIERS.includes(second)) return null;
+      referent = first;
+      modifier = second;
+    } else if (state.syntaxOrder === 'modifier-referent') {
+      if (!MODIFIERS.includes(first) || !REFERENTS.includes(second)) return null;
+      modifier = first;
+      referent = second;
+    } else {
+      return null;
+    }
+
     const pair = { referent, modifier };
     return {
       ...pair,
       tokens:tokens.slice(),
-      confidence:Math.min(entries[0].confidence, entries[1].confidence, state.syntaxConfidence || 1),
+      confidence:Math.min(entries[0].confidence, entries[1].confidence, state.syntaxConfidence),
       novel:!hasObservedPair(state, pair),
     };
   }
@@ -472,7 +502,9 @@ function install({ language, culture, memory, brain, origin, planet, modules }) 
       independentPrimitiveMeanings:true,
       compositionalGeneralization:true,
       learnedWordOrder:true,
+      wordOrderConstrainsDecoding:true,
       syntaxLearnedFromObservedSequence:true,
+      retainedCulturalKnowledgeCanBeComposed:true,
       culturallyBlankCompositionalLexiconAtBirth:true,
       nonGeneticCompositionalTransmission:true,
       physicallyLocalTransmission:true,
@@ -512,13 +544,12 @@ function install({ language, culture, memory, brain, origin, planet, modules }) 
     },
     composeSequence(id, referent, modifier) {
       const state = motile.get(id)?.bioV55;
-      if (!state || !REFERENTS.includes(referent) || !MODIFIERS.includes(modifier)) return null;
+      if (!state || !REFERENTS.includes(referent) || !MODIFIERS.includes(modifier) || !state.syntaxOrder || state.syntaxConfidence < 0.24) return null;
       const referentToken = bestTokenForPrimitive(state, referent);
       const modifierToken = bestTokenForPrimitive(state, modifier);
       if (!referentToken || !modifierToken || referentToken === modifierToken) return null;
-      const order = state.syntaxOrder || 'referent-modifier';
-      const tokens = orderedTokens(order, referentToken, modifierToken);
-      return { referent, modifier, order, tokens, novel:!hasObservedPair(state, { referent, modifier }) };
+      const tokens = orderedTokens(state.syntaxOrder, referentToken, modifierToken);
+      return { referent, modifier, order:state.syntaxOrder, tokens, novel:!hasObservedPair(state, { referent, modifier }) };
     },
     decodeSequence(id, tokens) {
       const state = motile.get(id)?.bioV55;
