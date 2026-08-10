@@ -98,7 +98,7 @@ function install({ intent, coalitions, planet, modules }) {
     state.lastJointAttentionKey = key;
     stats.jointAttentionEventsSeen++;
 
-    const direction = normalizedDirection(joint.steeringDirection);
+    const direction = normalizedDirection(joint.gesture);
     if (!direction || organism.state === 'sleeping') return;
     const affiliation = affiliationTo(id, joint.speakerId);
     if (
