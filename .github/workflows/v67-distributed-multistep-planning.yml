@@ -60,6 +60,14 @@ jobs:
           REALITY_DISTRIBUTED_PLANNING_ARTIFACT_DIR: artifacts/distributed-planning-v67-smoke
         run: node scripts/distributed-multistep-planning-v67-smoke.cjs
 
+      - name: Verify v67 inspector and aggregate diagnostics
+        id: integration_test
+        continue-on-error: true
+        env:
+          REALITY_BASE_URL: http://127.0.0.1:4173/
+          REALITY_DISTRIBUTED_PLANNING_ARTIFACT_DIR: artifacts/distributed-planning-v67-smoke
+        run: node scripts/distributed-multistep-planning-v67-integration-smoke.cjs
+
       - name: Upload v67 diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -76,15 +84,16 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const outcome = '${{ steps.planning_test.outcome }}';
-            const ok = outcome === 'success';
+            const behavior = '${{ steps.planning_test.outcome }}';
+            const integration = '${{ steps.integration_test.outcome }}';
+            const ok = behavior === 'success' && integration === 'success';
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha: context.sha,
               state: ok ? 'success' : 'failure',
               context: 'browser/v67-distributed-planning',
-              description: ok ? 'Private multi-step planning passed' : `v67 distributed planning: ${outcome}`,
+              description: ok ? 'Planning behavior + diagnostics passed' : `v67 behavior:${behavior} integration:${integration}`,
               target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions`,
             });
-            if (!ok) core.setFailed(`v67 distributed planning smoke ${outcome}`);
+            if (!ok) core.setFailed(`v67 distributed planning behavior:${behavior} integration:${integration}`);
