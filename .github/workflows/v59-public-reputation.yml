@@ -1,0 +1,90 @@
+name: v59 public reputation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: v59-reputation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reputation-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install project dependencies
+        run: npm ci
+
+      - name: Run integration audit
+        run: npm run audit:integration
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --package-lock=false playwright@1.62.0
+          npx playwright install --with-deps chromium
+
+      - name: Build production site
+        run: npm run build
+
+      - name: Start production preview
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/reality-preview.log 2>&1 &
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:4173/ > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/reality-preview.log
+          exit 1
+
+      - name: Verify v59 local public reputation
+        id: reputation_test
+        continue-on-error: true
+        env:
+          REALITY_BASE_URL: http://127.0.0.1:4173/
+          REALITY_PUBLIC_REPUTATION_ARTIFACT_DIR: artifacts/public-reputation-v59-smoke
+        run: node scripts/public-reputation-v59-smoke.cjs
+
+      - name: Upload v59 diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v59-public-reputation-${{ github.sha }}
+          path: |
+            artifacts/public-reputation-v59-smoke
+            /tmp/reality-preview.log
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Publish v59 browser status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const outcome = '${{ steps.reputation_test.outcome }}';
+            const ok = outcome === 'success';
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'browser/v59-public-reputation',
+              description: ok ? 'Local witnessed reputation passed' : `v59 reputation: ${outcome}`,
+              target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions`,
+            });
+            if (!ok) core.setFailed(`v59 public reputation smoke ${outcome}`);
