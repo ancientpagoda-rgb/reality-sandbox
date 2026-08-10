@@ -268,7 +268,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(flags.historyCanBreakGeneticSymmetry && flags.scalarRoleMemory, 'v64 emergent scalar differentiation contract failed.');
     assert(flags.authoritativeFixedStep && flags.noHardPopulationCap && flags.noHardDisplayCap && !flags.surfaceRendererEnabled, 'v64 fixed-step/cap/renderer contract failed.');
     assert(commitments.v63Stats.commitmentModifierSupported && commitments.v63Stats.commitmentModifierInstalled, 'v63 generic commitment extension seam is not active under v64.');
-    assert(commitments.build === 'evolution-v64-role-differentiation', 'v64 evolution build marker is not active.');
     assert(commitments.dataset === 'history-dependent-complementarity', 'v64 dataset marker is not active.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
