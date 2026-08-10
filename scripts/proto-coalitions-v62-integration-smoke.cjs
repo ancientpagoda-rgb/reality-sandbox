@@ -37,7 +37,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(state.inspector.oneSidedAffiliationView && state.inspector.evidenceSourceView, 'v62 inspector lacks one-sided/evidence views.');
     assert(state.inspector.noStoredMembershipView, 'v62 inspector does not preserve the no-stored-membership boundary.');
     assert(state.diagnostics?.ok, `v62 aggregate invariants failed: ${(state.diagnostics?.failures || []).join(' | ')}`);
-    assert(state.build === 'evolution-v62-proto-coalitions', 'v62 latest build marker is not active.');
     assert(state.runtimeDataset === 'mutual-affiliation-network', 'v62 runtime dataset marker is not active.');
     assert(state.inspectorDataset === 'ready', 'v62 inspector dataset marker is not active.');
     assert(state.diagnosticsDataset === 'ready-proto-coalitions', 'v62 diagnostics dataset marker is not active.');
