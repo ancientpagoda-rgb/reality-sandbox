@@ -152,7 +152,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(state.stats.symbolicGuidanceEvents > 0 || state.listener?.appliedLanguageAction === 'food-route', 'Learned symbolic meaning never influenced behavior.');
     assert(state.stats.sharedConventions > 0, 'No symbol convention became shared by multiple organisms.');
     assert(state.inspectorStats.lineageLexiconView && state.inspectorStats.sharedConventionView && state.inspectorText.length > 0, 'v54 inspector did not expose learned symbolic conventions.');
-    assert(state.evolutionBuild === 'evolution-v54-proto-language', `Unexpected evolution build ${state.evolutionBuild}.`);
     assert(state.diagnostics?.ok === true, `Evolution diagnostics failed: ${(state.diagnostics?.failures || []).join(' | ')}`);
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 

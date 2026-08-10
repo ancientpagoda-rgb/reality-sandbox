@@ -16,8 +16,9 @@ async function waitForRuntime() {
     const learningMemory = window.realitySandboxLearningMemoryV52;
     const protoCulture = window.realitySandboxProtoCultureV53;
     const protoLanguage = window.realitySandboxProtoLanguageV54;
-    if (origin?.installed && inspector?.installed && morphology?.installed && milestones?.installed && population?.installed && deepTime?.installed && morphogenesis?.installed && inheritance?.installed && selection?.installed && history?.installed && nutrientCycle?.installed && sensoryBrains?.installed && socialSignaling?.installed && learningMemory?.installed && protoCulture?.installed && protoLanguage?.installed) {
-      return { origin, inspector, morphology, milestones, population, deepTime, morphogenesis, inheritance, selection, history, nutrientCycle, sensoryBrains, socialSignaling, learningMemory, protoCulture, protoLanguage };
+    const compositionalLanguage = window.realitySandboxCompositionalLanguageV55;
+    if (origin?.installed && inspector?.installed && morphology?.installed && milestones?.installed && population?.installed && deepTime?.installed && morphogenesis?.installed && inheritance?.installed && selection?.installed && history?.installed && nutrientCycle?.installed && sensoryBrains?.installed && socialSignaling?.installed && learningMemory?.installed && protoCulture?.installed && protoLanguage?.installed && compositionalLanguage?.installed) {
+      return { origin, inspector, morphology, milestones, population, deepTime, morphogenesis, inheritance, selection, history, nutrientCycle, sensoryBrains, socialSignaling, learningMemory, protoCulture, protoLanguage, compositionalLanguage };
     }
     await new Promise(resolve => setTimeout(resolve, 100));
   }
@@ -28,13 +29,13 @@ function install(parts) {
 
   function retiredFaunaModules() {
     return {
-      surfaceCreaturesV44: Boolean(window.realitySandboxSurfaceCreaturesV44),
-      localFaunaV44d: Boolean(window.realitySandboxSurfaceLocalFaunaV44d),
-      creatureVisibilityV44b: Boolean(window.realitySandboxSurfaceCreatureVisibilityV44b),
-      creatureReadabilityV44c: Boolean(window.realitySandboxSurfaceCreatureReadabilityV44c),
-      faunaGuaranteeV45b: Boolean(window.realitySandboxSurfaceFaunaGuaranteeV45b),
-      faunaExactV46d: Boolean(window.realitySandboxSurfaceFaunaExactV46d),
-      renderBridgeV46d: Boolean(window.realitySandboxSurfaceRenderBridgeV46d),
+      surfaceCreaturesV44:Boolean(window.realitySandboxSurfaceCreaturesV44),
+      localFaunaV44d:Boolean(window.realitySandboxSurfaceLocalFaunaV44d),
+      creatureVisibilityV44b:Boolean(window.realitySandboxSurfaceCreatureVisibilityV44b),
+      creatureReadabilityV44c:Boolean(window.realitySandboxSurfaceCreatureReadabilityV44c),
+      faunaGuaranteeV45b:Boolean(window.realitySandboxSurfaceFaunaGuaranteeV45b),
+      faunaExactV46d:Boolean(window.realitySandboxSurfaceFaunaExactV46d),
+      renderBridgeV46d:Boolean(window.realitySandboxSurfaceRenderBridgeV46d),
     };
   }
 
@@ -52,6 +53,7 @@ function install(parts) {
     const memoryStats = parts.learningMemory.getStats();
     const cultureStats = parts.protoCulture.getStats();
     const languageStats = parts.protoLanguage.getStats();
+    const compositionStats = parts.compositionalLanguage.getStats();
     return {
       ready:true,
       build:window.realitySandboxSurfaceBuild,
@@ -73,6 +75,7 @@ function install(parts) {
       learningMemory:memoryStats,
       protoCulture:cultureStats,
       protoLanguage:languageStats,
+      compositionalLanguage:compositionStats,
       lineageCounts:{
         total:parts.origin.getLineages().length,
         motile:parts.origin.getLineages().filter(lineage => lineage.type === 'motile').length,
@@ -92,7 +95,8 @@ function install(parts) {
         signalStats.noHardPopulationCap === true &&
         memoryStats.noHardPopulationCap === true &&
         cultureStats.noHardPopulationCap === true &&
-        languageStats.noHardPopulationCap === true,
+        languageStats.noHardPopulationCap === true &&
+        compositionStats.noHardPopulationCap === true,
       surfaceFaunaRendererDisabled:
         parts.origin.getStats().legacyFaunaRendererEnabled === false &&
         parts.morphogenesis.getStats().surfaceRendererEnabled === false &&
@@ -102,7 +106,8 @@ function install(parts) {
         signalStats.surfaceRendererEnabled === false &&
         memoryStats.surfaceRendererEnabled === false &&
         cultureStats.surfaceRendererEnabled === false &&
-        languageStats.surfaceRendererEnabled === false,
+        languageStats.surfaceRendererEnabled === false &&
+        compositionStats.surfaceRendererEnabled === false,
     };
   }
 
@@ -111,13 +116,13 @@ function install(parts) {
     const failures = [];
     if (!state.retiredFaunaModulesAbsent) failures.push('A retired Surface-fauna experiment is loaded.');
     if (!state.noHardPopulationCap) failures.push('An evolution module reports a hard population cap.');
-    if (!state.surfaceFaunaRendererDisabled) failures.push('A v47-v54 fauna renderer is unexpectedly enabled.');
+    if (!state.surfaceFaunaRendererDisabled) failures.push('A v47-v55 fauna renderer is unexpectedly enabled.');
     if (!state.origin.plantFirstOrigin) failures.push('Plant-first origin mode is inactive.');
-    if (!state.origin.authoritativeFixedStep || !state.morphogenesis.authoritativeFixedStep || !state.inheritance.authoritativeFixedStep || !state.habitatSelection.authoritativeFixedStep || !state.bodyPlanHistory.authoritativeFixedStep || !state.nutrientCycle.authoritativeFixedStep || !state.sensoryBrains.authoritativeFixedStep || !state.socialSignaling.authoritativeFixedStep || !state.learningMemory.authoritativeFixedStep || !state.protoCulture.authoritativeFixedStep || !state.protoLanguage.authoritativeFixedStep) failures.push('An evolution subsystem is outside the authoritative fixed step.');
+    if (!state.origin.authoritativeFixedStep || !state.morphogenesis.authoritativeFixedStep || !state.inheritance.authoritativeFixedStep || !state.habitatSelection.authoritativeFixedStep || !state.bodyPlanHistory.authoritativeFixedStep || !state.nutrientCycle.authoritativeFixedStep || !state.sensoryBrains.authoritativeFixedStep || !state.socialSignaling.authoritativeFixedStep || !state.learningMemory.authoritativeFixedStep || !state.protoCulture.authoritativeFixedStep || !state.protoLanguage.authoritativeFixedStep || !state.compositionalLanguage.authoritativeFixedStep) failures.push('An evolution subsystem is outside the authoritative fixed step.');
     if (state.morphogenesis.traits?.length !== 9) failures.push('v48 developmental trait schema is incomplete.');
     if (state.inheritance.birthInheritanceComplexity !== 'O(1)') failures.push('v48 developmental inheritance is not using the O(1) lineage cache.');
     if (!state.deepTime.reducedOrderEvolutionaryTime) failures.push('Evolutionary deep-time scaling is inactive.');
-    if (state.evolutionBuild !== 'evolution-v54-proto-language') failures.push(`Unexpected evolution build ${state.evolutionBuild}.`);
+    if (state.evolutionBuild !== 'evolution-v55-compositional-language') failures.push(`Unexpected evolution build ${state.evolutionBuild}.`);
     if (!state.nutrientCycle.detritusToSoil || !state.nutrientCycle.metabolicWasteToSoil || !state.nutrientCycle.soilToPlantBiomass || !state.nutrientCycle.weatheringAndLeaching || !state.nutrientCycle.toxinSoilFeedback) failures.push('The v49 closed nutrient cycle is incomplete.');
     if (!Number.isFinite(state.nutrientCycle.meanNutrient) || state.nutrientCycle.meanNutrient < 0) failures.push('The v49 nutrient field is invalid.');
     if (!state.sensoryBrains.heritableBehaviorFromGenome || !state.sensoryBrains.competingBehavioralDrives || !state.sensoryBrains.spatialHashing) failures.push('The v50 sensory-brain phenotype is incomplete.');
@@ -126,15 +131,20 @@ function install(parts) {
     if (!state.learningMemory.inheritedLearningRate || !state.learningMemory.inheritedMemoryRetention || !state.learningMemory.directExperienceLearning || !state.learningMemory.sociallyTransferredMemory || !state.learningMemory.rewardReinforcement || !state.learningMemory.memoryDecay || !state.learningMemory.constantMemoryPerOrganism || state.learningMemory.populationComplexity !== 'O(N)') failures.push('The v52 learning-memory phenotype is incomplete.');
     if (!state.protoCulture.nonGeneticTransmission || !state.protoCulture.physicallyLocalObservation || !state.protoCulture.kinBiasedTransmission || !state.protoCulture.culturallyBlankNewborns || !state.protoCulture.learnedTraditionsAffectBehavior || !state.protoCulture.intergenerationalSocialLearning || !state.protoCulture.spatialHashing) failures.push('The v53 proto-culture phenotype is incomplete.');
     if (!Array.isArray(state.protoCulture.practiceTypes) || state.protoCulture.practiceTypes.length !== 3) failures.push('The v53 cultural-practice schema is incomplete.');
-    if (!state.protoLanguage.semanticallyNeutralTokens || !state.protoLanguage.meaningAcquiredByAssociation || !state.protoLanguage.learnedSymbolMeanings || !state.protoLanguage.physicallyLocalTransmission || !state.protoLanguage.kinBiasedTransmission || !state.protoLanguage.culturallyBlankLexiconAtBirth || !state.protoLanguage.learnedConventionsCanBeProduced || !state.protoLanguage.symbolUseAffectsBehavior || !state.protoLanguage.boundedLexicon || !state.protoLanguage.spatialHashing) failures.push('The v54 proto-language phenotype is incomplete.');
+    if (!state.protoLanguage.semanticallyNeutralTokens || !state.protoLanguage.meaningAcquiredByAssociation || !state.protoLanguage.learnedSymbolMeanings || !state.protoLanguage.receiverGroundedAssociations || !state.protoLanguage.noSpeakerMeaningMetadata || !state.protoLanguage.retainedCulturalKnowledgeCanBeReferenced || !state.protoLanguage.physicallyLocalTransmission || !state.protoLanguage.kinBiasedTransmission || !state.protoLanguage.culturallyBlankLexiconAtBirth || !state.protoLanguage.learnedConventionsCanBeProduced || !state.protoLanguage.symbolUseAffectsBehavior || !state.protoLanguage.boundedLexicon || !state.protoLanguage.spatialHashing) failures.push('The v54 receiver-grounded proto-language phenotype is incomplete.');
+    if (state.protoLanguage.version !== 'v54b-receiver-grounded') failures.push(`Unexpected v54 language version ${state.protoLanguage.version || 'unknown'}.`);
     if (!Array.isArray(state.protoLanguage.tokenInventory) || state.protoLanguage.tokenInventory.length !== state.protoLanguage.maxLexiconEntries) failures.push('The v54 symbol inventory/lexicon bound is invalid.');
     if (!Array.isArray(state.protoLanguage.meaningTypes) || state.protoLanguage.meaningTypes.length !== 3) failures.push('The v54 learned-meaning schema is incomplete.');
+    if (!state.compositionalLanguage.independentPrimitiveMeanings || !state.compositionalLanguage.compositionalGeneralization || !state.compositionalLanguage.learnedWordOrder || !state.compositionalLanguage.wordOrderConstrainsDecoding || !state.compositionalLanguage.syntaxLearnedFromObservedSequence || !state.compositionalLanguage.holophraseReanalysis || !state.compositionalLanguage.receiverGroundedPrimitiveLearning || !state.compositionalLanguage.receiverKnownHolophraseAnchors || !state.compositionalLanguage.reanalysisWithoutCurrentContext || !state.compositionalLanguage.rootAnchoredSyntaxLearning || !state.compositionalLanguage.noSpeakerSemanticMetadata || !state.compositionalLanguage.retainedCulturalKnowledgeCanBeComposed || !state.compositionalLanguage.culturallyBlankCompositionalLexiconAtBirth || !state.compositionalLanguage.nonGeneticCompositionalTransmission || !state.compositionalLanguage.physicallyLocalTransmission || !state.compositionalLanguage.kinBiasedTransmission || !state.compositionalLanguage.boundedPrimitiveLexicon || !state.compositionalLanguage.constantPairMemory || !state.compositionalLanguage.spatialHashing) failures.push('The v55 known-holophrase compositional phenotype is incomplete.');
+    if (state.compositionalLanguage.version !== 'v55c-known-holophrase-reanalysis') failures.push(`Unexpected v55 language version ${state.compositionalLanguage.version || 'unknown'}.`);
+    if (!Array.isArray(state.compositionalLanguage.primitiveInventory) || state.compositionalLanguage.primitiveInventory.length !== 6) failures.push('The v55 primitive inventory is invalid.');
+    if (!Array.isArray(state.compositionalLanguage.referentTypes) || state.compositionalLanguage.referentTypes.length !== 3 || !Array.isArray(state.compositionalLanguage.modifierTypes) || state.compositionalLanguage.modifierTypes.length !== 3 || state.compositionalLanguage.maxPairSpace !== 9) failures.push('The v55 compositional pair space is invalid.');
     return { ok:failures.length === 0, failures, snapshot:state };
   }
 
   const api = { installed:true, snapshot, invariants };
   window.realitySandboxEvolutionDiagnosticsV48d = api;
-  document.documentElement.dataset.evolutionDiagnosticsV48d = 'ready-v54';
+  document.documentElement.dataset.evolutionDiagnosticsV48d = 'ready-v55c-holophrase';
 
   if (window.realitySandboxDebug && typeof window.realitySandboxDebug === 'object') {
     window.realitySandboxDebug.evolution = snapshot;
@@ -144,7 +154,7 @@ function install(parts) {
   const previousPresentationDiagnostics = window.realitySandboxPresentationDiagnostics;
   window.realitySandboxPresentationDiagnostics = () => ({
     ...(typeof previousPresentationDiagnostics === 'function' ? previousPresentationDiagnostics() : {}),
-    evolutionV54:snapshot(),
+    evolutionV55:snapshot(),
   });
 }
 
