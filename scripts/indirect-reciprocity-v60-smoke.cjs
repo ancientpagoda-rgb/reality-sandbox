@@ -25,6 +25,24 @@ fs.mkdirSync(artifactDir, { recursive:true });
       window.realitySandboxIndirectReciprocityV60?.installed
     ), null, { timeout:120000 });
 
+    await page.evaluate(() => {
+      const cooperation = window.realitySandboxReciprocalCooperationV58;
+      const indirect = window.realitySandboxIndirectReciprocityV60;
+      const reputation = window.realitySandboxPublicReputationV59;
+      window.__v60ScoreTrace = [];
+      cooperation.setAidRequestScoreModifier(context => {
+        const finalScore = indirect.scoreAidRequest(context);
+        window.__v60ScoreTrace.push({
+          ...context,
+          finalScore,
+          adjustment:finalScore - context.baseScore,
+          reputation:reputation.getReputation(context.helperId, context.requesterId),
+        });
+        if (window.__v60ScoreTrace.length > 64) window.__v60ScoreTrace.shift();
+        return finalScore;
+      });
+    });
+
     const setup = await page.evaluate(() => {
       const planet = window.realitySandboxPlanet;
       const c = planet.world.ecs.components;
@@ -89,23 +107,20 @@ fs.mkdirSync(artifactDir, { recursive:true });
       return { observerId, reputedId, nearerId, recipientId, lineageId, base, width:planet.world.width };
     });
 
-    // Baseline: with no witnessed reputation and otherwise equivalent requesters,
-    // v60 must pass through the original v58 ranking. The nearer requester wins.
+    await page.evaluate(() => { window.__v60ScoreTrace = []; });
     await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), STEP_TICKS);
     const baseline = await page.evaluate(({ observerId, reputedId, nearerId }) => ({
       observer:window.realitySandboxReciprocalCooperationV58.getCooperation(observerId),
       reputationForFarther:window.realitySandboxPublicReputationV59.getReputation(observerId, reputedId),
       reputationForNearer:window.realitySandboxPublicReputationV59.getReputation(observerId, nearerId),
       v60:window.realitySandboxIndirectReciprocityV60.getIndirectReciprocity(observerId),
+      scoreTrace:window.__v60ScoreTrace.filter(row => row.helperId === observerId),
     }), setup);
 
     assert(baseline.observer?.lastAidChoice?.requesterId === setup.nearerId, 'No-evidence baseline did not choose the nearer requester.');
     assert(Math.abs(baseline.observer?.lastAidChoice?.externalScoreAdjustment || 0) < 1e-12, 'v60 changed the v58 score without reputation evidence.');
     assert(!baseline.reputationForFarther && !baseline.reputationForNearer, 'Baseline observer already had a requester reputation.');
 
-    // Clear direct v58 debt and create a separate public-aid event. The future
-    // helper is merely a third-party witness while reputedId physically aids
-    // recipientId, so it gains v59 evidence without receiving aid itself.
     await page.evaluate(({ setup }) => {
       const c = window.realitySandboxPlanet.world.ecs.components;
       const observer = c.motile.get(setup.observerId);
@@ -129,6 +144,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
       c.position.set(setup.observerId, { ...setup.base });
       c.position.set(setup.nearerId, { x:(setup.base.x + setup.width * 0.44) % setup.width, y:setup.base.y });
       for (const id of [setup.observerId, setup.reputedId, setup.nearerId, setup.recipientId]) c.velocity.set(id, { vx:0, vy:0 });
+      window.__v60ScoreTrace = [];
     }, { setup });
 
     await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), STEP_TICKS);
@@ -138,6 +154,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
       reputedCooperation:window.realitySandboxReciprocalCooperationV58.getCooperation(reputedId),
       recipientCooperation:window.realitySandboxReciprocalCooperationV58.getCooperation(recipientId),
       publicEvents:window.realitySandboxPublicReputationV59.getRecentPublicAidEvents(),
+      scoreTrace:window.__v60ScoreTrace,
     }), setup);
 
     assert(witnessed.reputedCooperation?.lastAidChoice?.requesterId === setup.recipientId, 'Reputed organism did not perform the witnessed public aid.');
@@ -148,9 +165,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(publicEvent, 'Public v59 aid event was not recorded.');
     assert(!('amount' in publicEvent) && !('energy' in publicEvent) && !('need' in publicEvent), 'Public reputation event leaked hidden aid/need magnitude.');
 
-    // Restore the exact baseline geometry. Clear direct v58 ledger evidence again.
-    // The nearer requester remains closer, but only the farther requester has a
-    // reputation personally witnessed by observerId.
     await page.evaluate(({ setup }) => {
       const c = window.realitySandboxPlanet.world.ecs.components;
       const observer = c.motile.get(setup.observerId);
@@ -174,6 +188,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
       c.position.set(setup.nearerId, { x:(setup.base.x + 64) % setup.width, y:setup.base.y });
       c.position.set(setup.recipientId, { x:(setup.base.x + setup.width * 0.44) % setup.width, y:setup.base.y });
       for (const id of [setup.observerId, setup.reputedId, setup.nearerId, setup.recipientId]) c.velocity.set(id, { vx:0, vy:0 });
+      window.__v60ScoreTrace = [];
     }, { setup });
 
     await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), STEP_TICKS);
@@ -186,9 +201,14 @@ fs.mkdirSync(artifactDir, { recursive:true });
       cooperationStats:window.realitySandboxReciprocalCooperationV58.getStats(),
       build:window.realitySandboxEvolutionBuild,
       dataset:document.documentElement.dataset.indirectReciprocityV60,
+      scoreTrace:window.__v60ScoreTrace.filter(row => row.helperId === observerId),
     }), setup);
 
-    assert(indirect.observer?.lastAidChoice?.requesterId === setup.reputedId, 'Witnessed reputation did not reverse the baseline request ranking.');
+    fs.writeFileSync(path.join(artifactDir, 'indirect-reciprocity-v60.json'), JSON.stringify({
+      setup, baseline, witnessed, indirect, pageErrors,
+    }, null, 2));
+
+    assert(indirect.observer?.lastAidChoice?.requesterId === setup.reputedId, `Witnessed reputation did not reverse the baseline request ranking. ${JSON.stringify(indirect.scoreTrace)}`);
     assert(indirect.observer?.lastAidChoice?.reciprocal === false, 'Indirect-reciprocity choice was incorrectly attributed to direct reciprocity.');
     assert((indirect.observer?.lastAidChoice?.externalScoreAdjustment || 0) > 0, 'Chosen reputed requester received no v60 score adjustment.');
     assert(indirect.v60?.lastIndirectAidChoice?.requesterId === setup.reputedId, 'v60 did not record the indirectly biased aid choice.');
@@ -213,10 +233,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(indirect.build === 'evolution-v60-indirect-reciprocity', 'v60 evolution build marker is not active.');
     assert(indirect.dataset === 'local-witnessed-aid-ranking', 'v60 dataset marker is not active.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
-
-    fs.writeFileSync(path.join(artifactDir, 'indirect-reciprocity-v60.json'), JSON.stringify({
-      setup, baseline, witnessed, indirect, conservationError, pageErrors,
-    }, null, 2));
   } finally {
     await browser.close();
   }
