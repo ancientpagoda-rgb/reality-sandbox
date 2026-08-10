@@ -77,13 +77,10 @@ function install({ intent, coalitions, planet, modules }) {
   }
 
   function urgentLocalNeed(organism) {
-    const brain = organism.bioV50;
-    return Boolean(
-      brain?.detectedDanger ||
-      brain?.detectedPrey ||
-      brain?.targetPlant ||
-      brain?.targetDetritus
-    );
+    // A routine food/scavenge/prey target is not an emergency: bounded social
+    // commitment may temporarily persist alongside ordinary foraging. Immediate
+    // interruption is reserved for actually detected danger.
+    return Boolean(organism.bioV50?.detectedDanger);
   }
 
   function affiliationTo(id, speakerId) {
