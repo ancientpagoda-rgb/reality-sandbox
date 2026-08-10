@@ -195,7 +195,33 @@ jobs:
             const learningMemory = '${{ steps.learning_memory_test.outcome }}';
             const protoCulture = '${{ steps.proto_culture_test.outcome }}';
             const protoLanguage = '${{ steps.proto_language_test.outcome }}';
-            const ok = unified === 'success' && rootRenderer === 'success' && iphoneSphere === 'success' && surfaceMode === 'success' && originLife === 'success' && inspector === 'success' && morphogenesis === 'success' && morphHistory === 'success' && sensoryBrains === 'success' && socialSignaling === 'success' && learningMemory === 'success' && protoCulture === 'success' && protoLanguage === 'success';
+            const parts = {
+              'browser/iphone-sphere': iphoneSphere,
+              'browser/unified-core': unified,
+              'browser/root-renderer': rootRenderer,
+              'browser/surface-mode': surfaceMode,
+              'browser/origin-life': originLife,
+              'browser/evolution-inspector': inspector,
+              'browser/morphogenesis': morphogenesis,
+              'browser/morph-history': morphHistory,
+              'browser/v50-sensory-brains': sensoryBrains,
+              'browser/v51-social-signaling': socialSignaling,
+              'browser/v52-learning-memory': learningMemory,
+              'browser/v53-proto-culture': protoCulture,
+              'browser/v54-proto-language': protoLanguage,
+            };
+            for (const [contextName, outcome] of Object.entries(parts)) {
+              await github.rest.repos.createCommitStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                sha: context.sha,
+                state: outcome === 'success' ? 'success' : 'failure',
+                context: contextName,
+                description: `${contextName.replace('browser/', '')}: ${outcome}`.slice(0, 140),
+                target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions`,
+              });
+            }
+            const ok = Object.values(parts).every(outcome => outcome === 'success');
             const detail = `iPhone:${iphoneSphere} unified:${unified} root:${rootRenderer} surface:${surfaceMode} origin:${originLife} inspector:${inspector} morph:${morphogenesis} history:${morphHistory} brain:${sensoryBrains} social:${socialSignaling} memory:${learningMemory} culture:${protoCulture} language:${protoLanguage}`;
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
