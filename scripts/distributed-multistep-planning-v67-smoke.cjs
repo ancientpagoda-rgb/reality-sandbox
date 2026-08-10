@@ -217,21 +217,37 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(!trained.l1Plan.transitions['food:there:0>food:there:6'], 'L1 learned L2 private second-step plan.');
     assert(!trained.l2Plan.transitions['food:there:0>food:there:2'], 'L2 learned L1 private second-step plan.');
 
-    const pending = await emitEast(9);
-    fs.writeFileSync(path.join(artifactDir, 'distributed-planning-v67-pending.json'), JSON.stringify({ setup, pending, pageErrors }, null, 2));
+    const l1PriorApplicationStep = trained.l1Plan.lastPlanApplication?.step ?? -1;
+    const l2PriorApplicationStep = trained.l2Plan.lastPlanApplication?.step ?? -1;
+    const replay = await emitEast(9);
+    fs.writeFileSync(path.join(artifactDir, 'distributed-planning-v67-replay.json'), JSON.stringify({ setup, replay, pageErrors }, null, 2));
 
-    assert(pending.l1Plan?.pendingPlan?.predictedProposalKey === 'food:there:2', `L1 did not form east→north prospective plan (${JSON.stringify(pending.l1Plan?.pendingPlan)}).`);
-    assert(pending.l2Plan?.pendingPlan?.predictedProposalKey === 'food:there:6', `L2 did not form east→south prospective plan (${JSON.stringify(pending.l2Plan?.pendingPlan)}).`);
-    assert(pending.l1Plan.pendingPlan.predictedDirection.y > 0.9, 'L1 prospective plan did not predict north.');
-    assert(pending.l2Plan.pendingPlan.predictedDirection.y < -0.9, 'L2 prospective plan did not predict south.');
+    assert(replay.l1Plan?.lastFormedPlan?.predictedProposalKey === 'food:there:2', `L1 did not record east→north prospective formation (${JSON.stringify(replay.l1Plan?.lastFormedPlan)}).`);
+    assert(replay.l2Plan?.lastFormedPlan?.predictedProposalKey === 'food:there:6', `L2 did not record east→south prospective formation (${JSON.stringify(replay.l2Plan?.lastFormedPlan)}).`);
+    assert(replay.l1Plan.lastFormedPlan.fromProposalKey === 'food:there:0' && replay.l1Plan.lastFormedPlan.predictedDirection.y > 0.9, 'L1 prospective formation did not predict north from east.');
+    assert(replay.l2Plan.lastFormedPlan.fromProposalKey === 'food:there:0' && replay.l2Plan.lastFormedPlan.predictedDirection.y < -0.9, 'L2 prospective formation did not predict south from east.');
+    assert(replay.l1Plan.lastFormedPlan.sourceDecisionStep === replay.l1Decision.lastLocalDecision.step, 'L1 recorded forecast is not grounded in the replayed east decision.');
+    assert(replay.l2Plan.lastFormedPlan.sourceDecisionStep === replay.l2Decision.lastLocalDecision.step, 'L2 recorded forecast is not grounded in the replayed east decision.');
 
-    await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), STEP_TICKS);
-    const applied = await read();
+    let applied = replay;
+    const prospectiveApplied = state => Boolean(
+      state.l1Plan?.lastPlanApplication?.applied &&
+      state.l1Plan.lastPlanApplication.fromProposalKey === 'food:there:0' &&
+      state.l1Plan.lastPlanApplication.predictedProposalKey === 'food:there:2' &&
+      state.l1Plan.lastPlanApplication.step > l1PriorApplicationStep &&
+      state.l2Plan?.lastPlanApplication?.applied &&
+      state.l2Plan.lastPlanApplication.fromProposalKey === 'food:there:0' &&
+      state.l2Plan.lastPlanApplication.predictedProposalKey === 'food:there:6' &&
+      state.l2Plan.lastPlanApplication.step > l2PriorApplicationStep
+    );
+    if (!prospectiveApplied(applied)) {
+      applied = await advanceUntil(read, prospectiveApplied, 'Autonomous private second-step execution', 2);
+    }
     fs.writeFileSync(path.join(artifactDir, 'distributed-planning-v67-applied.json'), JSON.stringify({ setup, applied, pageErrors }, null, 2));
 
-    assert(applied.l1Plan.pendingPlan === null && applied.l2Plan.pendingPlan === null, 'Private prospective plans did not resolve after one bounded future step.');
-    assert(applied.l1Plan.lastPlanApplication?.applied && applied.l1Plan.lastPlanApplication.direction.y > 0.9, 'L1 did not autonomously apply learned north second step.');
-    assert(applied.l2Plan.lastPlanApplication?.applied && applied.l2Plan.lastPlanApplication.direction.y < -0.9, 'L2 did not autonomously apply learned south second step.');
+    assert(applied.l1Plan.pendingPlan === null && applied.l2Plan.pendingPlan === null, 'Private prospective plans did not resolve after their bounded future step.');
+    assert(applied.l1Plan.lastPlanApplication.direction.y > 0.9, 'L1 did not autonomously apply learned north second step.');
+    assert(applied.l2Plan.lastPlanApplication.direction.y < -0.9, 'L2 did not autonomously apply learned south second step.');
     assert(applied.l1Plan.lastPlanApplication.directionalVelocityDelta > 0, 'L1 planned second step made no positive directional physical contribution.');
     assert(applied.l2Plan.lastPlanApplication.directionalVelocityDelta > 0, 'L2 planned second step made no positive directional physical contribution.');
 
@@ -250,7 +266,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(flags.learnsOnlyFromOwnV66DecisionSequence && flags.transitionEvidenceRequiresOwnPhysicalProgress, 'v67 own-sequence/physical-evidence contract failed.');
     assert(flags.plansStoredPerOrganismOnly && flags.plansPredictOneBoundedFutureStep && flags.freshPublicDecisionRevisesPendingPlan, 'v67 bounded private planning contract failed.');
     assert(flags.noOtherOrganismPlanInspection && flags.noSharedPlanMemory && flags.noCentralPlannerOrGroupGoal && flags.noRouteAuthorityOrTaskAssignment, 'v67 no-central/shared-plan contract failed.');
-    assert(flags.privatePlansCanDivergeUnderIdenticalGenomes && flags.prospectiveActionCanOccurWithoutSecondPublicSignal && flags.detectedDangerOverridesPlan, 'v67 emergent prospective-action contract failed.');
+    assert(flags.privatePlansCanDivergeUnderIdenticalGenomes && flags.prospectiveActionCanOccurWithoutSecondPublicSignal && flags.lastFormedPlanObservable && flags.detectedDangerOverridesPlan, 'v67 emergent prospective-action contract failed.');
     assert(flags.authoritativeFixedStep && flags.noHardPopulationCap && flags.noHardDisplayCap && !flags.surfaceRendererEnabled, 'v67 fixed-step/cap/renderer contract failed.');
     assert(applied.dataset === 'private-prospective-plans', 'v67 dataset marker is not active.');
     assert(applied.build === 'evolution-v67-distributed-multistep-planning', 'v67 build marker is not active.');
