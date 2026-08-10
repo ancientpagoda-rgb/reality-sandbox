@@ -145,7 +145,6 @@ function install({ runtime, canvas }) {
         realMouseDrag:true,
         realMouseWheelZoom:true,
         realMouseClick:true,
-        realMouseDoubleClickSurfaceMode:true,
         arbitraryClientPoint:true,
         arbitraryNormalizedPoint:true,
         worldPointProjection:true,
