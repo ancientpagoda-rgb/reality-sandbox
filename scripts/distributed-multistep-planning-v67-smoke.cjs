@@ -217,18 +217,11 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(!trained.l1Plan.transitions['food:there:0>food:there:6'], 'L1 learned L2 private second-step plan.');
     assert(!trained.l2Plan.transitions['food:there:0>food:there:2'], 'L2 learned L1 private second-step plan.');
 
-    await emitEast(9);
-    const pending = await advanceUntil(
-      read,
-      state => Boolean(
-        state.l1Plan?.pendingPlan?.predictedProposalKey === 'food:there:2' &&
-        state.l2Plan?.pendingPlan?.predictedProposalKey === 'food:there:6'
-      ),
-      'Private prospective plans after replaying only first step',
-      3
-    );
+    const pending = await emitEast(9);
     fs.writeFileSync(path.join(artifactDir, 'distributed-planning-v67-pending.json'), JSON.stringify({ setup, pending, pageErrors }, null, 2));
 
+    assert(pending.l1Plan?.pendingPlan?.predictedProposalKey === 'food:there:2', `L1 did not form east→north prospective plan (${JSON.stringify(pending.l1Plan?.pendingPlan)}).`);
+    assert(pending.l2Plan?.pendingPlan?.predictedProposalKey === 'food:there:6', `L2 did not form east→south prospective plan (${JSON.stringify(pending.l2Plan?.pendingPlan)}).`);
     assert(pending.l1Plan.pendingPlan.predictedDirection.y > 0.9, 'L1 prospective plan did not predict north.');
     assert(pending.l2Plan.pendingPlan.predictedDirection.y < -0.9, 'L2 prospective plan did not predict south.');
 
