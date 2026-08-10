@@ -30,6 +30,7 @@ function install({ social, planet, modules }) {
   const rows = Math.max(1, Math.ceil(world.height / CELL_SIZE));
   let accumulator = 0;
   let stepCount = 0;
+  let aidRequestScoreModifier = null;
 
   const stats = {
     steps:0,
@@ -214,6 +215,16 @@ function install({ social, planet, modules }) {
     };
   }
 
+  function applyAidRequestScoreModifier(context) {
+    if (typeof aidRequestScoreModifier !== 'function') return context.baseScore;
+    try {
+      const modified = Number(aidRequestScoreModifier({ ...context }));
+      return Number.isFinite(modified) ? modified : context.baseScore;
+    } catch {
+      return context.baseScore;
+    }
+  }
+
   function requestScore(helperId, helper, helperState, ph, p, request) {
     const rp = position.get(request.requesterId);
     const requester = motile.get(request.requesterId);
@@ -228,7 +239,7 @@ function install({ social, planet, modules }) {
     const distanceTerm = 1 - clamp(d / Math.max(1, radius));
     const reciprocalHistory = ledger ? clampSigned(ledger.reciprocity + (ledger.received > 0 ? 0.28 : 0)) : 0;
     const evidenceWeight = socialModel.known ? 1 : 0.42;
-    const score =
+    const baseScore =
       ph.helpingTendency * 0.28 +
       request.urgency * 0.20 +
       distanceTerm * 0.14 +
@@ -236,7 +247,24 @@ function install({ social, planet, modules }) {
       socialModel.responsiveness * 0.08 * evidenceWeight +
       socialModel.familiarity * 0.06 * evidenceWeight +
       reciprocalHistory * (0.16 + ph.reciprocityLearning * 0.10);
-    return { request, d, score, ledger, socialModel };
+    const score = applyAidRequestScoreModifier({
+      helperId,
+      requesterId:request.requesterId,
+      baseScore,
+      distance:d,
+      radius,
+      directReciprocity:reciprocalHistory,
+      directSocialKnown:socialModel.known,
+    });
+    return {
+      request,
+      d,
+      score,
+      baseScore,
+      externalScoreAdjustment:score - baseScore,
+      ledger,
+      socialModel,
+    };
   }
 
   function chooseRequest(helperId, helper, state, ph, p, grid, requestById) {
@@ -268,6 +296,8 @@ function install({ social, planet, modules }) {
     helperState.lastAidChoice = {
       requesterId,
       score:candidate.score,
+      baseScore:candidate.baseScore,
+      externalScoreAdjustment:candidate.externalScoreAdjustment,
       threshold,
       reciprocal:Boolean(candidate.ledger?.received > 0),
       emitted:candidate.score >= threshold,
@@ -390,6 +420,10 @@ function install({ social, planet, modules }) {
 
   const api = {
     installed:true,
+    setAidRequestScoreModifier(modifier) {
+      aidRequestScoreModifier = typeof modifier === 'function' ? modifier : null;
+      return Boolean(aidRequestScoreModifier);
+    },
     getStats:() => ({
       ...stats,
       installed:true,
@@ -399,6 +433,8 @@ function install({ social, planet, modules }) {
       aidDecisionUsesOwnSocialModel:true,
       recipientEnergyNotUsedForChoice:true,
       reciprocalHistoryBiasesAid:true,
+      aidRequestScoreModifierSupported:true,
+      aidRequestScoreModifierInstalled:Boolean(aidRequestScoreModifier),
       costlyHelping:true,
       energyConservingTransfer:true,
       transferEfficiency:TRANSFER_EFFICIENCY,
