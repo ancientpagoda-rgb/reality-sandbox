@@ -10,6 +10,10 @@ permissions:
   contents: read
   statuses: write
 
+concurrency:
+  group: browser-simulation-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   browser-smoke:
     runs-on: ubuntu-latest
@@ -162,6 +166,14 @@ jobs:
           REALITY_COMPOSITIONAL_LANGUAGE_ARTIFACT_DIR: artifacts/compositional-language-v55-smoke
         run: node scripts/compositional-language-v55b-smoke.cjs
 
+      - name: Verify v56 communicative intent
+        id: communicative_intent_test
+        continue-on-error: true
+        env:
+          REALITY_BASE_URL: http://127.0.0.1:4173/
+          REALITY_COMMUNICATIVE_INTENT_ARTIFACT_DIR: artifacts/communicative-intent-v56-smoke
+        run: node scripts/communicative-intent-v56-smoke.cjs
+
       - name: Upload browser diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -182,6 +194,7 @@ jobs:
             artifacts/proto-culture-v53-smoke
             artifacts/proto-language-v54-smoke
             artifacts/compositional-language-v55-smoke
+            artifacts/communicative-intent-v56-smoke
             /tmp/reality-preview.log
           if-no-files-found: warn
           retention-days: 30
@@ -205,6 +218,7 @@ jobs:
             const protoCulture = '${{ steps.proto_culture_test.outcome }}';
             const protoLanguage = '${{ steps.proto_language_test.outcome }}';
             const compositionalLanguage = '${{ steps.compositional_language_test.outcome }}';
+            const communicativeIntent = '${{ steps.communicative_intent_test.outcome }}';
             const parts = {
               'browser/iphone-sphere': iphoneSphere,
               'browser/unified-core': unified,
@@ -220,6 +234,7 @@ jobs:
               'browser/v53-proto-culture': protoCulture,
               'browser/v54-proto-language': protoLanguage,
               'browser/v55-compositional-language': compositionalLanguage,
+              'browser/v56-communicative-intent': communicativeIntent,
             };
             for (const [contextName, outcome] of Object.entries(parts)) {
               await github.rest.repos.createCommitStatus({
@@ -233,7 +248,7 @@ jobs:
               });
             }
             const ok = Object.values(parts).every(outcome => outcome === 'success');
-            const detail = `iPhone:${iphoneSphere} unified:${unified} root:${rootRenderer} surface:${surfaceMode} origin:${originLife} inspector:${inspector} morph:${morphogenesis} history:${morphHistory} brain:${sensoryBrains} social:${socialSignaling} memory:${learningMemory} culture:${protoCulture} language:${protoLanguage} composition:${compositionalLanguage}`;
+            const detail = `iPhone:${iphoneSphere} unified:${unified} root:${rootRenderer} surface:${surfaceMode} origin:${originLife} inspector:${inspector} morph:${morphogenesis} history:${morphHistory} brain:${sensoryBrains} social:${socialSignaling} memory:${learningMemory} culture:${protoCulture} language:${protoLanguage} composition:${compositionalLanguage} intent:${communicativeIntent}`;
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
