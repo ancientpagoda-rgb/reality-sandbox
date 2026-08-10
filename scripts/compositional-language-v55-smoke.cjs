@@ -109,13 +109,15 @@ fs.mkdirSync(artifactDir, { recursive:true });
       const avoidToken = Object.entries(state.lexicon).find(([, entry]) => entry.primitive === 'avoid' && entry.confidence >= 0.34)?.[0] || null;
       const composed = api.composeSequence(learnerId, 'food', 'avoid');
       const decoded = composed ? api.decodeSequence(learnerId, composed.tokens) : null;
-      return { state, foodToken, avoidToken, composed, decoded };
+      const reversed = composed ? api.decodeSequence(learnerId, [...composed.tokens].reverse()) : null;
+      return { state, foodToken, avoidToken, composed, decoded, reversed };
     }, setup);
 
     assert(generalized.foodToken && generalized.avoidToken, 'Learner did not acquire primitives from two distinct grounded contexts.');
     assert(generalized.composed?.novel === true, 'v55 did not recognize food+avoid as a never-heard combination.');
     assert(generalized.decoded?.referent === 'food' && generalized.decoded?.modifier === 'avoid', 'v55 failed compositional decoding of a novel primitive combination.');
     assert(generalized.decoded?.novel === true, 'Novel composition was incorrectly treated as a memorized whole phrase.');
+    assert(generalized.reversed === null, 'v55 decoded a phrase whose token order violated the learned syntax.');
 
     const reproduction = await page.evaluate(({ teacherId, learnerId, foodTarget }) => {
       const planet = window.realitySandboxPlanet;
@@ -141,14 +143,14 @@ fs.mkdirSync(artifactDir, { recursive:true });
         plantAncestorId:learner.plantAncestorId,
         energy:1.1,
         age:5,
-        state:'sleeping',
+        state:'awake',
         sleepDebt:0.1,
         decisionCooldown:0,
         neurotoxinLoad:0,
         genome:{ ...learner.genome, brainSpeed:1, sense:1, sociality:1, motility:0 },
-        bioV50:{ mode:'rest', drives:{ rest:1 }, hunger:0, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null },
+        bioV50:{ mode:'explore', drives:{ explore:1 }, hunger:0, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null },
         bioV51:null,
-        bioV52:{ learningRate:1, retention:0.94, memories:{ food:{ x:foodTarget.x, y:foodTarget.y, strength:0.9, targetId:null, source:'direct', updatedAtStep:0 }, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:1.1, formedAtStep:0, lastSocialReceivedAtStep:null },
+        bioV52:{ learningRate:1, retention:0.94, memories:{ food:null, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:1.1, formedAtStep:0, lastSocialReceivedAtStep:null },
         bioV53:{ openness:1, conformity:1, practices:{ 'food-route':null, 'danger-avoidance':null, 'pack-hunt':null }, appliedPractice:null, learnedFrom:null, lastEnergy:1.1, culturalAge:0 },
         bioV54:null,
         bioV55:null,
@@ -156,19 +158,20 @@ fs.mkdirSync(artifactDir, { recursive:true });
       return { listenerId };
     }, setup);
 
-    // Sleeping listener can acquire the sequence but cannot emit or act on it yet.
+    // Listener is awake but has no grounded target yet, so it can listen without producing its own phrase.
     await page.evaluate(() => window.realitySandboxDebug.advance(30));
-    const asleepLearning = await page.evaluate(({ listenerId }) => window.realitySandboxCompositionalLanguageV55.getComposition(listenerId), reproduction);
-    assert(tokenForPrimitive(asleepLearning, 'food') === foodToken && tokenForPrimitive(asleepLearning, 'there') === thereToken, 'Sleeping listener did not acquire the reproduced primitive convention.');
-    assert(!asleepLearning?.lastPhrase, 'Listener produced a phrase before being awakened.');
+    const passiveLearning = await page.evaluate(({ listenerId }) => window.realitySandboxCompositionalLanguageV55.getComposition(listenerId), reproduction);
+    assert(tokenForPrimitive(passiveLearning, 'food') === foodToken && tokenForPrimitive(passiveLearning, 'there') === thereToken, 'Passive listener did not acquire the reproduced primitive convention.');
+    assert(!passiveLearning?.lastPhrase, 'Listener produced a phrase before it had a grounded context.');
 
-    await page.evaluate(({ listenerId }) => {
+    await page.evaluate(({ listenerId, foodTarget }) => {
       const c = window.realitySandboxPlanet.world.ecs.components;
       const listener = c.motile.get(listenerId);
-      listener.state = 'awake';
-      listener.sleepDebt = 0.1;
+      listener.bioV52.memories.food = { x:foodTarget.x, y:foodTarget.y, strength:0.9, targetId:null, source:'direct', updatedAtStep:0 };
+      listener.bioV52.recalledAction = null;
+      listener.bioV52.recalledMemory = null;
       c.velocity.set(listenerId, { vx:0, vy:0 });
-    }, reproduction);
+    }, { ...reproduction, foodTarget:setup.foodTarget });
     await page.evaluate(() => window.realitySandboxDebug.advance(30));
 
     const state = await page.evaluate(({ learnerId, listenerId, lineageId }) => {
@@ -196,8 +199,8 @@ fs.mkdirSync(artifactDir, { recursive:true });
     const listenerThere = tokenForPrimitive(state.listener, 'there');
 
     assert(state.stats.installed === true, 'v55 compositional language is not installed.');
-    assert(state.stats.independentPrimitiveMeanings && state.stats.compositionalGeneralization && state.stats.learnedWordOrder, 'v55 compositional semantics are incomplete.');
-    assert(state.stats.syntaxLearnedFromObservedSequence && state.stats.nonGeneticCompositionalTransmission, 'v55 syntax/phrase transmission is not culturally learned.');
+    assert(state.stats.independentPrimitiveMeanings && state.stats.compositionalGeneralization && state.stats.learnedWordOrder && state.stats.wordOrderConstrainsDecoding, 'v55 compositional semantics/syntax are incomplete.');
+    assert(state.stats.syntaxLearnedFromObservedSequence && state.stats.nonGeneticCompositionalTransmission && state.stats.retainedCulturalKnowledgeCanBeComposed, 'v55 syntax/phrase transmission is not culturally grounded.');
     assert(state.stats.physicallyLocalTransmission && state.stats.kinBiasedTransmission && state.stats.spatialHashing, 'v55 phrase transmission is not physically local/spatially hashed.');
     assert(state.stats.culturallyBlankCompositionalLexiconAtBirth && state.stats.boundedPrimitiveLexicon && state.stats.constantPairMemory, 'v55 compositional memory is not bounded/culturally blank at birth.');
     assert(state.stats.maxPairSpace === 9 && state.stats.primitiveInventory.length === 6, 'v55 primitive/pair space is invalid.');
@@ -212,7 +215,7 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(state.diagnostics?.ok === true, `Evolution diagnostics failed: ${(state.diagnostics?.failures || []).join(' | ')}`);
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
-    fs.writeFileSync(path.join(artifactDir, 'compositional-language-v55.json'), JSON.stringify({ setup, firstLesson, generalized, reproduction, asleepLearning, state, pageErrors }, null, 2));
+    fs.writeFileSync(path.join(artifactDir, 'compositional-language-v55.json'), JSON.stringify({ setup, firstLesson, generalized, reproduction, passiveLearning, state, pageErrors }, null, 2));
     await page.screenshot({ path:path.join(artifactDir, 'compositional-language-v55.png'), fullPage:true });
   } finally {
     await browser.close();
