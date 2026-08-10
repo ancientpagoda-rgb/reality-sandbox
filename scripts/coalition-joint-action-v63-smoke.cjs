@@ -16,6 +16,16 @@ fs.mkdirSync(artifactDir, { recursive:true });
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
 
+  async function advanceUntil(readSnapshot, ready, label, maxCadences = 5) {
+    let snapshot = null;
+    for (let cadence = 0; cadence < maxCadences; cadence++) {
+      await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), STEP_TICKS);
+      snapshot = await readSnapshot();
+      if (ready(snapshot)) return snapshot;
+    }
+    throw new Error(`${label} did not occur within ${maxCadences} cadences. ${JSON.stringify(snapshot)}`);
+  }
+
   try {
     await page.goto(baseUrl, { waitUntil:'domcontentloaded', timeout:120000 });
     await page.waitForFunction(() => Boolean(
@@ -123,21 +133,31 @@ fs.mkdirSync(artifactDir, { recursive:true });
         referent:'food',
         modifier:'there',
         gesture:{ x:1, y:0 },
-        steeringDirection:{ x:1, y:0 },
-        strength:0.95,
         step:101,
       };
       c.velocity.set(setup.affiliateId, { vx:0, vy:0 });
     }, { setup });
 
-    await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), STEP_TICKS);
-    const affiliateStarted = await page.evaluate(({ affiliateId }) => ({
+    const readAffiliate = () => page.evaluate(({ affiliateId, speakerId }) => ({
       joint:window.realitySandboxCoalitionJointActionV63.getJointAction(affiliateId),
+      intent:window.realitySandboxCommunicativeIntentV56.getIntent(affiliateId),
+      affiliation:window.realitySandboxProtoCoalitionsV62.getAffiliation(affiliateId)?.affiliations?.[String(speakerId)] || null,
+      organism:{
+        state:window.realitySandboxPlanet.world.ecs.components.motile.get(affiliateId)?.state,
+        bioV50:window.realitySandboxPlanet.world.ecs.components.motile.get(affiliateId)?.bioV50 || null,
+      },
       velocity:{ ...window.realitySandboxPlanet.world.ecs.components.velocity.get(affiliateId) },
       stats:window.realitySandboxCoalitionJointActionV63.getStats(),
     }), setup);
 
-    assert(affiliateStarted.joint?.commitment, 'Strong own affiliation did not start a v63 commitment.');
+    const affiliateStarted = await advanceUntil(
+      readAffiliate,
+      state => Boolean(state.joint?.commitment),
+      'Strong own-affiliation commitment start',
+      4
+    );
+    fs.writeFileSync(path.join(artifactDir, 'coalition-joint-action-v63-start.json'), JSON.stringify({ setup, reverseBefore, affiliateStarted, pageErrors }, null, 2));
+
     assert(affiliateStarted.joint.commitment.speakerId === setup.speakerId, 'v63 commitment targets the wrong public speaker.');
     assert(affiliateStarted.joint.commitment.remainingSteps >= 1 && affiliateStarted.joint.commitment.totalSteps <= 6, 'v63 commitment duration is invalid or unbounded.');
     assert(affiliateStarted.velocity.vx > 0, 'Affiliate commitment did not steer in the observable joint-attention direction.');
@@ -148,13 +168,15 @@ fs.mkdirSync(artifactDir, { recursive:true });
       organism.bioV56.lastJointAttention = null;
     }, { affiliateId:setup.affiliateId });
     const beforePersistVx = affiliateStarted.velocity.vx;
-    await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), STEP_TICKS * 2);
-    const affiliatePersisted = await page.evaluate(({ affiliateId }) => ({
-      joint:window.realitySandboxCoalitionJointActionV63.getJointAction(affiliateId),
-      velocity:{ ...window.realitySandboxPlanet.world.ecs.components.velocity.get(affiliateId) },
-      stats:window.realitySandboxCoalitionJointActionV63.getStats(),
-    }), setup);
-    assert(affiliatePersisted.joint?.lastAppliedCommitment?.speakerId === setup.speakerId, 'Affiliate commitment was not applied after the public signal disappeared.');
+    const appliedBefore = affiliateStarted.stats.commitmentsApplied || 0;
+    const affiliatePersisted = await advanceUntil(
+      readAffiliate,
+      state =>
+        state.joint?.lastAppliedCommitment?.speakerId === setup.speakerId &&
+        (state.stats.commitmentsApplied || 0) > appliedBefore,
+      'Sustained affiliate response after public signal disappears',
+      3
+    );
     assert(affiliatePersisted.velocity.vx > beforePersistVx, 'Affiliate response did not persist physically beyond the original joint-attention event.');
     assert(affiliatePersisted.stats.commitmentsApplied >= 2, 'v63 counted no sustained multi-cadence response.');
 
@@ -166,22 +188,25 @@ fs.mkdirSync(artifactDir, { recursive:true });
         referent:'food',
         modifier:'there',
         gesture:{ x:1, y:0 },
-        steeringDirection:{ x:1, y:0 },
-        strength:0.95,
         step:202,
       };
       c.velocity.set(setup.neutralId, { vx:0, vy:0 });
     }, { setup });
 
-    await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), STEP_TICKS);
-    const neutral = await page.evaluate(({ neutralId }) => ({
+    const weakBefore = affiliatePersisted.stats.weakAffiliationPassThroughs || 0;
+    const readNeutral = () => page.evaluate(({ neutralId }) => ({
       joint:window.realitySandboxCoalitionJointActionV63.getJointAction(neutralId),
       velocity:{ ...window.realitySandboxPlanet.world.ecs.components.velocity.get(neutralId) },
       stats:window.realitySandboxCoalitionJointActionV63.getStats(),
     }), setup);
+    const neutral = await advanceUntil(
+      readNeutral,
+      state => (state.stats.weakAffiliationPassThroughs || 0) > weakBefore,
+      'Weak-affiliation pass-through',
+      4
+    );
     assert(!neutral.joint?.commitment, 'Neutral listener received a v63 commitment without sufficient own affiliation.');
     assert(Math.abs(neutral.velocity.vx) < 1e-9 && Math.abs(neutral.velocity.vy) < 1e-9, 'v63 changed neutral listener motion instead of preserving upstream v56 behavior.');
-    assert(neutral.stats.weakAffiliationPassThroughs >= 1, 'Weak-affiliation pass-through was not counted.');
 
     await page.evaluate(({ setup }) => {
       const c = window.realitySandboxPlanet.world.ecs.components;
@@ -192,22 +217,26 @@ fs.mkdirSync(artifactDir, { recursive:true });
         referent:'food',
         modifier:'there',
         gesture:{ x:1, y:0 },
-        steeringDirection:{ x:1, y:0 },
-        strength:0.95,
         step:303,
       };
     }, { setup });
 
-    await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), STEP_TICKS);
-    const interrupted = await page.evaluate(({ affiliateId }) => ({
+    const interruptedBefore = neutral.stats.commitmentsInterruptedByUrgentNeed || 0;
+    const readInterrupted = () => page.evaluate(({ affiliateId }) => ({
       joint:window.realitySandboxCoalitionJointActionV63.getJointAction(affiliateId),
+      organism:window.realitySandboxPlanet.world.ecs.components.motile.get(affiliateId)?.bioV50 || null,
       stats:window.realitySandboxCoalitionJointActionV63.getStats(),
       build:window.realitySandboxEvolutionBuild,
       dataset:document.documentElement.dataset.coalitionJointActionV63,
     }), setup);
+    const interrupted = await advanceUntil(
+      readInterrupted,
+      state => (state.stats.commitmentsInterruptedByUrgentNeed || 0) > interruptedBefore,
+      'Urgent local override',
+      4
+    );
     assert(!interrupted.joint?.commitment, 'Urgent local danger did not cancel coalition-conditioned commitment.');
     assert(interrupted.joint?.lastAppliedCommitment?.interrupted === true, 'v63 did not record urgent local override.');
-    assert(interrupted.stats.commitmentsInterruptedByUrgentNeed >= 1, 'Urgent local override was not counted.');
 
     const flags = interrupted.stats;
     assert(flags.version === 'v63a-affiliation-conditioned-joint-action', 'Wrong v63 runtime version.');
