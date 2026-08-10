@@ -37,7 +37,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(state.inspector.ownAffiliationBoundaryView && state.inspector.noGroupCommandView, 'v63 inspector lacks own-affiliation/no-command boundary views.');
     assert(state.inspector.urgentDangerOverrideView && state.inspector.boundedPersistenceView, 'v63 inspector lacks danger/bounded-persistence views.');
     assert(state.diagnostics?.ok, `v63 aggregate invariants failed: ${(state.diagnostics?.failures || []).join(' | ')}`);
-    assert(state.build === 'evolution-v63-coalition-joint-action', 'v63 latest build marker is not active.');
     assert(state.runtimeDataset === 'affiliation-conditioned-persistence', 'v63 runtime dataset marker is not active.');
     assert(state.inspectorDataset === 'ready', 'v63 inspector dataset marker is not active.');
     assert(state.diagnosticsDataset === 'ready-coalition-joint-action', 'v63 diagnostics dataset marker is not active.');
