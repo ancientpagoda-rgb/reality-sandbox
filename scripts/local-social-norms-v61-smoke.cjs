@@ -93,6 +93,13 @@ fs.mkdirSync(artifactDir, { recursive:true });
         const lowHelper = c.motile.get(setup.lowHelperId);
         const lowRequester = c.motile.get(setup.lowRequesterId);
 
+        // Each loop iteration is a synthetic observation episode. Preserve the
+        // learned norm, but do not carry an unresolved request across a reset of
+        // requester/donor energy; that would turn the artificial reset itself
+        // into an unanswered social event.
+        if (highHelper.bioV61) highHelper.bioV61.pendingRequests = [];
+        if (lowHelper.bioV61) lowHelper.bioV61.pendingRequests = [];
+
         highHelper.energy = 0.70; highHelper.state = 'awake'; highHelper.decisionCooldown = 999;
         lowHelper.energy = 0.70; lowHelper.state = 'awake'; lowHelper.decisionCooldown = 999;
         donor.energy = 1.48; donor.state = 'awake'; donor.decisionCooldown = 999;
@@ -109,6 +116,8 @@ fs.mkdirSync(artifactDir, { recursive:true });
         `Local norm training round ${round}`
       );
     }
+
+    fs.writeFileSync(path.join(artifactDir, 'local-social-norms-v61-training.json'), JSON.stringify({ setup, training, pageErrors }, null, 2));
 
     assert(training.high.answeredObserved >= 2, 'High-helping neighborhood did not learn from answered requests.');
     assert(training.low.unansweredObserved >= 2, 'Low-helping neighborhood did not learn from unanswered requests.');
