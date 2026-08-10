@@ -4,10 +4,9 @@ const { chromium } = require('playwright');
 
 const baseUrl = process.env.REALITY_BASE_URL || 'http://127.0.0.1:4173/';
 const artifactDir = process.env.REALITY_COMPOSITIONAL_LANGUAGE_ARTIFACT_DIR || path.join(process.cwd(), 'artifacts', 'compositional-language-v55-smoke');
-const LESSON_DISTANCE = 137.55;
 const V55_ONLY_DISTANCE = 141;
-const LESSON_TICKS = 15; // 15 * 0.06 s = exactly one 0.9 s language update.
-const REPETITIONS = 3;   // comprehension first; repeated grounding raises confidence enough for production.
+const LESSON_TICKS = 15; // exactly one 0.9 s v55 update
+const REPETITIONS = 3;
 fs.mkdirSync(artifactDir, { recursive:true });
 
 (async () => {
@@ -48,67 +47,106 @@ fs.mkdirSync(artifactDir, { recursive:true });
       teacher.bioV51 = null;
       teacher.bioV52 = { learningRate:0.74, retention:0.76, memories:{ food:null, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:0.82, formedAtStep:0, lastSocialReceivedAtStep:null };
       teacher.bioV53 = { openness:0.74, conformity:0.60, practices:{ 'food-route':{ x:foodTarget.x, y:foodTarget.y, targetId:null, strength:1, modelId:teacher.lineageId, learnedAtStep:0, updatedAtStep:0 }, 'danger-avoidance':null, 'pack-hunt':null }, appliedPractice:'food-route', learnedFrom:null, lastEnergy:0.82, culturalAge:5 };
-      teacher.bioV54 = null;
+      teacher.bioV54 = establishedV54(teacher.id, true);
       teacher.bioV55 = null;
       c.position.set(donor.id, base);
       c.velocity.set(donor.id, { vx:0, vy:0 });
 
-      function addReceiver(x, groundedFood) {
-        const id = planet.world.ecs.createEntity();
-        c.position.set(id, { x, y:base.y });
-        c.velocity.set(id, { vx:0, vy:0 });
-        c.motile.set(id, {
-          lineageId:teacher.lineageId,
-          generation:(teacher.generation || 0) + 1,
-          plantAncestorId:teacher.plantAncestorId,
-          energy:0.82,
-          age:6,
-          state:'awake',
-          sleepDebt:0.1,
-          decisionCooldown:0,
-          neurotoxinLoad:0,
-          genome:{ ...teacher.genome, brainSpeed:1, sense:0.45, sociality:0.45, motility:0 },
-          bioV50:{ mode:'explore', drives:{ explore:1 }, hunger:0.7, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null },
-          bioV51:null,
-          bioV52:{ learningRate:0.74, retention:0.76, memories:{ food:groundedFood ? { x:foodTarget.x, y:foodTarget.y, strength:1, targetId:null, source:'direct', updatedAtStep:0 } : null, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:0.82, formedAtStep:0, lastSocialReceivedAtStep:null },
-          bioV53:{ openness:0.74, conformity:0.60, practices:{ 'food-route':null, 'danger-avoidance':null, 'pack-hunt':null }, appliedPractice:null, learnedFrom:null, lastEnergy:0.82, culturalAge:0 },
-          bioV54:null,
-          bioV55:null,
-        });
-        return id;
+      const learnerId = planet.world.ecs.createEntity();
+      c.position.set(learnerId, { x:(base.x + distance) % planet.world.width, y:base.y });
+      c.velocity.set(learnerId, { vx:0, vy:0 });
+      c.motile.set(learnerId, {
+        lineageId:teacher.lineageId,
+        generation:(teacher.generation || 0) + 1,
+        plantAncestorId:teacher.plantAncestorId,
+        energy:0.82,
+        age:6,
+        state:'awake',
+        sleepDebt:0.1,
+        decisionCooldown:0,
+        neurotoxinLoad:0,
+        genome:{ ...teacher.genome, brainSpeed:1, sense:0.45, sociality:0.45, motility:0 },
+        bioV50:{ mode:'flock', drives:{ flock:1 }, hunger:0.7, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null },
+        bioV51:null,
+        bioV52:{ learningRate:0.74, retention:0.76, memories:{ food:null, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:0.82, formedAtStep:0, lastSocialReceivedAtStep:null },
+        bioV53:{ openness:0.74, conformity:0.60, practices:{ 'food-route':null, 'danger-avoidance':null, 'pack-hunt':null }, appliedPractice:null, learnedFrom:null, lastEnergy:0.82, culturalAge:0 },
+        bioV54:establishedV54(learnerId, true),
+        bioV55:null,
+      });
+
+      const naiveId = planet.world.ecs.createEntity();
+      c.position.set(naiveId, { x:(base.x - distance + planet.world.width) % planet.world.width, y:base.y });
+      c.velocity.set(naiveId, { vx:0, vy:0 });
+      c.motile.set(naiveId, {
+        lineageId:teacher.lineageId,
+        generation:(teacher.generation || 0) + 1,
+        plantAncestorId:teacher.plantAncestorId,
+        energy:0.82,
+        age:6,
+        state:'awake',
+        sleepDebt:0.1,
+        decisionCooldown:0,
+        neurotoxinLoad:0,
+        genome:{ ...teacher.genome, brainSpeed:1, sense:0.45, sociality:0.45, motility:0 },
+        bioV50:{ mode:'flock', drives:{ flock:1 }, hunger:0.7, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null },
+        bioV51:null,
+        bioV52:{ learningRate:0.74, retention:0.76, memories:{ food:null, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:0.82, formedAtStep:0, lastSocialReceivedAtStep:null },
+        bioV53:{ openness:0.74, conformity:0.60, practices:{ 'food-route':null, 'danger-avoidance':null, 'pack-hunt':null }, appliedPractice:null, learnedFrom:null, lastEnergy:0.82, culturalAge:0 },
+        bioV54:null,
+        bioV55:null,
+      });
+
+      function establishedV54(sourceId, includeDanger) {
+        const lexicon = {
+          ka:{ meaning:'food-route', confidence:1, learnedFrom:sourceId, updatedAtStep:0 },
+        };
+        const production = { 'food-route':'ka' };
+        if (includeDanger) {
+          lexicon.ti = { meaning:'danger-avoidance', confidence:1, learnedFrom:sourceId, updatedAtStep:0 };
+          production['danger-avoidance'] = 'ti';
+        }
+        return {
+          vocality:0.66,
+          receptivity:0.73,
+          lexicon,
+          production,
+          inventionCounter:0,
+          lastEmission:null,
+          lastHeard:null,
+          interpretedMeaning:null,
+          appliedLanguageAction:null,
+        };
       }
 
-      // brain=1, sense=.45, sociality=.45:
-      // v53≈136.8, v54≈138.3, v55≈143.9. 137.55 is a language-only window.
-      const learnerId = addReceiver((base.x + distance) % planet.world.width, true);
-      const naiveId = addReceiver((base.x - distance + planet.world.width) % planet.world.width, false);
       return { ok:true, teacherId:donor.id, learnerId, naiveId, lineageId:teacher.lineageId, base, foodTarget, dangerTarget };
-    }, { distance:LESSON_DISTANCE });
-    assert(setup.ok, `v55b setup failed: ${setup.reason || 'unknown'}`);
+    }, { distance:V55_ONLY_DISTANCE });
+    assert(setup.ok, `v55c setup failed: ${setup.reason || 'unknown'}`);
 
+    // At these traits v53≈136.8, v54≈138.3, v55≈143.9. Every lesson occurs at 141:
+    // old culture and holophrase channels are out of range; only the new compositional phrase can arrive.
     for (let round = 0; round < REPETITIONS; round++) {
-      await resetLessonGeometry(page, setup, LESSON_DISTANCE);
+      await resetGeometry(page, setup, V55_ONLY_DISTANCE);
       await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), LESSON_TICKS);
     }
 
-    const firstLesson = await page.evaluate(({ teacherId, learnerId, naiveId }) => ({
+    const foodLesson = await page.evaluate(({ teacherId, learnerId, naiveId }) => ({
       teacher54:window.realitySandboxProtoLanguageV54.getLanguage(teacherId),
       learner54:window.realitySandboxProtoLanguageV54.getLanguage(learnerId),
       learner55:window.realitySandboxCompositionalLanguageV55.getComposition(learnerId),
       naive55:window.realitySandboxCompositionalLanguageV55.getComposition(naiveId),
       learnerCulture:window.realitySandboxProtoCultureV53.getCulture(learnerId),
-      naiveCulture:window.realitySandboxProtoCultureV53.getCulture(naiveId),
     }), setup);
 
-    const foodRoot = firstLesson.teacher54?.production?.['food-route'];
-    const foodToken = tokenForPrimitive(firstLesson.learner55, 'food');
-    const thereToken = tokenForPrimitive(firstLesson.learner55, 'there');
-    assert(foodRoot && foodToken === foodRoot, 'v55b did not reanalyze the grounded v54 food holophrase as its referent root.');
-    assert(thereToken && thereToken !== foodRoot, 'v55b learner did not acquire an independent there modifier.');
-    assert((firstLesson.learner55?.lexicon?.[thereToken]?.confidence || 0) >= 0.38, 'Repeated grounding did not raise the modifier convention to production confidence.');
-    assert(firstLesson.learner55?.syntaxOrder, 'v55b learner did not infer word order from root position.');
-    assert(Object.keys(firstLesson.naive55?.lexicon || {}).length === 0, 'Ungrounded listener learned v55 primitive meanings without an independent context/root anchor.');
-    assert(!firstLesson.learnerCulture?.practices?.['food-route'] && !firstLesson.naiveCulture?.practices?.['food-route'], 'v53 tradition leaked across the language-only range.');
+    const foodToken = tokenForPrimitive(foodLesson.learner55, 'food');
+    const thereToken = tokenForPrimitive(foodLesson.learner55, 'there');
+    assert(foodToken === 'ka', 'Learner did not reanalyze its already-grounded v54 food holophrase as the food root.');
+    assert(thereToken && thereToken !== 'ka', 'Learner did not acquire an independent there modifier.');
+    assert((foodLesson.learner55?.lexicon?.[thereToken]?.confidence || 0) >= 0.38, 'Repeated v55 exposure did not raise there to production confidence.');
+    assert(foodLesson.learner55?.syntaxOrder, 'Learner did not infer word order from the known-root position.');
+    assert(!foodLesson.learner55?.lastPhrase, 'Context-free learner emitted a v55 phrase instead of only listening.');
+    assert(!foodLesson.learner54?.lastHeard, 'Learner received a v54 holophrase despite being beyond v54 range.');
+    assert(Object.keys(foodLesson.naive55?.lexicon || {}).length === 0, 'Listener without a known v54 root learned v55 meaning anyway.');
+    assert(!foodLesson.learnerCulture?.practices?.['food-route'], 'v53 culture crossed the v55-only gap.');
 
     await page.evaluate(({ teacherId, learnerId, dangerTarget }) => {
       const c = window.realitySandboxPlanet.world.ecs.components;
@@ -117,14 +155,15 @@ fs.mkdirSync(artifactDir, { recursive:true });
       teacher.bioV53.practices['food-route'] = null;
       teacher.bioV53.practices['danger-avoidance'] = { x:dangerTarget.x, y:dangerTarget.y, targetId:null, strength:1, modelId:teacherId, learnedAtStep:0, updatedAtStep:0 };
       teacher.bioV53.appliedPractice = 'danger-avoidance';
-      learner.bioV52.memories = { food:null, danger:{ x:dangerTarget.x, y:dangerTarget.y, strength:1, targetId:null, source:'direct', updatedAtStep:0 }, hunt:null };
+      teacher.bioV50 = { ...(teacher.bioV50 || {}), mode:'explore', drives:{ explore:1 }, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null };
+      learner.bioV50 = { ...(learner.bioV50 || {}), mode:'flock', drives:{ flock:1 }, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null };
+      learner.bioV52.memories = { food:null, danger:null, hunt:null };
       learner.bioV52.recalledAction = null;
       learner.bioV52.recalledMemory = null;
-      learner.bioV50 = { ...(learner.bioV50 || {}), mode:'explore', drives:{ explore:1 }, hunger:0.7, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null };
     }, setup);
 
     for (let round = 0; round < REPETITIONS; round++) {
-      await resetLessonGeometry(page, setup, LESSON_DISTANCE);
+      await resetGeometry(page, setup, V55_ONLY_DISTANCE);
       await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), LESSON_TICKS);
     }
 
@@ -139,8 +178,8 @@ fs.mkdirSync(artifactDir, { recursive:true });
 
     const dangerToken = tokenForPrimitive(generalized.state, 'danger');
     const avoidToken = tokenForPrimitive(generalized.state, 'avoid');
-    assert(dangerToken && avoidToken, 'Learner did not acquire grounded danger/avoid primitives.');
-    assert((generalized.state?.lexicon?.[avoidToken]?.confidence || 0) >= 0.38, 'Repeated danger grounding did not raise avoid to production confidence.');
+    assert(dangerToken === 'ti' && avoidToken, 'Learner did not reanalyze the known danger holophrase and acquire avoid.');
+    assert((generalized.state?.lexicon?.[avoidToken]?.confidence || 0) >= 0.38, 'Repeated danger phrase exposure did not raise avoid to production confidence.');
     assert(generalized.composed?.novel === true, 'food+avoid was not recognized as a never-heard combination.');
     assert(generalized.decoded?.referent === 'food' && generalized.decoded?.modifier === 'avoid', 'Novel food+avoid composition failed to decode.');
     assert(generalized.decoded?.novel === true, 'Novel composition was incorrectly treated as a memorized whole phrase.');
@@ -153,12 +192,12 @@ fs.mkdirSync(artifactDir, { recursive:true });
       planet.world.ecs.destroyEntity(naiveId);
       const learner = c.motile.get(learnerId);
       const lp = c.position.get(learnerId);
-      learner.bioV52.memories = { food:{ x:foodTarget.x, y:foodTarget.y, strength:1, targetId:null, source:'direct', updatedAtStep:0 }, danger:null, hunt:null };
-      learner.bioV52.recalledAction = null;
-      learner.bioV52.recalledMemory = null;
       learner.bioV53.practices = { 'food-route':{ x:foodTarget.x, y:foodTarget.y, targetId:null, strength:1, modelId:learnerId, learnedAtStep:0, updatedAtStep:0 }, 'danger-avoidance':null, 'pack-hunt':null };
       learner.bioV53.appliedPractice = 'food-route';
-      learner.bioV50 = { ...(learner.bioV50 || {}), mode:'explore', drives:{ explore:1 }, hunger:0.7, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null };
+      learner.bioV50 = { ...(learner.bioV50 || {}), mode:'explore', drives:{ explore:1 }, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null };
+      learner.bioV52.memories = { food:null, danger:null, hunt:null };
+      learner.bioV52.recalledAction = null;
+      learner.bioV52.recalledMemory = null;
       c.velocity.set(learnerId, { vx:0, vy:0 });
 
       const listenerId = planet.world.ecs.createEntity();
@@ -175,43 +214,53 @@ fs.mkdirSync(artifactDir, { recursive:true });
         decisionCooldown:0,
         neurotoxinLoad:0,
         genome:{ ...learner.genome, brainSpeed:1, sense:0.45, sociality:0.45, motility:0 },
-        bioV50:{ mode:'explore', drives:{ explore:1 }, hunger:0.7, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null },
+        bioV50:{ mode:'flock', drives:{ flock:1 }, hunger:0.7, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null },
         bioV51:null,
-        bioV52:{ learningRate:0.74, retention:0.76, memories:{ food:{ x:foodTarget.x, y:foodTarget.y, strength:1, targetId:null, source:'direct', updatedAtStep:0 }, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:0.82, formedAtStep:0, lastSocialReceivedAtStep:null },
+        bioV52:{ learningRate:0.74, retention:0.76, memories:{ food:null, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:0.82, formedAtStep:0, lastSocialReceivedAtStep:null },
         bioV53:{ openness:0.74, conformity:0.60, practices:{ 'food-route':null, 'danger-avoidance':null, 'pack-hunt':null }, appliedPractice:null, learnedFrom:null, lastEnergy:0.82, culturalAge:0 },
-        bioV54:null,
+        bioV54:{
+          vocality:0.66,
+          receptivity:0.73,
+          lexicon:{ ka:{ meaning:'food-route', confidence:1, learnedFrom:listenerId, updatedAtStep:0 } },
+          production:{ 'food-route':'ka' },
+          inventionCounter:0,
+          lastEmission:null,
+          lastHeard:null,
+          interpretedMeaning:null,
+          appliedLanguageAction:null,
+        },
         bioV55:null,
       });
       return { listenerId, learnerStart:{ x:lp.x, y:lp.y } };
-    }, { ...setup, distance:LESSON_DISTANCE });
+    }, { ...setup, distance:V55_ONLY_DISTANCE });
 
-    // One grounded phrase is enough for comprehension; production was proven on the older learner above.
-    await page.evaluate(({ learnerId, listenerId, learnerStart, distance }) => {
-      const c = window.realitySandboxPlanet.world.ecs.components;
-      c.position.set(learnerId, { ...learnerStart });
-      c.position.set(listenerId, { x:(learnerStart.x + distance) % window.realitySandboxPlanet.world.width, y:learnerStart.y });
-      c.velocity.set(learnerId, { vx:0, vy:0 });
-      c.velocity.set(listenerId, { vx:0, vy:0 });
-    }, { ...setup, ...reproduction, distance:LESSON_DISTANCE });
-    await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), LESSON_TICKS);
+    for (let round = 0; round < REPETITIONS; round++) {
+      await page.evaluate(({ learnerId, listenerId, learnerStart, distance }) => {
+        const c = window.realitySandboxPlanet.world.ecs.components;
+        const width = window.realitySandboxPlanet.world.width;
+        c.position.set(learnerId, { ...learnerStart });
+        c.position.set(listenerId, { x:(learnerStart.x + distance) % width, y:learnerStart.y });
+        c.velocity.set(learnerId, { vx:0, vy:0 });
+        c.velocity.set(listenerId, { vx:0, vy:0 });
+      }, { ...setup, ...reproduction, distance:V55_ONLY_DISTANCE });
+      await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), LESSON_TICKS);
+    }
 
-    const learnedAgain = await page.evaluate(({ learnerId, listenerId }) => ({
-      learner54:window.realitySandboxProtoLanguageV54.getLanguage(learnerId),
+    const copied = await page.evaluate(({ learnerId, listenerId }) => ({
       learner55:window.realitySandboxCompositionalLanguageV55.getComposition(learnerId),
       listener54:window.realitySandboxProtoLanguageV54.getLanguage(listenerId),
       listener55:window.realitySandboxCompositionalLanguageV55.getComposition(listenerId),
       listenerCulture:window.realitySandboxProtoCultureV53.getCulture(listenerId),
     }), { ...setup, ...reproduction });
 
-    const listenerFood = tokenForPrimitive(learnedAgain.listener55, 'food');
-    const listenerThere = tokenForPrimitive(learnedAgain.listener55, 'there');
-    assert(learnedAgain.learner54?.production?.['food-route'] === foodRoot, 'Learner did not reproduce the v54 root convention.');
-    assert(tokenForPrimitive(learnedAgain.learner55, 'food') === foodToken && tokenForPrimitive(learnedAgain.learner55, 'there') === thereToken, 'Learner did not reproduce the learned v55 primitive convention.');
-    assert(listenerFood === foodToken && listenerThere === thereToken, 'Later grounded listener did not acquire the reproduced v55 convention.');
-    assert(learnedAgain.listener55?.syntaxOrder === learnedAgain.learner55?.syntaxOrder, 'Later listener did not infer the same learned word order.');
-    assert(!learnedAgain.listenerCulture?.practices?.['food-route'], 'Later listener copied v53 culture despite remaining outside v53 range.');
+    assert(tokenForPrimitive(copied.listener55, 'food') === foodToken, 'Later listener did not retain the known v54 root as the v55 food primitive.');
+    assert(tokenForPrimitive(copied.listener55, 'there') === thereToken, 'Later listener did not learn the reproduced there convention.');
+    assert(copied.listener55?.syntaxOrder === copied.learner55?.syntaxOrder, 'Later listener did not learn the lineage word-order convention.');
+    assert(!copied.listener55?.lastPhrase, 'Context-free later listener emitted before it had anything to say.');
+    assert(!copied.listener54?.lastHeard, 'Later listener received v54 despite remaining beyond v54 range.');
+    assert(!copied.listenerCulture?.practices?.['food-route'], 'Later listener copied v53 culture across the v55-only gap.');
 
-    const preActionV54Step = learnedAgain.listener54?.lastHeard?.step ?? null;
+    const preActionV54Step = copied.listener54?.lastHeard?.step ?? null;
     await page.evaluate(({ learnerId, listenerId, learnerStart, foodTarget, distance }) => {
       const planet = window.realitySandboxPlanet;
       const c = planet.world.ecs.components;
@@ -222,8 +271,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
       c.velocity.set(learnerId, { vx:0, vy:0 });
       c.velocity.set(listenerId, { vx:0, vy:0 });
 
-      // Weak target knowledge: enough for v55 action (> .16), too weak for v53 guidance (> .24)
-      // or context generation (> .42).
       listener.bioV52.memories = { food:null, danger:null, hunt:null };
       listener.bioV52.recalledAction = null;
       listener.bioV52.recalledMemory = null;
@@ -236,7 +283,6 @@ fs.mkdirSync(artifactDir, { recursive:true });
       learner.bioV50 = { ...(learner.bioV50 || {}), mode:'explore', drives:{ explore:1 }, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null };
     }, { ...setup, ...reproduction, distance:V55_ONLY_DISTANCE });
 
-    // 141 > v53≈136.8 and v54≈138.3, but < v55≈143.9.
     await page.evaluate(ticks => window.realitySandboxDebug.advance(ticks), LESSON_TICKS);
 
     const state = await page.evaluate(({ learnerId, listenerId, lineageId }) => {
@@ -258,28 +304,28 @@ fs.mkdirSync(artifactDir, { recursive:true });
       };
     }, { ...setup, ...reproduction });
 
-    assert(state.stats.version === 'v55b-holophrase-reanalysis', 'Grounded v55b runtime is not active.');
-    assert(state.stats.holophraseReanalysis && state.stats.receiverGroundedPrimitiveLearning && state.stats.rootAnchoredSyntaxLearning && state.stats.noSpeakerSemanticMetadata, 'v55b grounding/reanalysis contract is incomplete.');
-    assert(state.stats.independentPrimitiveMeanings && state.stats.compositionalGeneralization && state.stats.learnedWordOrder && state.stats.wordOrderConstrainsDecoding, 'v55b compositional semantics are incomplete.');
-    assert(state.stats.groundedPhraseHearings > 0 && state.stats.ungroundedPhraseHearings > 0 && state.stats.holophraseReanalyses > 0, 'v55b did not exercise grounded reanalysis and later ungrounded use.');
-    assert(state.stats.physicallyLocalTransmission && state.stats.kinBiasedTransmission && state.stats.spatialHashing, 'v55b locality contract failed.');
-    assert(state.stats.culturallyBlankCompositionalLexiconAtBirth && state.stats.boundedPrimitiveLexicon && state.stats.constantPairMemory, 'v55b bounded cultural-memory contract failed.');
-    assert(state.stats.maxPairSpace === 9 && state.stats.primitiveInventory.length === 6, 'v55b primitive/pair space is invalid.');
-    assert(state.stats.phraseEmissions > 0 && state.stats.phraseHearings > 0 && state.stats.successfulCompositions > 0, 'v55b recorded no compositional communication cycle.');
+    assert(state.stats.version === 'v55c-known-holophrase-reanalysis', 'v55c holophrase-reanalysis runtime is not active.');
+    assert(state.stats.holophraseReanalysis && state.stats.receiverKnownHolophraseAnchors && state.stats.reanalysisWithoutCurrentContext && state.stats.noSpeakerSemanticMetadata, 'v55c reanalysis contract is incomplete.');
+    assert(state.stats.independentPrimitiveMeanings && state.stats.compositionalGeneralization && state.stats.learnedWordOrder && state.stats.wordOrderConstrainsDecoding, 'v55c compositional semantics are incomplete.');
+    assert(state.stats.anchoredPhraseHearings > 0 && state.stats.unanchoredPhraseHearings > 0 && state.stats.holophraseReanalyses > 0, 'v55c did not exercise both anchored and unanchored phrase hearings.');
+    assert(state.stats.physicallyLocalTransmission && state.stats.kinBiasedTransmission && state.stats.spatialHashing, 'v55c locality contract failed.');
+    assert(state.stats.culturallyBlankCompositionalLexiconAtBirth && state.stats.boundedPrimitiveLexicon && state.stats.constantPairMemory, 'v55c bounded cultural-memory contract failed.');
+    assert(state.stats.maxPairSpace === 9 && state.stats.primitiveInventory.length === 6, 'v55c primitive/pair space is invalid.');
+    assert(state.stats.phraseEmissions > 0 && state.stats.phraseHearings > 0 && state.stats.successfulCompositions > 0, 'v55c recorded no compositional communication cycle.');
     assert(state.v54?.lastHeard?.step === preActionV54Step, 'Final action phase received a v54 holophrase despite being outside v54 range.');
-    assert(state.listener?.appliedComposition?.referent === 'food' && state.listener?.appliedComposition?.modifier === 'there', 'A learned v55 phrase did not guide behavior when v54 was out of range.');
-    assert(state.stats.sharedPrimitiveConventions > 0 && state.stats.sharedSyntaxConventions > 0, 'No v55b primitive/syntax convention became shared.');
-    assert(state.inspectorStats.lineagePrimitiveView && state.inspectorStats.learnedSyntaxView && state.inspectorStats.novelCombinationView && state.inspectorText.length > 0, 'v55 inspector did not expose grounded compositional state.');
+    assert(state.listener?.appliedComposition?.referent === 'food' && state.listener?.appliedComposition?.modifier === 'there', 'A learned v55c phrase did not guide behavior across the v55-only gap.');
+    assert(state.stats.sharedPrimitiveConventions > 0 && state.stats.sharedSyntaxConventions > 0, 'No v55c primitive/syntax convention became shared.');
+    assert(state.inspectorStats.lineagePrimitiveView && state.inspectorStats.learnedSyntaxView && state.inspectorStats.novelCombinationView && state.inspectorText.length > 0, 'v55 inspector did not expose compositional state.');
     assert(state.diagnostics?.ok === true, `Evolution diagnostics failed: ${(state.diagnostics?.failures || []).join(' | ')}`);
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
-    fs.writeFileSync(path.join(artifactDir, 'compositional-language-v55.json'), JSON.stringify({ setup, firstLesson, generalized, reproduction, learnedAgain, preActionV54Step, state, pageErrors }, null, 2));
+    fs.writeFileSync(path.join(artifactDir, 'compositional-language-v55.json'), JSON.stringify({ setup, foodLesson, generalized, reproduction, copied, preActionV54Step, state, pageErrors }, null, 2));
     await page.screenshot({ path:path.join(artifactDir, 'compositional-language-v55.png'), fullPage:true });
   } finally {
     await browser.close();
   }
 
-  async function resetLessonGeometry(page, setup, distance) {
+  async function resetGeometry(page, setup, distance) {
     await page.evaluate(({ teacherId, learnerId, naiveId, base, distance }) => {
       const c = window.realitySandboxPlanet.world.ecs.components;
       const width = window.realitySandboxPlanet.world.width;
