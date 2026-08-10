@@ -19,18 +19,20 @@ async function waitForRuntime() {
     const compositionalLanguage = window.realitySandboxCompositionalLanguageV55;
     const communicativeIntent = window.realitySandboxCommunicativeIntentV56;
     const socialModels = window.realitySandboxSocialModelsV57;
+    const reciprocalCooperation = window.realitySandboxReciprocalCooperationV58;
     if (
       origin?.installed && inspector?.installed && morphology?.installed && milestones?.installed &&
       population?.installed && deepTime?.installed && morphogenesis?.installed && inheritance?.installed &&
       selection?.installed && history?.installed && nutrientCycle?.installed && sensoryBrains?.installed &&
       socialSignaling?.installed && learningMemory?.installed && protoCulture?.installed && protoLanguage?.installed &&
-      compositionalLanguage?.installed && communicativeIntent?.installed && socialModels?.installed
+      compositionalLanguage?.installed && communicativeIntent?.installed && socialModels?.installed &&
+      reciprocalCooperation?.installed
     ) {
       return {
         origin, inspector, morphology, milestones, population, deepTime,
         morphogenesis, inheritance, selection, history, nutrientCycle,
         sensoryBrains, socialSignaling, learningMemory, protoCulture,
-        protoLanguage, compositionalLanguage, communicativeIntent, socialModels,
+        protoLanguage, compositionalLanguage, communicativeIntent, socialModels, reciprocalCooperation,
       };
     }
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -69,6 +71,7 @@ function install(parts) {
     const compositionStats = parts.compositionalLanguage.getStats();
     const intentStats = parts.communicativeIntent.getStats();
     const socialStats = parts.socialModels.getStats();
+    const cooperationStats = parts.reciprocalCooperation.getStats();
     return {
       ready:true,
       build:window.realitySandboxSurfaceBuild,
@@ -93,6 +96,7 @@ function install(parts) {
       compositionalLanguage:compositionStats,
       communicativeIntent:intentStats,
       socialModels:socialStats,
+      reciprocalCooperation:cooperationStats,
       lineageCounts:{
         total:parts.origin.getLineages().length,
         motile:parts.origin.getLineages().filter(lineage => lineage.type === 'motile').length,
@@ -115,7 +119,8 @@ function install(parts) {
         languageStats.noHardPopulationCap === true &&
         compositionStats.noHardPopulationCap === true &&
         intentStats.noHardPopulationCap === true &&
-        socialStats.noHardPopulationCap === true,
+        socialStats.noHardPopulationCap === true &&
+        cooperationStats.noHardPopulationCap === true,
       surfaceFaunaRendererDisabled:
         parts.origin.getStats().legacyFaunaRendererEnabled === false &&
         parts.morphogenesis.getStats().surfaceRendererEnabled === false &&
@@ -128,7 +133,8 @@ function install(parts) {
         languageStats.surfaceRendererEnabled === false &&
         compositionStats.surfaceRendererEnabled === false &&
         intentStats.surfaceRendererEnabled === false &&
-        socialStats.surfaceRendererEnabled === false,
+        socialStats.surfaceRendererEnabled === false &&
+        cooperationStats.surfaceRendererEnabled === false,
     };
   }
 
@@ -137,7 +143,7 @@ function install(parts) {
     const failures = [];
     if (!state.retiredFaunaModulesAbsent) failures.push('A retired Surface-fauna experiment is loaded.');
     if (!state.noHardPopulationCap) failures.push('An evolution module reports a hard population cap.');
-    if (!state.surfaceFaunaRendererDisabled) failures.push('A v47-v57 fauna renderer is unexpectedly enabled.');
+    if (!state.surfaceFaunaRendererDisabled) failures.push('A v47-v58 fauna renderer is unexpectedly enabled.');
     if (!state.origin.plantFirstOrigin) failures.push('Plant-first origin mode is inactive.');
     if (
       !state.origin.authoritativeFixedStep || !state.morphogenesis.authoritativeFixedStep ||
@@ -146,12 +152,13 @@ function install(parts) {
       !state.sensoryBrains.authoritativeFixedStep || !state.socialSignaling.authoritativeFixedStep ||
       !state.learningMemory.authoritativeFixedStep || !state.protoCulture.authoritativeFixedStep ||
       !state.protoLanguage.authoritativeFixedStep || !state.compositionalLanguage.authoritativeFixedStep ||
-      !state.communicativeIntent.authoritativeFixedStep || !state.socialModels.authoritativeFixedStep
+      !state.communicativeIntent.authoritativeFixedStep || !state.socialModels.authoritativeFixedStep ||
+      !state.reciprocalCooperation.authoritativeFixedStep
     ) failures.push('An evolution subsystem is outside the authoritative fixed step.');
     if (state.morphogenesis.traits?.length !== 9) failures.push('v48 developmental trait schema is incomplete.');
     if (state.inheritance.birthInheritanceComplexity !== 'O(1)') failures.push('v48 developmental inheritance is not using the O(1) lineage cache.');
     if (!state.deepTime.reducedOrderEvolutionaryTime) failures.push('Evolutionary deep-time scaling is inactive.');
-    if (state.evolutionBuild !== 'evolution-v57-social-models') failures.push(`Unexpected evolution build ${state.evolutionBuild}.`);
+    if (state.evolutionBuild !== 'evolution-v58-reciprocal-cooperation') failures.push(`Unexpected evolution build ${state.evolutionBuild}.`);
 
     if (!state.nutrientCycle.detritusToSoil || !state.nutrientCycle.metabolicWasteToSoil || !state.nutrientCycle.soilToPlantBiomass || !state.nutrientCycle.weatheringAndLeaching || !state.nutrientCycle.toxinSoilFeedback) failures.push('The v49 closed nutrient cycle is incomplete.');
     if (!Number.isFinite(state.nutrientCycle.meanNutrient) || state.nutrientCycle.meanNutrient < 0) failures.push('The v49 nutrient field is invalid.');
@@ -215,12 +222,35 @@ function install(parts) {
     if (state.socialModels.maxPartnerModels !== 8) failures.push('The v57 per-organism partner-model bound is invalid.');
     if (!Array.isArray(state.socialModels.partnerKnowledgeDimensions) || state.socialModels.partnerKnowledgeDimensions.length !== 3) failures.push('The v57 inferred partner-knowledge schema is invalid.');
 
+    if (
+      !state.reciprocalCooperation.publicNeedSolicitation ||
+      !state.reciprocalCooperation.noHiddenRecipientNeedInspection ||
+      !state.reciprocalCooperation.aidDecisionUsesOwnSocialModel ||
+      !state.reciprocalCooperation.recipientEnergyNotUsedForChoice ||
+      !state.reciprocalCooperation.reciprocalHistoryBiasesAid ||
+      !state.reciprocalCooperation.costlyHelping ||
+      !state.reciprocalCooperation.energyConservingTransfer ||
+      !state.reciprocalCooperation.boundedPartnerLedger ||
+      !state.reciprocalCooperation.physicallyLocalAid ||
+      !state.reciprocalCooperation.kinBiasedAid ||
+      !state.reciprocalCooperation.spatialHashing
+    ) failures.push('The v58 reciprocal-cooperation phenotype is incomplete.');
+    if (state.reciprocalCooperation.version !== 'v58a-conserved-reciprocal-aid') failures.push(`Unexpected v58 cooperation version ${state.reciprocalCooperation.version || 'unknown'}.`);
+    if (state.reciprocalCooperation.maxPartnerLedgers !== 8) failures.push('The v58 reciprocal partner-ledger bound is invalid.');
+    if (Math.abs((state.reciprocalCooperation.transferEfficiency || 0) - 0.86) > 1e-12) failures.push('The v58 aid-transfer efficiency is invalid.');
+    const aidBalance = Math.abs(
+      (state.reciprocalCooperation.energyDebited || 0) -
+      (state.reciprocalCooperation.energyReceived || 0) -
+      (state.reciprocalCooperation.metabolicAidCost || 0)
+    );
+    if (aidBalance > 1e-8) failures.push(`The v58 aid-energy ledger is not conserved (${aidBalance}).`);
+
     return { ok:failures.length === 0, failures, snapshot:state };
   }
 
   const api = { installed:true, snapshot, invariants };
   window.realitySandboxEvolutionDiagnosticsV48d = api;
-  document.documentElement.dataset.evolutionDiagnosticsV48d = 'ready-v57b-social-models';
+  document.documentElement.dataset.evolutionDiagnosticsV48d = 'ready-v58a-reciprocal-cooperation';
 
   if (window.realitySandboxDebug && typeof window.realitySandboxDebug === 'object') {
     window.realitySandboxDebug.evolution = snapshot;
@@ -230,7 +260,7 @@ function install(parts) {
   const previousPresentationDiagnostics = window.realitySandboxPresentationDiagnostics;
   window.realitySandboxPresentationDiagnostics = () => ({
     ...(typeof previousPresentationDiagnostics === 'function' ? previousPresentationDiagnostics() : {}),
-    evolutionV57:snapshot(),
+    evolutionV58:snapshot(),
   });
 }
 
