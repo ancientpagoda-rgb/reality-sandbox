@@ -300,6 +300,7 @@ function install({ language, intent, influence, planet, modules }) {
       if (!p) continue;
       const ph = phenotype(organism.genome);
       const state = ensureState(organism, ph);
+      if (!acts.length) continue;
       state.lastLocalDecision = null;
       const result = decide(id, organism, p, ph, grid);
       if (result?.ambiguous) stats.ambiguousLocalFields++;
