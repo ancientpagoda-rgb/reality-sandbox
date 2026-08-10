@@ -78,7 +78,17 @@ fs.mkdirSync(artifactDir, { recursive:true });
 
     const result = { before, held, afterDrag, afterZoom, target, afterClick, pageErrors };
     fs.writeFileSync(path.join(artifactDir, 'agent-interaction.json'), JSON.stringify(result, null, 2));
-    await page.screenshot({ path:path.join(artifactDir, 'agent-interaction.png'), fullPage:true });
+
+    // The screenshot is diagnostic evidence only; the real interaction assertions above are authoritative.
+    // A heavily animated WebGL page can occasionally stall Playwright's screenshot compositor in CI,
+    // so never turn an otherwise-passing interaction proof into a false negative.
+    try {
+      await page.screenshot({ path:path.join(artifactDir, 'agent-interaction.png'), fullPage:false, timeout:10000 });
+    } catch (error) {
+      fs.writeFileSync(path.join(artifactDir, 'screenshot-warning.txt'), `${error.stack || error.message}\n`);
+      console.warn('Interaction proof screenshot skipped:', error.message);
+    }
+
     console.log('Agent interaction smoke passed:', JSON.stringify({ cameraDelta, zoom:afterZoom.camera.zoom, selected:afterClick.state.selectedRegion }));
   } finally {
     await browser.close();
