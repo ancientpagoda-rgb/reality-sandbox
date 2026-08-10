@@ -34,21 +34,9 @@ fs.mkdirSync(artifactDir, { recursive:true });
       const lineageId = 'v59-test-lineage';
       const base = { x:planet.world.width * 0.42, y:planet.world.height * 0.50 };
       const genome = {
-        photosynthesis:0,
-        heterotrophy:0.08,
-        motility:0,
-        sense:0.86,
-        brainSpeed:1,
-        sociality:0.92,
-        dormancy:0.35,
-        toxin:0,
-        neurotoxin:0,
-        scavenging:0,
-        aggression:0,
-        armor:0.2,
-        seedInvestment:0.2,
-        metabolism:0.01,
-        bodySize:0.5,
+        photosynthesis:0, heterotrophy:0.08, motility:0, sense:0.86, brainSpeed:1,
+        sociality:0.92, dormancy:0.35, toxin:0, neurotoxin:0, scavenging:0,
+        aggression:0, armor:0.2, seedInvestment:0.2, metabolism:0.01, bodySize:0.5,
       };
 
       function add(x, y, energy) {
@@ -56,26 +44,13 @@ fs.mkdirSync(artifactDir, { recursive:true });
         c.position.set(id, { x:(x + planet.world.width) % planet.world.width, y });
         c.velocity.set(id, { vx:0, vy:0 });
         c.motile.set(id, {
-          lineageId,
-          generation:4,
-          plantAncestorId:null,
-          energy,
-          age:12,
-          state:'awake',
-          sleepDebt:0.05,
-          decisionCooldown:999,
-          neurotoxinLoad:0,
-          genome:{ ...genome },
+          lineageId, generation:4, plantAncestorId:null, energy, age:12, state:'awake',
+          sleepDebt:0.05, decisionCooldown:999, neurotoxinLoad:0, genome:{ ...genome },
           bioV50:{ mode:'rest', drives:{ rest:1 }, hunger:0, targetPlant:null, targetDetritus:null, detectedDanger:null, detectedPrey:null },
           bioV51:null,
           bioV52:{ learningRate:0.9, retention:0.9, memories:{ food:null, danger:null, hunt:null }, recalledAction:null, recalledMemory:null, lastEnergy:energy, formedAtStep:0, lastSocialReceivedAtStep:null },
           bioV53:{ openness:0.9, conformity:0.8, practices:{ 'food-route':null, 'danger-avoidance':null, 'pack-hunt':null }, appliedPractice:null, learnedFrom:null, lastEnergy:energy, culturalAge:0 },
-          bioV54:null,
-          bioV55:null,
-          bioV56:null,
-          bioV57:null,
-          bioV58:null,
-          bioV59:null,
+          bioV54:null, bioV55:null, bioV56:null, bioV57:null, bioV58:null, bioV59:null,
         });
         return id;
       }
@@ -122,13 +97,14 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(state.publicEvents.every(event => !('received' in event) && !('debit' in event) && !('energy' in event) && !('urgency' in event)), 'Public reputation event leaked hidden aid/need magnitude.');
 
     const flags = state.stats;
-    assert(flags.version === 'v59a-local-witnessed-reputation', 'Wrong v59 runtime version.');
+    assert(flags.installed && flags.version === 'v59a-local-witnessed-reputation', 'Wrong v59 runtime version.');
     assert(flags.reputationFromPublicAidOnly && flags.thirdPartyWitnessRequired && flags.localSensoryWitnessRequired, 'v59 witnessed-public-evidence contract failed.');
     assert(flags.noGlobalReputationRegistry && flags.observersCanDisagree && flags.noHiddenAidAmount, 'v59 no-global/no-telepathy contract failed.');
     assert(flags.noPrivateLedgerInspectionByAgents && flags.reputationBiasesAudienceSelection, 'v59 reputation behavior contract failed.');
     assert(flags.boundedReputationMemory && flags.maxReputationEntries === 8, 'v59 reputation memory is not bounded.');
     assert(flags.spatialHashing && flags.authoritativeFixedStep && flags.noHardPopulationCap && flags.noHardDisplayCap, 'v59 performance/cap invariants failed.');
-    assert(state.evolutionBuild === 'evolution-v59-public-reputation', 'v59 evolution build marker is not active.');
+    // This is a subsystem smoke, not a latest-build smoke. Later evolution phases
+    // may legitimately own the global build marker while v59 remains installed.
     assert(state.dataset === 'local-third-party-witnesses', 'v59 dataset marker is not active.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
