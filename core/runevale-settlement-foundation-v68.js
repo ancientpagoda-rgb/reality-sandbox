@@ -63,6 +63,8 @@ function install({ planet, modules, surface }) {
     materialHauls:0,
     constructionWorkTicks:0,
     structuresCompleted:0,
+    structureRetrofitsStarted:0,
+    structureRetrofitsCompleted:0,
     settlersBorn:0,
     foodProduced:0,
     waterProduced:0,
@@ -431,6 +433,11 @@ function install({ planet, modules, surface }) {
     structure.progress = 1;
     structure.completedAtStep = stats.steps;
     stats.structuresCompleted++;
+    if (structure.retrofit && !structure.retrofit.completedAtStep) {
+      structure.retrofit.completedAtStep = stats.steps;
+      structure.retrofit.completed = true;
+      stats.structureRetrofitsCompleted++;
+    }
     recomputeSettlement();
   }
 
@@ -878,6 +885,54 @@ function install({ planet, modules, surface }) {
     }
   }, { passive:false });
 
+  function retrofitStructure(structureId, targetType) {
+    const id = Number(structureId);
+    const structure = state.structures.find(item => item.id === id);
+    if (!structure) return { ok:false, reason:'Structure not found.' };
+    if (structure.status !== 'complete') return { ok:false, reason:'Only completed structures can be retrofitted.' };
+    if (!(structure.type === 'palisade' && targetType === 'gatehouse')) {
+      return { ok:false, reason:'This retrofit path is not supported.' };
+    }
+    const fromType = structure.type;
+    const fromSpec = BUILDINGS[fromType];
+    const toSpec = BUILDINGS[targetType];
+    if (!fromSpec || !toSpec) return { ok:false, reason:'Unknown retrofit building type.' };
+
+    const preserved = {
+      wood:Math.min(toSpec.wood, Math.max(Number(structure.delivered?.wood) || 0, fromSpec.wood)),
+      stone:Math.min(toSpec.stone, Math.max(Number(structure.delivered?.stone) || 0, fromSpec.stone)),
+      work:Math.min(toSpec.work, Math.max(Number(structure.workDone) || 0, fromSpec.work)),
+    };
+    const deltaRequired = {
+      wood:Math.max(0, toSpec.wood - preserved.wood),
+      stone:Math.max(0, toSpec.stone - preserved.stone),
+      work:Math.max(0, toSpec.work - preserved.work),
+    };
+
+    structure.type = targetType;
+    structure.required = { wood:toSpec.wood, stone:toSpec.stone };
+    structure.delivered = { wood:preserved.wood, stone:preserved.stone };
+    structure.workRequired = toSpec.work;
+    structure.workDone = preserved.work;
+    structure.progress = clamp(structure.workDone / Math.max(1, structure.workRequired));
+    structure.status = structureNeedsMaterials(structure) ? 'blueprint' : 'construction';
+    structure.completedAtStep = null;
+    structure.retrofit = {
+      fromType,
+      toType:targetType,
+      startedAtStep:stats.steps,
+      completedAtStep:null,
+      completed:false,
+      preserved:{ ...preserved },
+      deltaRequired:{ ...deltaRequired },
+    };
+    stats.structureRetrofitsStarted++;
+    recomputeSettlement();
+    saveState();
+    refreshUi(true);
+    return { ok:true, structure:copy(structure), retrofit:copy(structure.retrofit) };
+  }
+
   function resetForTest() {
     try { localStorage.removeItem(persistenceKey); } catch {}
     state = blankState();
@@ -891,6 +946,8 @@ function install({ planet, modules, surface }) {
     stats.materialHauls = 0;
     stats.constructionWorkTicks = 0;
     stats.structuresCompleted = 0;
+    stats.structureRetrofitsStarted = 0;
+    stats.structureRetrofitsCompleted = 0;
     stats.settlersBorn = 0;
     stats.foodProduced = 0;
     stats.waterProduced = 0;
@@ -934,6 +991,7 @@ function install({ planet, modules, surface }) {
     gatherStone,
     foundSettlement,
     placeBlueprint,
+    retrofitStructure,
     selectBuilding(type) {
       if (!BUILDINGS[type]) return false;
       selectedType = type;
