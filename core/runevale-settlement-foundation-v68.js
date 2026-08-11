@@ -904,6 +904,97 @@ function install({ planet, modules, surface }) {
     }
   }, { passive:false });
 
+  function junctionWallEndpoints(structure) {
+    if (!structure || !['palisade','gatehouse'].includes(structure.type)) return [];
+    const spec = BUILDINGS[structure.type];
+    if (!spec) return [];
+    const angle = (Number(structure.rotation) || 0) + Math.PI * 0.5;
+    const half = (Number(spec.width) || 1) * 0.5;
+    const dx = Math.cos(angle) * half;
+    const dy = Math.sin(angle) * half;
+    return [
+      { x:wrap(structure.x - dx, world.width), y:clamp(structure.y - dy, 0.02, world.height - 0.02) },
+      { x:wrap(structure.x + dx, world.width), y:clamp(structure.y + dy, 0.02, world.height - 0.02) },
+    ];
+  }
+
+  function junctionPointDistance(a, b) {
+    let dx = a.x - b.x;
+    if (dx > world.width * 0.5) dx -= world.width;
+    else if (dx < -world.width * 0.5) dx += world.width;
+    return Math.hypot(dx, a.y - b.y);
+  }
+
+  function undirectedWallAngleDifference(a, b) {
+    let d = Math.abs(a - b) % (Math.PI * 2);
+    if (d > Math.PI) d = Math.PI * 2 - d;
+    if (d > Math.PI * 0.5) d = Math.PI - d;
+    return Math.abs(d);
+  }
+
+  function placeJunctionTower(x, y, adjacentStructureIds = []) {
+    if (!state.settlement) return { ok:false, reason:'Found a settlement before building a junction tower.' };
+    const ids = [...new Set((Array.isArray(adjacentStructureIds) ? adjacentStructureIds : []).map(Number).filter(Number.isInteger))];
+    if (ids.length !== 2) return { ok:false, reason:'A corner tower requires exactly two adjacent fortification segments.' };
+    const adjacent = ids.map(id => state.structures.find(item => item.id === id));
+    if (adjacent.some(item => !item)) return { ok:false, reason:'One or more adjacent fortification segments no longer exist.' };
+    if (adjacent.some(item => item.status !== 'complete' || !['palisade','gatehouse'].includes(item.type))) {
+      return { ok:false, reason:'Corner towers require two completed palisade/gatehouse segments.' };
+    }
+
+    const tx = wrap(Number(x) || 0, world.width);
+    const ty = clamp(Number(y) || 0, 0.02, world.height - 0.02);
+    const point = { x:tx, y:ty };
+    for (const wall of adjacent) {
+      const nearest = Math.min(...junctionWallEndpoints(wall).map(endpoint => junctionPointDistance(endpoint, point)));
+      if (!Number.isFinite(nearest) || nearest > 1.25) {
+        return { ok:false, reason:'Requested tower point is not the shared endpoint of both fortifications.' };
+      }
+    }
+
+    const aAngle = (Number(adjacent[0].rotation) || 0) + Math.PI * 0.5;
+    const bAngle = (Number(adjacent[1].rotation) || 0) + Math.PI * 0.5;
+    const cornerAngle = undirectedWallAngleDifference(aAngle, bAngle);
+    if (cornerAngle < 0.45) return { ok:false, reason:'A junction tower requires a real wall turn, not a straight continuation.' };
+
+    const terrain = living.sampleDynamicPlanet(tx, ty, 'v72-junction-tower-exact');
+    const water = waterCycle.sample(tx, ty, 'v72-junction-tower-exact');
+    if (!terrain?.land || (Number(water?.lake) || 0) > 0.45) return { ok:false, reason:'Corner tower center must be on stable dry land.' };
+    if (distance(point, state.settlement) > state.settlement.territoryRadius + 46) {
+      return { ok:false, reason:'Corner tower is too far from the settlement logistics radius.' };
+    }
+
+    const towerSpec = BUILDINGS.tower;
+    const allowed = new Set(ids);
+    for (const structure of state.structures) {
+      if (allowed.has(structure.id)) continue;
+      const otherSpec = BUILDINGS[structure.type];
+      const minSpacing = Math.max(2.4, ((Number(towerSpec.width) || 4.2) + (Number(otherSpec?.width) || 1)) * 0.33);
+      if (distance(point, structure) < minSpacing) return { ok:false, reason:'Another structure occupies the corner-tower footprint.' };
+    }
+
+    const structure = {
+      id:state.nextStructureId++,
+      type:'tower',
+      x:tx,
+      y:ty,
+      rotation:0,
+      status:'blueprint',
+      required:{ wood:towerSpec.wood, stone:towerSpec.stone },
+      delivered:{ wood:0, stone:0 },
+      workRequired:towerSpec.work,
+      workDone:0,
+      progress:0,
+      placedAtStep:stats.steps,
+      completedAtStep:null,
+    };
+    state.structures.push(structure);
+    stats.blueprintsPlaced++;
+    saveState();
+    refreshUi(true);
+    return { ok:true, structure:copy(structure), cornerAngle };
+  }
+
   function retrofitStructure(structureId, targetType) {
     const id = Number(structureId);
     const structure = state.structures.find(item => item.id === id);
@@ -1010,6 +1101,7 @@ function install({ planet, modules, surface }) {
     gatherStone,
     foundSettlement,
     placeBlueprint,
+    placeJunctionTower,
     retrofitStructure,
     selectBuilding(type) {
       if (!BUILDINGS[type]) return false;
