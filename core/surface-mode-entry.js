@@ -27,6 +27,7 @@ import './runevale-settlement-build-orientation-v68b.js?v=20260811-runevale-sett
 import './runevale-castle-perimeters-v69.js?v=20260811-runevale-castle-perimeters-v69a';
 import './runevale-castle-perimeters-v69-contract.js?v=20260811-runevale-castle-perimeters-v69a-contract';
 import './runevale-wall-runs-v70.js?v=20260811-runevale-wall-runs-v70a';
+import './runevale-gatehouse-retrofits-v71.js?v=20260811-runevale-gatehouse-retrofits-v71a';
 import './runevale-settlement-sphere-gpu-v68a.js?v=20260811-runevale-settlement-sphere-gpu-v68a';
 
 const SURFACE_BUILD = 'surface-v48-morphogenesis-body-plans';
