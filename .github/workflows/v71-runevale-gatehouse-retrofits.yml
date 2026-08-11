@@ -1,0 +1,90 @@
+name: v71 Runevale gatehouse retrofits
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: v71-runevale-gatehouse-retrofits-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gatehouse-retrofit-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install project dependencies
+        run: npm ci
+
+      - name: Run integration audit
+        run: npm run audit:integration
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --package-lock=false playwright@1.62.0
+          npx playwright install --with-deps chromium
+
+      - name: Build production site
+        run: npm run build
+
+      - name: Start production preview
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/reality-preview.log 2>&1 &
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:4173/ > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/reality-preview.log
+          exit 1
+
+      - name: Verify physical palisade-to-gatehouse retrofit
+        id: retrofit_test
+        continue-on-error: true
+        env:
+          REALITY_BASE_URL: http://127.0.0.1:4173/
+          REALITY_RUNEVALE_V71_ARTIFACT_DIR: artifacts/runevale-gatehouse-retrofits-v71-smoke
+        run: node scripts/runevale-gatehouse-retrofits-v71-smoke.cjs
+
+      - name: Upload v71 diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v71-runevale-gatehouse-retrofits-${{ github.sha }}
+          path: |
+            artifacts/runevale-gatehouse-retrofits-v71-smoke
+            /tmp/reality-preview.log
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Publish v71 browser status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const outcome = '${{ steps.retrofit_test.outcome }}';
+            const ok = outcome === 'success';
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'browser/v71-runevale-gatehouse-retrofits',
+              description: ok ? 'Physical gatehouse retrofit passed' : `v71 gatehouse retrofit: ${outcome}`,
+              target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions`,
+            });
+            if (!ok) core.setFailed(`v71 Runevale gatehouse retrofit smoke ${outcome}`);
