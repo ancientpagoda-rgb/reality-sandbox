@@ -1,0 +1,49 @@
+name: v71 bootstrap haul reservation
+
+on:
+  push:
+    branches: [v71-gatehouse-retrofits]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-v68-hauling:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: v71-gatehouse-retrofits
+          fetch-depth: 0
+
+      - name: Reserve in-transit construction material
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const file = 'core/runevale-settlement-foundation-v68.js';
+          let text = fs.readFileSync(file, 'utf8');
+          if (text.includes('function inTransitCargoFor(structureId, excludeWorkerId = null)')) {
+            console.log('In-transit cargo accounting already installed.');
+            process.exit(0);
+          }
+          const from = `  function loadCargo(worker, structure) {\n    const stockpile = state.settlement.stockpile;\n    const needWood = Math.max(0, structure.required.wood - structure.delivered.wood);\n    const needStone = Math.max(0, structure.required.stone - structure.delivered.stone);\n    const wood = Math.min(4, needWood, stockpile.wood);\n    const stone = Math.min(3, needStone, stockpile.stone);\n    if (wood <= 0 && stone <= 0) return false;\n    stockpile.wood -= wood;\n    stockpile.stone -= stone;\n    worker.cargo.wood = wood;\n    worker.cargo.stone = stone;\n    worker.state = 'hauling';\n    stats.materialHauls++;\n    return true;\n  }\n\n  function unloadCargo(worker, structure) {\n    structure.delivered.wood += worker.cargo.wood;\n    structure.delivered.stone += worker.cargo.stone;\n    worker.cargo = { wood:0, stone:0 };\n    structure.status = structureNeedsMaterials(structure) ? 'blueprint' : 'construction';\n    worker.state = structure.status === 'construction' ? 'building' : 'fetching';\n  }`;
+          const to = `  function inTransitCargoFor(structureId, excludeWorkerId = null) {\n    let wood = 0;\n    let stone = 0;\n    for (const other of state.workers) {\n      if (other.id === excludeWorkerId || other.targetStructureId !== structureId) continue;\n      wood += Math.max(0, Number(other.cargo?.wood) || 0);\n      stone += Math.max(0, Number(other.cargo?.stone) || 0);\n    }\n    return { wood, stone };\n  }\n\n  function loadCargo(worker, structure) {\n    const stockpile = state.settlement.stockpile;\n    const reserved = inTransitCargoFor(structure.id, worker.id);\n    const needWood = Math.max(0, structure.required.wood - structure.delivered.wood - reserved.wood);\n    const needStone = Math.max(0, structure.required.stone - structure.delivered.stone - reserved.stone);\n    const wood = Math.min(4, needWood, stockpile.wood);\n    const stone = Math.min(3, needStone, stockpile.stone);\n    if (wood <= 0 && stone <= 0) return false;\n    stockpile.wood -= wood;\n    stockpile.stone -= stone;\n    worker.cargo.wood = wood;\n    worker.cargo.stone = stone;\n    worker.state = 'hauling';\n    stats.materialHauls++;\n    return true;\n  }\n\n  function unloadCargo(worker, structure) {\n    const stockpile = state.settlement.stockpile;\n    const woodTotal = structure.delivered.wood + Math.max(0, Number(worker.cargo.wood) || 0);\n    const stoneTotal = structure.delivered.stone + Math.max(0, Number(worker.cargo.stone) || 0);\n    const excessWood = Math.max(0, woodTotal - structure.required.wood);\n    const excessStone = Math.max(0, stoneTotal - structure.required.stone);\n    structure.delivered.wood = Math.min(structure.required.wood, woodTotal);\n    structure.delivered.stone = Math.min(structure.required.stone, stoneTotal);\n    if (excessWood > 0) stockpile.wood += excessWood;\n    if (excessStone > 0) stockpile.stone += excessStone;\n    worker.cargo = { wood:0, stone:0 };\n    structure.status = structureNeedsMaterials(structure) ? 'blueprint' : 'construction';\n    worker.state = structure.status === 'construction' ? 'building' : 'fetching';\n  }`;
+          const count = text.split(from).length - 1;
+          if (count !== 1) throw new Error(`Expected one hauling block, got ${count}`);
+          text = text.replace(from, to);
+          fs.writeFileSync(file, text);
+          console.log('Patched in-transit construction material accounting.');
+          NODE
+
+      - name: Commit hauling fix
+        run: |
+          if git diff --quiet; then
+            echo "No hauling patch needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add core/runevale-settlement-foundation-v68.js
+          git commit -m "Reserve in-transit v68 construction materials"
+          git push origin HEAD:v71-gatehouse-retrofits
