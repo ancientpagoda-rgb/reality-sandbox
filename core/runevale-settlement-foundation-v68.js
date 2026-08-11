@@ -372,10 +372,22 @@ function install({ planet, modules, surface }) {
     return false;
   }
 
+  function inTransitCargoFor(structureId, excludeWorkerId = null) {
+    let wood = 0;
+    let stone = 0;
+    for (const other of state.workers) {
+      if (other.id === excludeWorkerId || other.targetStructureId !== structureId) continue;
+      wood += Math.max(0, Number(other.cargo?.wood) || 0);
+      stone += Math.max(0, Number(other.cargo?.stone) || 0);
+    }
+    return { wood, stone };
+  }
+
   function loadCargo(worker, structure) {
     const stockpile = state.settlement.stockpile;
-    const needWood = Math.max(0, structure.required.wood - structure.delivered.wood);
-    const needStone = Math.max(0, structure.required.stone - structure.delivered.stone);
+    const reserved = inTransitCargoFor(structure.id, worker.id);
+    const needWood = Math.max(0, structure.required.wood - structure.delivered.wood - reserved.wood);
+    const needStone = Math.max(0, structure.required.stone - structure.delivered.stone - reserved.stone);
     const wood = Math.min(4, needWood, stockpile.wood);
     const stone = Math.min(3, needStone, stockpile.stone);
     if (wood <= 0 && stone <= 0) return false;
@@ -389,8 +401,15 @@ function install({ planet, modules, surface }) {
   }
 
   function unloadCargo(worker, structure) {
-    structure.delivered.wood += worker.cargo.wood;
-    structure.delivered.stone += worker.cargo.stone;
+    const stockpile = state.settlement.stockpile;
+    const woodTotal = structure.delivered.wood + Math.max(0, Number(worker.cargo.wood) || 0);
+    const stoneTotal = structure.delivered.stone + Math.max(0, Number(worker.cargo.stone) || 0);
+    const excessWood = Math.max(0, woodTotal - structure.required.wood);
+    const excessStone = Math.max(0, stoneTotal - structure.required.stone);
+    structure.delivered.wood = Math.min(structure.required.wood, woodTotal);
+    structure.delivered.stone = Math.min(structure.required.stone, stoneTotal);
+    if (excessWood > 0) stockpile.wood += excessWood;
+    if (excessStone > 0) stockpile.stone += excessStone;
     worker.cargo = { wood:0, stone:0 };
     structure.status = structureNeedsMaterials(structure) ? 'blueprint' : 'construction';
     worker.state = structure.status === 'construction' ? 'building' : 'fetching';
