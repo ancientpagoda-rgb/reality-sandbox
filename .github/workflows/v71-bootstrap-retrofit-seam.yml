@@ -1,0 +1,81 @@
+name: v71 bootstrap retrofit seam
+
+on:
+  push:
+    branches: [v71-gatehouse-retrofits]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-v68-retrofit-seam:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: v71-gatehouse-retrofits
+          fetch-depth: 0
+
+      - name: Add narrow authoritative retrofit seam
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const file = 'core/runevale-settlement-foundation-v68.js';
+          let text = fs.readFileSync(file, 'utf8');
+          if (text.includes('function retrofitStructure(structureId, targetType)')) {
+            console.log('Retrofit seam already installed.');
+            process.exit(0);
+          }
+
+          function replaceOnce(from, to, label) {
+            const count = text.split(from).length - 1;
+            if (count !== 1) throw new Error(`${label}: expected exactly one match, got ${count}`);
+            text = text.replace(from, to);
+          }
+
+          replaceOnce(
+            "    structuresCompleted:0,\n    settlersBorn:0,",
+            "    structuresCompleted:0,\n    structureRetrofitsStarted:0,\n    structureRetrofitsCompleted:0,\n    settlersBorn:0,",
+            'stats fields'
+          );
+
+          replaceOnce(
+            "  function completeStructure(structure) {\n    if (structure.status === 'complete') return;\n    structure.status = 'complete';\n    structure.progress = 1;\n    structure.completedAtStep = stats.steps;\n    stats.structuresCompleted++;\n    recomputeSettlement();\n  }",
+            "  function completeStructure(structure) {\n    if (structure.status === 'complete') return;\n    structure.status = 'complete';\n    structure.progress = 1;\n    structure.completedAtStep = stats.steps;\n    stats.structuresCompleted++;\n    if (structure.retrofit && !structure.retrofit.completedAtStep) {\n      structure.retrofit.completedAtStep = stats.steps;\n      structure.retrofit.completed = true;\n      stats.structureRetrofitsCompleted++;\n    }\n    recomputeSettlement();\n  }",
+            'completeStructure'
+          );
+
+          replaceOnce(
+            "  function resetForTest() {",
+            `  function retrofitStructure(structureId, targetType) {\n    const id = Number(structureId);\n    const structure = state.structures.find(item => item.id === id);\n    if (!structure) return { ok:false, reason:'Structure not found.' };\n    if (structure.status !== 'complete') return { ok:false, reason:'Only completed structures can be retrofitted.' };\n    if (!(structure.type === 'palisade' && targetType === 'gatehouse')) {\n      return { ok:false, reason:'This retrofit path is not supported.' };\n    }\n    const fromType = structure.type;\n    const fromSpec = BUILDINGS[fromType];\n    const toSpec = BUILDINGS[targetType];\n    if (!fromSpec || !toSpec) return { ok:false, reason:'Unknown retrofit building type.' };\n\n    const preserved = {\n      wood:Math.min(toSpec.wood, Math.max(Number(structure.delivered?.wood) || 0, fromSpec.wood)),\n      stone:Math.min(toSpec.stone, Math.max(Number(structure.delivered?.stone) || 0, fromSpec.stone)),\n      work:Math.min(toSpec.work, Math.max(Number(structure.workDone) || 0, fromSpec.work)),\n    };\n    const deltaRequired = {\n      wood:Math.max(0, toSpec.wood - preserved.wood),\n      stone:Math.max(0, toSpec.stone - preserved.stone),\n      work:Math.max(0, toSpec.work - preserved.work),\n    };\n\n    structure.type = targetType;\n    structure.required = { wood:toSpec.wood, stone:toSpec.stone };\n    structure.delivered = { wood:preserved.wood, stone:preserved.stone };\n    structure.workRequired = toSpec.work;\n    structure.workDone = preserved.work;\n    structure.progress = clamp(structure.workDone / Math.max(1, structure.workRequired));\n    structure.status = structureNeedsMaterials(structure) ? 'blueprint' : 'construction';\n    structure.completedAtStep = null;\n    structure.retrofit = {\n      fromType,\n      toType:targetType,\n      startedAtStep:stats.steps,\n      completedAtStep:null,\n      completed:false,\n      preserved:{ ...preserved },\n      deltaRequired:{ ...deltaRequired },\n    };\n    stats.structureRetrofitsStarted++;\n    recomputeSettlement();\n    saveState();\n    refreshUi(true);\n    return { ok:true, structure:copy(structure), retrofit:copy(structure.retrofit) };\n  }\n\n  function resetForTest() {`,
+            'retrofit function'
+          );
+
+          replaceOnce(
+            "    stats.structuresCompleted = 0;\n    stats.settlersBorn = 0;",
+            "    stats.structuresCompleted = 0;\n    stats.structureRetrofitsStarted = 0;\n    stats.structureRetrofitsCompleted = 0;\n    stats.settlersBorn = 0;",
+            'reset stats'
+          );
+
+          replaceOnce(
+            "    placeBlueprint,\n    selectBuilding(type) {",
+            "    placeBlueprint,\n    retrofitStructure,\n    selectBuilding(type) {",
+            'api seam'
+          );
+
+          fs.writeFileSync(file, text);
+          console.log('Patched authoritative v68 retrofit seam.');
+          NODE
+
+      - name: Commit retrofit seam
+        run: |
+          if git diff --quiet; then
+            echo "No retrofit patch needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add core/runevale-settlement-foundation-v68.js
+          git commit -m "Add authoritative v68 structure retrofit seam"
+          git push origin HEAD:v71-gatehouse-retrofits
