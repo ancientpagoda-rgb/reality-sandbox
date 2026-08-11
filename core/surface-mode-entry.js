@@ -22,6 +22,7 @@ import './surface-large-planet-coverage-v43.js?v=20260808-surface-v46e';
 import './surface-gpu-backend-diagnostics.js?v=20260808-surface-v46e';
 import './surface-mobile-controls.js?v=20260808-surface-v46e';
 import './presentation-invariant-compat.js?v=20260808-surface-v46e';
+import './runevale-settlement-foundation-v68.js?v=20260811-runevale-settlement-v68a';
 
 const SURFACE_BUILD = 'surface-v48-morphogenesis-body-plans';
 window.realitySandboxSurfaceBuild = SURFACE_BUILD;
