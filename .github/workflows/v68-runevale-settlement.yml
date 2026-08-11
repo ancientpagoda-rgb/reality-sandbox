@@ -60,6 +60,14 @@ jobs:
           REALITY_RUNEVALE_V68_ARTIFACT_DIR: artifacts/runevale-settlement-v68-smoke
         run: node scripts/runevale-settlement-v68-smoke.cjs
 
+      - name: Verify spherical castle visibility
+        id: visual_test
+        continue-on-error: true
+        env:
+          REALITY_BASE_URL: http://127.0.0.1:4173/
+          REALITY_RUNEVALE_V68_ARTIFACT_DIR: artifacts/runevale-settlement-v68-smoke
+        run: node scripts/runevale-settlement-v68-visual-smoke.cjs
+
       - name: Upload v68 diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -76,15 +84,16 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const outcome = '${{ steps.settlement_test.outcome }}';
-            const ok = outcome === 'success';
+            const behavior = '${{ steps.settlement_test.outcome }}';
+            const visual = '${{ steps.visual_test.outcome }}';
+            const ok = behavior === 'success' && visual === 'success';
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha: context.sha,
               state: ok ? 'success' : 'failure',
               context: 'browser/v68-runevale-settlement',
-              description: ok ? 'Runevale settlement + castle foundation passed' : `v68 Runevale settlement: ${outcome}`,
+              description: ok ? 'Settlement behavior + spherical castle visibility passed' : `v68 behavior:${behavior} visual:${visual}`,
               target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions`,
             });
-            if (!ok) core.setFailed(`v68 Runevale settlement smoke ${outcome}`);
+            if (!ok) core.setFailed(`v68 Runevale behavior:${behavior} visual:${visual}`);
