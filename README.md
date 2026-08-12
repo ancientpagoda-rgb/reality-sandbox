@@ -1,27 +1,25 @@
-# Reality Sandbox — Nysa
+# Reality Sandbox — Nysa (Minimal demo)
 
-Nysa is a fictional procedural living planet whose terrain, water cycle, climate, vegetation, animals, and evolution share one simulation state.
+This branch contains a simplified, minimal demo of the Reality Sandbox project. It keeps a single demo entrypoint (reality-lab.html) and a small runtime surface needed to run it. The rest of the repository is left in place on the branch but is documented here as archived candidates to keep the main tree small and easy to work with.
 
-## Scientific boundary
+## What's kept in the minimal demo
+- reality-lab.html (single demo entrypoint)
+- core modules required by that page (runtime, world formation, UI shell)
+- package.json, vite.config.js (configured to build only the reality-lab demo)
 
-**Nysa is not Earth.** The public root presents a generated fictional world and must not imply that its terrain, weather, ecology, or planetary history are measured Earth data.
+## How to run the minimal demo
 
-## Scope freeze
-
-The current product direction is the coupled living-planet experience: planetary formation and geology, terrain, hydrology, climate, vegetation, animal ecology and evolution, globe navigation, and ground-level Surface Mode.
-
-Universe-scale, galaxy, civilization, and later phase work remain frozen for the public root unless the living-planet experience is stable and deliberately reopened.
-
-## Experience gate
-
-**No new phase should be added** until the current experience remains coherent and usable across the supported desktop and mobile paths, including the public GitHub Pages build and browser smoke checks.
-
-## Development
+Install dependencies and run the dev server:
 
 ```bash
 npm ci
-npm run check
 npm run dev
+# or build
+npm run build
+npm run preview
 ```
 
-`npm run check` runs the integration audits and production Vite build used by the Pages deployment workflow.
+## Archive / next steps
+I have not deleted any files on the main branch. On this simplify/minimal-demo branch I've adjusted the build and scripts to produce a focused demo. If you want, I can move large engine variants, lab pages, and smoke scripts into an archive/ directory inside this branch (so they remain recoverable) — or prepare a separate archive branch.
+
+See ARCHIVE_MANIFEST.md for a recommended list of files to move/ archive, and tell me if you'd like me to proceed with moving them into archive/ in this branch.

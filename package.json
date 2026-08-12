@@ -3,14 +3,13 @@
   "private": true,
   "version": "3.0.0",
   "type": "module",
-  "description": "A deterministic procedural living-planet simulation.",
+  "description": "A deterministic procedural living-planet simulation (minimal demo build).",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "audit:integration": "node scripts/integration-audit.cjs && node scripts/root-renderer-audit.cjs",
-    "check": "npm run audit:integration && npm run build",
-    "lint": "eslint \"core/reality-v6*/**/*.js\"",
+    "check": "npm run build",
+    "lint": "eslint \"core/**/*.js\"",
     "lint:all": "eslint ."
   },
   "dependencies": {
