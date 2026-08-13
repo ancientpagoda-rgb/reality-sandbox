@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#07120f" />
+  <title>Reality Sandbox · Hadean Chemistry Lab</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#050b0a;color:#e9f4ee}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 50% -20%,#19372f 0,#07110f 38%,#030706 100%);overflow-x:hidden}.shell{width:min(1500px,100%);margin:0 auto;padding:18px}.top{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;margin-bottom:14px}.title h1{font-size:clamp(20px,2.4vw,34px);margin:0;letter-spacing:.04em}.title p{margin:6px 0 0;color:#9eb6ac;max-width:780px;font-size:13px;line-height:1.45}.controls{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}button,select{background:#10231e;border:1px solid #2f5246;color:#e9f4ee;border-radius:8px;padding:8px 11px;font:inherit;font-size:12px;cursor:pointer}button:hover,select:hover{border-color:#6aa78f}button.active{background:#285a49;border-color:#88c8af}.grid{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(300px,.82fr);gap:14px}.card{background:rgba(8,20,17,.88);border:1px solid rgba(92,139,120,.28);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.28);overflow:hidden}.card-head{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-bottom:1px solid rgba(92,139,120,.2);font-size:12px;color:#b7cfc5}.map-wrap{position:relative;padding:10px}.map-wrap canvas{display:block;width:100%;height:auto;aspect-ratio:2/1;border-radius:8px;background:#020403;image-rendering:pixelated;cursor:crosshair}.legend{position:absolute;left:18px;right:18px;bottom:18px;height:8px;border-radius:999px;background:linear-gradient(90deg,#050814,#15334f,#0e7c79,#7ccf7b,#f0d560,#ff7b4f,#f7f4e8);border:1px solid rgba(255,255,255,.18)}.legend-labels{display:flex;justify-content:space-between;padding:3px 18px 0;color:#a8bbb3;font-size:10px}.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:10px}.metric{padding:10px;border:1px solid rgba(92,139,120,.2);border-radius:9px;background:rgba(0,0,0,.18)}.metric b{display:block;font-size:17px;margin-top:3px}.metric span{font-size:9px;color:#91aa9f;letter-spacing:.09em;text-transform:uppercase}.toolbar{display:flex;flex-wrap:wrap;gap:6px;padding:10px;border-top:1px solid rgba(92,139,120,.18)}.toolbar button{padding:6px 8px;font-size:10px}.side{display:grid;gap:14px;align-content:start}.detail{padding:12px}.detail h2{font-size:13px;margin:0 0 8px}.kv{display:grid;grid-template-columns:1fr auto;gap:5px 10px;font-size:11px}.kv span:nth-child(odd){color:#93aca1}.kv b{font-variant-numeric:tabular-nums;font-weight:600}.species{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px}.sp{border:1px solid rgba(92,139,120,.18);border-radius:8px;padding:7px;background:rgba(0,0,0,.15)}.sp small{display:block;color:#8fa99e;font-size:9px}.sp b{font-size:12px;font-variant-numeric:tabular-nums}.reactions{max-height:340px;overflow:auto}.reaction{padding:9px 12px;border-top:1px solid rgba(92,139,120,.14)}.reaction:first-child{border-top:0}.reaction .name{font-size:10px;color:#d8e8e1}.reaction .eq{font-size:9px;color:#879f95;margin-top:3px}.bar{height:5px;background:#0b1512;border-radius:999px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:linear-gradient(90deg,#2c7460,#99d4b8);width:0}.history{padding:10px}.history canvas{width:100%;height:140px;display:block}.history-legend{display:flex;gap:12px;font-size:9px;color:#94aaa1;margin-top:4px}.dot{display:inline-block;width:7px;height:7px;border-radius:999px;margin-right:4px}.status{font-size:10px;color:#8fa69c}.good{color:#8ed2b4}.warn{color:#f0cc72}@media(max-width:900px){.top{display:block}.controls{justify-content:flex-start;margin-top:10px}.grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.side{grid-template-columns:1fr}.reactions{max-height:260px}}@media(max-width:540px){.shell{padding:8px}.metrics{grid-template-columns:1fr 1fr}.species{grid-template-columns:1fr}.title p{font-size:11px}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="top">
+      <div class="title"><h1>Hadean Chemistry Lab</h1><p>Physical-to-chemical kernel visualizer. The map is an Earth-like 4.4 Ga reference world: stellar/disk composition seeds matter, local geology supplies gradients, and reactions compete under thermodynamic and kinetic constraints. Life is not spawned here.</p></div>
+      <div class="controls"><button id="pauseBtn">Pause</button><button id="stepBtn">Step</button><button id="resetBtn">New Seed</button><select id="speed"><option value="1">1×</option><option value="4" selected>4×</option><option value="12">12×</option><option value="40">40×</option></select></div>
+    </header>
+
+    <section class="grid">
+      <div class="card">
+        <div class="card-head"><span id="mapTitle">ORGANIC CHEMISTRY</span><span class="status" id="clockLabel">t = 0</span></div>
+        <div class="map-wrap"><canvas id="chemMap" width="1120" height="560" aria-label="global chemistry heatmap"></canvas><div class="legend"></div><div class="legend-labels"><span>low</span><span>high</span></div></div>
+        <div class="toolbar" id="fieldButtons"></div>
+        <div class="metrics">
+          <div class="metric"><span>Organics</span><b id="mOrganics">0</b></div>
+          <div class="metric"><span>Amphiphiles</span><b id="mAmphiphiles">0</b></div>
+          <div class="metric"><span>Precursors</span><b id="mPrecursors">0</b></div>
+          <div class="metric"><span>Complexity</span><b id="mComplexity">0</b></div>
+          <div class="metric"><span>Matter drift</span><b id="mDrift">0</b></div>
+        </div>
+        <div class="history"><canvas id="history" width="1000" height="180"></canvas><div class="history-legend"><span><i class="dot" style="background:#88d8bd"></i>organics</span><span><i class="dot" style="background:#f2cf6f"></i>amphiphiles</span><span><i class="dot" style="background:#e58bc9"></i>precursors</span></div></div>
+      </div>
+
+      <aside class="side">
+        <section class="card"><div class="card-head"><span>SELECTED CELL</span><span id="cellCoord">0°, 0°</span></div><div class="detail"><div class="kv" id="cellEnv"></div><div class="species" id="speciesGrid"></div></div></section>
+        <section class="card"><div class="card-head"><span>REACTION ACTIVITY</span><span>availability proxy</span></div><div class="reactions" id="reactionList"></div></section>
+        <section class="card"><div class="card-head"><span>CAUSAL LEDGER</span></div><div class="detail"><div class="kv" id="ledger"></div></div></section>
+      </aside>
+    </section>
+  </main>
+  <script type="module" src="./chemistry-lab.js?v=20260813-physical-chemistry-v1"></script>
+</body>
+</html>
