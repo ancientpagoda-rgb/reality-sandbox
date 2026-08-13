@@ -59,3 +59,7 @@ async function verifyDeploymentFreshness() {
 }
 
 verifyDeploymentFreshness();
+
+import('./rain-radar-overlay-v1.js?v=20260813-rain-radar-v1').catch(error => {
+  document.documentElement.dataset.rainRadarLoadError = String(error?.message || error);
+});
