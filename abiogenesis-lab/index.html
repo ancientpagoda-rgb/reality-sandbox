@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Abiogenesis Lab</title>
+<style>
+:root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#060a0d;color:#e9f4ed}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 28% 0,#172527,#060a0d 48%);min-height:100vh}header{padding:18px 24px;border-bottom:1px solid #263638;display:flex;gap:20px;justify-content:space-between;align-items:center;position:sticky;top:0;background:#071012dd;backdrop-filter:blur(12px);z-index:2}h1{font-size:18px;margin:0;letter-spacing:.08em;text-transform:uppercase}.tag{font-size:12px;color:#9fb5ae}.wrap{display:grid;grid-template-columns:minmax(560px,1fr) 390px;gap:16px;padding:16px;max-width:1500px;margin:auto}.panel{border:1px solid #28393b;background:#0b1315e8;border-radius:14px;padding:14px;box-shadow:0 16px 50px #0006}.mapbox{position:relative}.mapbox canvas{width:100%;aspect-ratio:2/1;image-rendering:auto;border-radius:10px;border:1px solid #334547;background:#030607}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.toolbar button,.toolbar select{border:1px solid #385053;background:#102023;color:#dcebe4;border-radius:8px;padding:7px 10px;cursor:pointer}.toolbar button.active{background:#1f5d58;border-color:#5ac0ad}.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:10px 0}.metric{padding:10px;border-radius:10px;background:#0d1a1d;border:1px solid #263b3d}.metric small{display:block;color:#8aa5a0;font-size:10px;text-transform:uppercase}.metric b{font-size:18px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:12px}.grid span{color:#91a9a3}.species{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.sp{padding:8px;background:#0d191b;border-radius:8px}.sp small{color:#8aa5a0;display:block}.reaction{padding:8px 0;border-bottom:1px solid #223235}.bar{height:5px;background:#1b292b;border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,#49a68f,#e6cc6e)}.status{font-weight:700;text-transform:uppercase;letter-spacing:.06em}.good{color:#76d3a6}.warn{color:#f0bd69}.danger{color:#f07c6d}.batchlog{max-height:180px;overflow:auto;font:11px ui-monospace,monospace;white-space:pre-wrap;background:#070d0f;border-radius:8px;padding:8px}.small{font-size:11px;color:#8ba09c}canvas#history{height:120px;width:100%;background:#071012;border-radius:8px}@media(max-width:980px){.wrap{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header><div><h1>Abiogenesis Lab</h1><div class="tag">astrophysics → geochemistry → chemistry → life?</div></div><div class="status" id="runStatus">running</div></header>
+<div class="wrap">
+<section class="panel mapbox">
+  <canvas id="map" width="960" height="480"></canvas>
+  <div class="toolbar" id="fields"></div>
+  <div class="toolbar"><button id="pause">Pause</button><button id="step">Step</button><button id="newSeed">New seed</button><select id="speed"><option value="1">1×</option><option value="5">5×</option><option value="20">20×</option><option value="60">60×</option></select><label class="small">cutoff <input id="cutoff" type="number" value="500" min="10" style="width:80px"></label><button id="auto">Auto-rerun: OFF</button></div>
+  <div class="metrics"><div class="metric"><small>Organics</small><b id="mOrg">–</b></div><div class="metric"><small>Amphiphiles</small><b id="mAmp">–</b></div><div class="metric"><small>Complexity</small><b id="mCx">–</b></div><div class="metric"><small>Candidate</small><b id="mCandidate">–</b></div><div class="metric"><small>Matter drift</small><b id="mDrift">–</b></div><div class="metric"><small>Polymers</small><b id="mPoly">–</b></div><div class="metric"><small>Variants</small><b id="mVar">–</b></div><div class="metric"><small>Heredity</small><b id="mHer">–</b></div><div class="metric"><small>Replication</small><b id="mRep">–</b></div><div class="metric"><small>Selection</small><b id="mSel">–</b></div></div>
+  <canvas id="history" width="900" height="120"></canvas>
+</section>
+<aside>
+  <section class="panel"><h3>Selected environment</h3><div class="grid" id="env"></div><h3>Molecules</h3><div class="species" id="species"></div><h3>Polymer state</h3><div class="grid" id="polymerState"></div><div class="batchlog" id="polymerSeq">No polymers in this cell.</div></section>
+  <section class="panel" style="margin-top:16px"><h3>Reaction activity</h3><div id="reactions"></div></section>
+  <section class="panel" style="margin-top:16px"><h3>Experiment runner</h3><div class="grid" id="experiment"></div><div class="batchlog" id="archive"></div></section>
+</aside>
+</div>
+<script type="module" src="./src/ui/app.js"></script>
+</body></html>

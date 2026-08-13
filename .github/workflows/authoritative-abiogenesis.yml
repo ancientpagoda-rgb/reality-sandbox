@@ -1,0 +1,108 @@
+name: Authoritative abiogenesis experiments
+
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: Number of deterministic worlds
+        required: false
+        default: '24'
+      cutoff:
+        description: Simulated-time no-life cutoff
+        required: false
+        default: '2500'
+      columns:
+        description: Grid columns
+        required: false
+        default: '8'
+      rows:
+        description: Grid rows
+        required: false
+        default: '4'
+      dt:
+        description: Fixed simulation step
+        required: false
+        default: '0.5'
+  schedule:
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: abiogenesis-authoritative-archive
+  cancel-in-progress: false
+
+jobs:
+  experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      RUNS: ${{ inputs.runs || '24' }}
+      CUTOFF: ${{ inputs.cutoff || '2500' }}
+      COLUMNS: ${{ inputs.columns || '8' }}
+      ROWS: ${{ inputs.rows || '4' }}
+      DT: ${{ inputs.dt || '0.5' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          package-manager-cache: false
+
+      - name: Verify abiogenesis engine
+        working-directory: abiogenesis-lab
+        run: npm test
+
+      - name: Run deterministic batch
+        working-directory: abiogenesis-lab
+        run: npm run batch -- --runs "$RUNS" --cutoff "$CUTOFF" --columns "$COLUMNS" --rows "$ROWS" --dt "$DT" --seed "gha-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+
+      - name: Load permanent result catalog
+        shell: bash
+        run: |
+          git fetch origin abiogenesis-results
+          git restore --source=origin/abiogenesis-results -- \
+            abiogenesis-lab/results/index.json \
+            abiogenesis-lab/results/successes
+
+      - name: Promote detector-qualified successes
+        working-directory: abiogenesis-lab
+        run: npm run archive:successes -- --latest
+
+      - name: Upload raw experiment batch
+        uses: actions/upload-artifact@v7
+        with:
+          name: abiogenesis-batch-${{ github.run_id }}-${{ github.run_attempt }}
+          path: abiogenesis-lab/results/batch-*.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish newly verified abiogenesis events
+        shell: bash
+        run: |
+          if git diff --quiet -- abiogenesis-lab/results/index.json abiogenesis-lab/results/successes; then
+            echo "No new detector-qualified abiogenesis event. Repository remains unchanged."
+            exit 0
+          fi
+
+          git worktree add -b abiogenesis-results-update /tmp/abiogenesis-results origin/abiogenesis-results
+          mkdir -p /tmp/abiogenesis-results/abiogenesis-lab/results/successes
+          cp abiogenesis-lab/results/index.json /tmp/abiogenesis-results/abiogenesis-lab/results/index.json
+          cp -a abiogenesis-lab/results/successes/. /tmp/abiogenesis-results/abiogenesis-lab/results/successes/
+
+          cd /tmp/abiogenesis-results
+          git config user.name "abiogenesis-lab[bot]"
+          git config user.email "abiogenesis-lab[bot]@users.noreply.github.com"
+          git add abiogenesis-lab/results/index.json abiogenesis-lab/results/successes
+
+          if git diff --cached --quiet; then
+            echo "Nothing new after synchronization."
+            exit 0
+          fi
+
+          git commit -m "Archive verified abiogenesis success"
+          git push origin HEAD:abiogenesis-results

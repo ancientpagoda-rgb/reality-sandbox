@@ -1,0 +1,16 @@
+{
+  "name": "abiogenesis-lab",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic multiscale abiogenesis experiments: planetary chemistry -> polymers -> heredity -> selection -> life detection.",
+  "scripts": {
+    "test": "node --test",
+    "batch": "node ./examples/run-batch.mjs",
+    "serve": "python3 -m http.server 4173",
+    "archive:successes": "node ./scripts/archive-successes.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

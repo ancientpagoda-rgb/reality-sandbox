@@ -1,0 +1,4 @@
+node_modules/
+results/*.json
+!results/index.json
+.DS_Store
