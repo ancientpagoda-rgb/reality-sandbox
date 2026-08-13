@@ -1,0 +1,1 @@
+Only detector-qualified `sustained-darwinian-system` and `cellular-life` records belong here. Each record must validate against `../../abiogenesis-success.schema.json` and preserve the producing commit, deterministic seed, experiment configuration, detector evidence, and terminal state.
