@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "kind": "abiogenesis-success",
+  "id": "abiogenesis-1c0c4c1c6485a871ca0b",
+  "recordedAt": "2026-08-17T16:45:37.471Z",
+  "classification": "sustained-darwinian-system",
+  "abiogenesisTime": 199.5,
+  "seed": "gha-32047011034-1:3:2646289046",
+  "numericSeed": 936724059,
+  "producingCommit": "313664e19f4a9e64179ea8497f383c84cdff3e98",
+  "model": {
+    "name": "abiogenesis-lab",
+    "version": "0.3.0",
+    "detectorSchemaVersion": 2
+  },
+  "configuration": {
+    "columns": 8,
+    "rows": 4,
+    "cutoff": 2500,
+    "dt": 0.5,
+    "star": {
+      "metallicity": -0.03
+    },
+    "disk": {
+      "carbonToOxygen": 0.54
+    },
+    "planet": {
+      "composition": "silicate-rocky",
+      "atmosphereRetention": 0.63,
+      "waterFraction": 0.34,
+      "equilibriumTemperature": 286,
+      "massEarth": 0.96
+    },
+    "detector": {},
+    "evolution": {},
+    "enableEvolution": true,
+    "environmentSource": "procedural"
+  },
+  "verification": {
+    "lifeDetected": true,
+    "termination": "life-detected",
+    "qualification": "detector-qualified",
+    "terminalClassification": "sustained-darwinian-system"
+  },
+  "evidence": {
+    "compartment": 0.40377989411354065,
+    "maintenance": 0.10954450070858002,
+    "complexity": 0.06913182884454727,
+    "heredity": 0.9292158465313982,
+    "replication": 0.3258460324956567,
+    "variation": 0.47994360362610533,
+    "selection": 0.4572395685760727,
+    "generations": 76,
+    "polymerPopulation": 129,
+    "sequenceVariants": 16,
+    "compartments": 1,
+    "cellGenerations": 0,
+    "totalTemplatedBirths": 127
+  },
+  "metrics": {
+    "organics": 0.007644052398973145,
+    "amphiphiles": 0.12383885256713256,
+    "precursors": 0.0006275537123201502,
+    "complexity": 0.051880850398447365,
+    "energyFlux": 0.4189384342171252,
+    "reactionActivity": 0.000029677526436978734,
+    "compartmentPotential": 0.09247610962484032,
+    "selfMaintenance": 0.032313673706084955,
+    "clock": 199.5,
+    "activeChemistryCoverage": 0,
+    "maxElementDrift": 1.010495692802872e-15,
+    "maxComplexity": 0.06913182884454727,
+    "maxCompartmentPotential": 0.40377989411354065,
+    "maxSelfMaintenance": 0.10954450070858002,
+    "maxOrganics": 0.014365194365382195,
+    "maxPrecursors": 0.0010498733026906848,
+    "maxAmphiphiles": 0.49172699451446533
+  },
+  "evolution": {
+    "clock": 199.5,
+    "compartments": 1,
+    "polymerPopulation": 129,
+    "freePolymerPopulation": 1,
+    "encapsulatedPolymerPopulation": 128,
+    "sequenceVariants": 16,
+    "heredity": 0.9292158465313982,
+    "replication": 0.3258460324956567,
+    "variation": 0.47994360362610533,
+    "selection": 0.4572395685760727,
+    "generations": 76,
+    "cellGenerations": 0,
+    "cellDivision": 0,
+    "metabolism": 0.9522588705290163,
+    "templatedBirths": 3,
+    "mutations": 1,
+    "divisions": 0,
+    "deaths": 0,
+    "totalDeNovoPolymerizations": 2,
+    "totalTemplatedBirths": 127,
+    "totalMutations": 16,
+    "totalDivisions": 0,
+    "totalDeaths": 0,
+    "totalHydrolyzed": 0,
+    "totalCaptures": 1,
+    "peakCompartments": 1,
+    "peakPolymerPopulation": 129,
+    "peakFreePolymerPopulation": 1,
+    "peakSequenceVariants": 16,
+    "peakGenerations": 76,
+    "peakCellGenerations": 0,
+    "maxElementDrift": 1.010495692802872e-15
+  },
+  "terminalDetection": {
+    "classification": "sustained-darwinian-system",
+    "lifeDetected": true,
+    "candidateDetected": true,
+    "candidateScore": 1,
+    "peakCandidateScore": 1,
+    "evidence": {
+      "compartment": 0.40377989411354065,
+      "maintenance": 0.10954450070858002,
+      "complexity": 0.06913182884454727,
+      "heredity": 0.9292158465313982,
+      "replication": 0.3258460324956567,
+      "variation": 0.47994360362610533,
+      "selection": 0.4572395685760727,
+      "generations": 76,
+      "polymerPopulation": 129,
+      "sequenceVariants": 16,
+      "compartments": 1,
+      "cellGenerations": 0,
+      "totalTemplatedBirths": 127
+    },
+    "streaks": {
+      "candidate": 0,
+      "replicator": 100,
+      "darwinian": 50,
+      "cellular": 0
+    }
+  },
+  "steps": 399,
+  "sourceBatch": "batch-1786985136875.json"
+}

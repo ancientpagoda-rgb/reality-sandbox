@@ -1,5 +1,16 @@
 {
   "schemaVersion": 1,
-  "updatedAt": null,
-  "successes": []
+  "updatedAt": "2026-08-17T16:45:37.473Z",
+  "successes": [
+    {
+      "id": "abiogenesis-1c0c4c1c6485a871ca0b",
+      "classification": "sustained-darwinian-system",
+      "seed": "gha-32047011034-1:3:2646289046",
+      "abiogenesisTime": 199.5,
+      "producingCommit": "313664e19f4a9e64179ea8497f383c84cdff3e98",
+      "modelVersion": "0.3.0",
+      "path": "results/successes/abiogenesis-1c0c4c1c6485a871ca0b.json",
+      "recordedAt": "2026-08-17T16:45:37.471Z"
+    }
+  ]
 }
