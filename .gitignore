@@ -1,4 +1,5 @@
 node_modules/
 dist/
 .vite/
+public/vendor/kenney-nature-kit/
 .DS_Store
