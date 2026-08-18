@@ -1,7 +1,7 @@
 import './pointer-lock-compat.js?v=20260808-surface-v46e';
 import './surface-mode-sphere-controller-v33.js?v=20260808-surface-v46e';
-import './surface-globe-presentation-v73.js?v=20260817-surface-globe-v73b-continuous';
-import './presentation-invariant-compat.js?v=20260817-root-invariant-v2';
+import './surface-globe-presentation-v73.js?v=20260817-surface-globe-v73b-continuous-plants';
+import './presentation-invariant-compat.js?v=20260817-root-invariant-v3-plants';
 import './surface-wide-pitch-v46d.js?v=20260808-surface-v46e';
 import './surface-flight-v38.js?v=20260808-surface-v46e';
 import './surface-mobile-controls.js?v=20260808-surface-v46e';
@@ -18,12 +18,33 @@ import './runevale-corner-towers-v72.js?v=20260811-runevale-corner-towers-v72a';
 
 const SURFACE_BUILD = 'surface-v48-morphogenesis-body-plans';
 let detailLoadPromise = null;
+let plantLoadPromise = null;
 
 window.realitySandboxSurfaceBuild = SURFACE_BUILD;
 document.documentElement.dataset.surfaceBuild = SURFACE_BUILD;
 document.documentElement.dataset.surfaceFaunaPolicy = 'motile-life-evolves-no-surface-renderer-yet';
 document.documentElement.dataset.surfacePresentationPolicy = 'canonical-globe';
 document.documentElement.dataset.surfaceLegacyDetail = 'available-on-demand';
+document.documentElement.dataset.surfacePlantModels = 'available-on-surface-entry';
+
+function loadSurfacePlantModels() {
+  if (!plantLoadPromise) {
+    plantLoadPromise = import('./surface-globe-plant-models-v74.js?v=20260817-kenney-cc0-v74');
+  }
+  return plantLoadPromise;
+}
+
+function watchForSurfacePlantEntry() {
+  if (document.documentElement.dataset.surfaceMode === 'active') {
+    loadSurfacePlantModels().catch(error => {
+      document.documentElement.dataset.surfacePlantModels = 'failed';
+      document.documentElement.dataset.surfacePlantModelError = String(error?.message || error || 'unknown');
+    });
+    return;
+  }
+  requestAnimationFrame(watchForSurfacePlantEntry);
+}
+requestAnimationFrame(watchForSurfacePlantEntry);
 
 function loadLegacyDetailSupport() {
   if (detailLoadPromise) return detailLoadPromise;
@@ -58,4 +79,5 @@ function loadLegacyDetailSupport() {
   return detailLoadPromise;
 }
 
+window.realitySandboxLoadSurfacePlantModels = loadSurfacePlantModels;
 window.realitySandboxLoadLegacySurfaceDetail = loadLegacyDetailSupport;
