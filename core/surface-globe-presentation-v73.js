@@ -45,9 +45,13 @@ function installPresentationStyle() {
       opacity: 1 !important;
     }
 
-    html[data-surface-presentation^="globe"][data-surface-mode="active"] #surfaceModeLayer canvas:not(#surfaceModeCanvas) {
+    html[data-surface-presentation^="globe"][data-surface-mode="active"] #surfaceModeLayer canvas:not(#surfaceModeCanvas):not(#surfacePlantModelCanvas) {
       display: none !important;
       visibility: hidden !important;
+    }
+
+    html[data-surface-presentation^="globe"][data-surface-mode="active"] #surfacePlantModelCanvas {
+      visibility: visible !important;
     }
   `;
   document.head.append(style);
