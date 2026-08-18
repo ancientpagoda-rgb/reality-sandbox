@@ -2,6 +2,7 @@ const APPROVED_PRESENTATION_CANVASES = new Set([
   'weatherPresentationCanvas',
   'surfaceDetailCanvas',
   'surfaceModeCanvas',
+  'surfacePlantModelCanvas',
 ]);
 const LEGACY_CANVAS_FAILURE = 'The root must use exactly one visible simulation canvas.';
 
@@ -40,7 +41,7 @@ async function installPresentationInvariantCompat() {
         return { ...original, ok: failures.length === 0, failures };
       };
       runtime.__presentationInvariantCompatInstalled = true;
-      document.documentElement.dataset.presentationInvariantCompat = 'active-v2';
+      document.documentElement.dataset.presentationInvariantCompat = 'active-v3-plants';
       return;
     }
     await new Promise(resolve => setTimeout(resolve, 25));
