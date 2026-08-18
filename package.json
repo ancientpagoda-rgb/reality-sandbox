@@ -6,7 +6,8 @@
   "description": "A deterministic procedural living-planet simulation.",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "vendor:plants": "node scripts/vendor-cc0-plants.mjs",
+    "build": "node scripts/vendor-cc0-plants.mjs && vite build",
     "preview": "vite preview",
     "audit:integration": "node scripts/integration-audit.cjs && node scripts/root-renderer-audit.cjs",
     "check": "npm run audit:integration && npm run build",
