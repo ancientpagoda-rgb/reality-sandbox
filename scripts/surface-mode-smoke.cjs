@@ -20,108 +20,115 @@ fs.mkdirSync(artifactDir, { recursive: true });
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await page.waitForFunction(() => Boolean(
       window.realitySandboxSurfaceMode &&
-      window.realitySandboxSurfaceGpu?.installed &&
-      window.realitySandboxSurfaceSphereV37?.installed &&
-      window.realitySandboxSurfaceVegetationV38?.installed &&
-      window.realitySandboxSurfaceWeatherV39?.installed &&
-      window.realitySandboxSurfaceRiversV41?.installed &&
+      window.realitySandboxSurfaceGlobeV73?.installed &&
+      window.realitySandboxSurfaceFlightV38?.installed &&
       window.realitySandboxSurfaceWidePitchV46d?.installed &&
-      window.realitySandboxEvolutionaryEcologyV45?.installed &&
-      window.realitySandboxEcologicalMigrationV46?.installed &&
-      window.realitySandboxOriginMotileLifeV47?.installed &&
-      window.realitySandboxEvolutionInspectorV47b?.installed &&
-      window.realitySandboxEvolutionMorphologyV47c?.installed &&
-      window.realitySandboxEvolutionaryMilestonesV47d?.installed &&
-      window.realitySandboxLineagePopulationRecordV47e?.installed &&
-      window.realitySandboxEvolutionDeepTimeV47f?.installed &&
-      window.realitySandboxMorphogenesisV48?.installed
+      window.realitySandboxUnified?.getCamera
     ), null, { timeout: 120000 });
 
+    const cameraBefore = await page.evaluate(() => window.realitySandboxUnified.getCamera());
     await page.click('#enterSurfaceMode');
-    await page.waitForFunction(() => document.documentElement.dataset.surfaceMode === 'active' && window.realitySandboxSurfaceGpu?.isPresenting?.(), null, { timeout: 30000 });
-    await page.waitForFunction(() => window.realitySandboxSurfaceSphereV37?.getStats?.().nearBuildsCompleted > 0, null, { timeout: 60000 });
+    await page.waitForFunction(() => document.documentElement.dataset.surfaceMode === 'active', null, { timeout: 30000 });
+    await page.waitForFunction(() => (
+      document.documentElement.dataset.surfacePresentation === 'globe' &&
+      document.documentElement.dataset.surfaceCameraTransition === 'none'
+    ), null, { timeout: 10000 });
 
-    await page.evaluate(() => {
-      window.dispatchEvent(new WheelEvent('wheel', { deltaY: -20000, bubbles: true, cancelable: true }));
-      window.realitySandboxSurfaceWidePitchV46d.setPitch(-1.48);
+    const entered = await page.evaluate(() => {
+      const visible = element => {
+        if (!element || element.hidden) return false;
+        let node = element;
+        while (node && node instanceof Element) {
+          if (node.hidden) return false;
+          const style = getComputedStyle(node);
+          if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || 1) <= 0) return false;
+          node = node.parentElement;
+        }
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      };
+      return {
+        player: window.realitySandboxSurfaceMode.getPlayer(),
+        camera: window.realitySandboxUnified.getCamera(),
+        globe: window.realitySandboxSurfaceGlobeV73.getStats(),
+        rootVisible: visible(document.getElementById('lofiLivingCanvas')),
+        tangentVisible: visible(document.getElementById('surfaceGpuCanvas')),
+        renderer: document.documentElement.dataset.surfaceModeRenderer,
+        geometry: document.body.dataset.worldGeometry,
+        presentation: document.documentElement.dataset.surfacePresentation,
+      };
     });
-    await page.waitForTimeout(220);
-    const highView = await page.evaluate(() => ({
-      player: window.realitySandboxSurfaceMode.getPlayer(),
-      pitch: window.realitySandboxSurfaceWidePitchV46d.getStats(),
-      flight: window.realitySandboxSurfaceFlightV38.getStats(),
-    }));
-    assert(highView.player.altitude >= 4000, `High-flight regression: altitude only ${highView.player.altitude}.`);
-    assert(highView.player.pitch <= -1.45, `Downward-view regression: pitch only ${highView.player.pitch}.`);
-    assert(highView.pitch.maxPitchDegrees >= 85, `Pitch envelope too narrow (${highView.pitch.maxPitchDegrees}).`);
 
-    await page.evaluate(() => {
-      window.realitySandboxSurfaceWidePitchV46d.setPitch(0);
-      window.dispatchEvent(new WheelEvent('wheel', { deltaY: 20000, bubbles: true, cancelable: true }));
-    });
-    await page.waitForTimeout(220);
+    assert(entered.globe.geometry === 'globe', `Surface geometry is ${entered.globe.geometry}.`);
+    assert(entered.globe.canonicalRenderer === 'lofiLivingCanvas', `Unexpected canonical renderer ${entered.globe.canonicalRenderer}.`);
+    assert(entered.globe.continuousCameraTransition === true, 'Continuous globe camera transition is not enabled.');
+    assert(entered.rootVisible, 'The canonical Pixi globe disappeared in Surface mode.');
+    assert(!entered.tangentVisible, 'The legacy local tangent renderer is still visibly replacing the globe.');
+    assert(entered.renderer === 'pixi-globe-surface', `Unexpected Surface renderer ${entered.renderer}.`);
+    assert(entered.geometry === 'sphere' && entered.presentation === 'globe', 'Surface mode is not presenting a sphere/globe.');
 
-    const beforePlayer = await page.evaluate(() => window.realitySandboxSurfaceMode.getPlayer());
+    const beforePlayer = entered.player;
     await page.keyboard.down('w');
     await page.waitForTimeout(850);
     await page.keyboard.up('w');
     await page.waitForTimeout(350);
 
-    const after = await page.evaluate(() => ({
+    const moved = await page.evaluate(() => ({
       player: window.realitySandboxSurfaceMode.getPlayer(),
-      build: window.realitySandboxSurfaceBuild,
-      faunaPolicy: document.documentElement.dataset.surfaceFaunaPolicy,
-      surface: window.realitySandboxSurfaceSphereV37.getStats(),
-      widePitch: window.realitySandboxSurfaceWidePitchV46d.getStats(),
-      evolution: window.realitySandboxEvolutionaryEcologyV45.getStats(),
-      migration: window.realitySandboxEcologicalMigrationV46.getStats(),
-      origin: window.realitySandboxOriginMotileLifeV47.getStats(),
-      inspector: window.realitySandboxEvolutionInspectorV47b.getStats(),
-      morphology: window.realitySandboxEvolutionMorphologyV47c.getStats(),
-      milestones: window.realitySandboxEvolutionaryMilestonesV47d.getStats(),
-      record: window.realitySandboxLineagePopulationRecordV47e.getStats(),
-      deepTime: window.realitySandboxEvolutionDeepTimeV47f.getStats(),
-      morphogenesis: window.realitySandboxMorphogenesisV48.getStats(),
-      weather: window.realitySandboxSurfaceWeatherV39.getStats(),
-      vegetation: window.realitySandboxSurfaceVegetationV38.getStats(),
-      rivers: window.realitySandboxSurfaceRiversV41.getStats(),
-      faunaModulesAbsent: {
-        surfaceCreaturesV44: !window.realitySandboxSurfaceCreaturesV44,
-        localFaunaV44d: !window.realitySandboxSurfaceLocalFaunaV44d,
-        creatureVisibilityV44b: !window.realitySandboxSurfaceCreatureVisibilityV44b,
-        creatureReadabilityV44c: !window.realitySandboxSurfaceCreatureReadabilityV44c,
-        faunaGuaranteeV45b: !window.realitySandboxSurfaceFaunaGuaranteeV45b,
-        faunaExactV46d: !window.realitySandboxSurfaceFaunaExactV46d,
-        renderBridgeV46d: !window.realitySandboxSurfaceRenderBridgeV46d,
+      camera: window.realitySandboxUnified.getCamera(),
+      world: {
+        width: window.realitySandboxPlanet.world.width,
+        height: window.realitySandboxPlanet.world.height,
       },
     }));
+    const movement = Math.hypot(moved.player.x - beforePlayer.x, moved.player.y - beforePlayer.y);
+    assert(movement > 2, `Surface movement smoke check failed (${movement}).`);
+    const expectedCenterX = ((moved.player.x / moved.world.width) % 1 + 1) % 1;
+    const expectedCenterY = Math.max(0.01, Math.min(0.99, moved.player.y / moved.world.height));
+    const wrappedCenterError = Math.abs((((moved.camera.centerX - expectedCenterX) + 0.5) % 1 + 1) % 1 - 0.5);
+    assert(wrappedCenterError < 0.04 && Math.abs(moved.camera.centerY - expectedCenterY) < 0.04, 'The globe camera is not following Surface latitude/longitude.');
 
-    const moved = Math.hypot(after.player.x - beforePlayer.x, after.player.y - beforePlayer.y);
-    assert(after.build === 'surface-v48-morphogenesis-body-plans', `Unexpected build ${after.build}`);
-    assert(after.faunaPolicy === 'motile-life-evolves-no-surface-renderer-yet', `Unexpected fauna policy ${after.faunaPolicy}`);
-    assert(after.origin.plantFirstOrigin === true && after.origin.legacyFaunaRendererEnabled === false, 'v47 origin-life policy is inactive.');
-    assert(after.inspector.collapsedByDefault === true && after.inspector.shadowDomIsolated === true, 'v47b inspector policy regressed.');
-    assert(after.morphology.genomeDrivenMorphology === true && after.morphology.ancestryTree === true && after.morphology.surfaceRendererTouched === false, 'v47c morphology/tree policy regressed.');
-    assert(after.milestones.authoritativeFixedStep === true && after.milestones.causalContextRecorded === true, 'v47d milestone recorder is not on the authoritative clock.');
-    assert(after.record.authoritativeFixedStep === true && after.record.populationHistory === true && after.record.extinctionTracking === true && after.record.geographicRange === true, 'v47e population record contract regressed.');
-    assert(after.deepTime.reducedOrderEvolutionaryTime === true && after.deepTime.yearsPerBiologyStep === 25000, 'v47f deep-time scale regressed.');
-    assert(after.morphogenesis.authoritativeFixedStep === true && after.morphogenesis.heritableDevelopmentalTraits === true && after.morphogenesis.plantToAnimalMorphogenesis === true, 'v48 morphogenesis is not on the authoritative evolutionary clock.');
-    assert(after.morphogenesis.traits.length === 9, `Expected 9 developmental traits, got ${after.morphogenesis.traits.length}.`);
-    assert(after.morphogenesis.hardPopulationCap === false && after.morphogenesis.surfaceRendererEnabled === false, 'v48 reintroduced a population cap or Surface fauna renderer.');
-    assert(Object.values(after.faunaModulesAbsent).every(Boolean), `Experimental Surface fauna module still loaded: ${JSON.stringify(after.faunaModulesAbsent)}`);
-    assert(moved > 2, `Surface movement smoke check failed (${moved}).`);
-    assert(after.surface.curvatureRadius >= 26000 && after.surface.renderLoopProceduralSamples === 0, 'Large-planet terrain baseline regressed.');
-    assert(after.widePitch.nearVerticalDownView === true && after.widePitch.maxPitchDegrees >= 85, 'Near-vertical camera pitch is inactive.');
-    assert(after.evolution.habitatDrivenPopulations === true && after.evolution.randomSpeciation === false, 'v45 habitat selection/speciation regressed.');
-    assert(after.migration.migrationEnabled === true && after.migration.speciesLevelMigration === true, 'v46 migration regressed.');
-    assert(after.weather.renderLoopProceduralSamples === 0, 'Weather render-loop sampling regressed.');
-    assert(after.vegetation.renderLoopProceduralSamples === 0, 'Vegetation render-loop sampling regressed.');
-    assert(after.rivers.renderLoopProceduralSamples === 0, 'River render-loop sampling regressed.');
+    const groundZoom = moved.camera.zoom;
+    await page.evaluate(() => {
+      window.dispatchEvent(new WheelEvent('wheel', { deltaY: -20000, bubbles: true, cancelable: true }));
+    });
+    await page.waitForTimeout(650);
+    const highView = await page.evaluate(() => ({
+      player: window.realitySandboxSurfaceMode.getPlayer(),
+      camera: window.realitySandboxUnified.getCamera(),
+      globe: window.realitySandboxSurfaceGlobeV73.getStats(),
+      flight: window.realitySandboxSurfaceFlightV38.getStats(),
+    }));
+    assert(highView.player.altitude >= 4000, `High-flight regression: altitude only ${highView.player.altitude}.`);
+    assert(highView.camera.zoom < groundZoom - 0.12, `Altitude did not pull the globe outward (${groundZoom} -> ${highView.camera.zoom}).`);
+    assert(highView.globe.localTangentRendererVisible === false, 'High-altitude Surface mode reverted to a tangent plane.');
+
+    await page.screenshot({ path: path.join(artifactDir, 'surface-globe-v73b.png'), fullPage: true });
+
+    await page.evaluate(() => window.realitySandboxSurfaceMode.exit());
+    await page.waitForFunction(() => document.documentElement.dataset.surfaceMode === 'inactive', null, { timeout: 10000 });
+    await page.waitForFunction(() => (
+      document.documentElement.dataset.surfaceCameraTransition === 'none' &&
+      document.documentElement.dataset.surfacePresentation === 'globe-ready'
+    ), null, { timeout: 10000 });
+
+    const cameraAfter = await page.evaluate(() => window.realitySandboxUnified.getCamera());
+    const restoredX = Math.abs((((cameraAfter.centerX - cameraBefore.centerX) + 0.5) % 1 + 1) % 1 - 0.5);
+    assert(restoredX < 0.002, `Exit did not restore longitude camera (${cameraBefore.centerX} -> ${cameraAfter.centerX}).`);
+    assert(Math.abs(cameraAfter.centerY - cameraBefore.centerY) < 0.002, 'Exit did not restore latitude camera.');
+    assert(Math.abs(cameraAfter.zoom - cameraBefore.zoom) < 0.002, 'Exit did not restore globe scale.');
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
-    await page.screenshot({ path: path.join(artifactDir, 'surface-mode-v48-morphogenesis-body-plans.png'), fullPage: true });
-    fs.writeFileSync(path.join(artifactDir, 'surface-mode.json'), JSON.stringify({ beforePlayer, highView, after, moved, pageErrors }, null, 2));
-    await page.evaluate(() => window.realitySandboxSurfaceMode.exit());
+    fs.writeFileSync(path.join(artifactDir, 'surface-globe.json'), JSON.stringify({
+      cameraBefore,
+      entered,
+      beforePlayer,
+      moved,
+      movement,
+      highView,
+      cameraAfter,
+      pageErrors,
+    }, null, 2));
   } finally {
     await browser.close();
   }
