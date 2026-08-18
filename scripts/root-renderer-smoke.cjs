@@ -19,12 +19,20 @@ fs.mkdirSync(artifactDir, { recursive: true });
   try {
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await page.waitForFunction(() => Boolean(window.realitySandboxDebug?.ready), null, { timeout: 120000 });
-    await page.waitForTimeout(700);
+    await page.waitForFunction(() => document.documentElement.dataset.presentationInvariantCompat === 'active-v2', null, { timeout: 30000 });
+    await page.waitForTimeout(350);
     const result = await page.evaluate(() => {
       const visible = element => {
-        const style = getComputedStyle(element);
+        if (!element || element.hidden) return false;
+        let node = element;
+        while (node && node instanceof Element) {
+          if (node.hidden) return false;
+          const style = getComputedStyle(node);
+          if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || 1) <= 0) return false;
+          node = node.parentElement;
+        }
         const rect = element.getBoundingClientRect();
-        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+        return rect.width > 0 && rect.height > 0;
       };
       const approvedPresentationCanvases = new Set(['weatherPresentationCanvas', 'surfaceDetailCanvas', 'surfaceModeCanvas']);
       const resources = performance.getEntriesByType('resource').map(entry => entry.name);
@@ -45,10 +53,18 @@ fs.mkdirSync(artifactDir, { recursive: true });
     await page.evaluate(() => window.realitySandboxDebug.pause());
     await page.waitForTimeout(120);
     await page.screenshot({ path: path.join(artifactDir, 'single-pixi-root.png'), fullPage: true });
+    const expectedModules = [
+      'planet.orbit-seasons',
+      'planet.interior-tectonics',
+      'planet.water-cycle',
+      'planet.living-ecology',
+      'planet.climate-terrain-feedbacks',
+      'runtime.procedural-living-planet',
+    ];
     assert(result.diagnostics.ok, `Root diagnostics failed: ${result.diagnostics.failures.join(', ')}`);
-    assert(result.visibleSimulationCanvases.length === 1 && result.visibleSimulationCanvases[0].id === 'lofiLivingCanvas', `Expected one visible simulation canvas plus approved presentation layers: ${JSON.stringify(result.visibleCanvases)}`);
+    assert(result.visibleSimulationCanvases.length === 1 && result.visibleSimulationCanvases[0].id === 'lofiLivingCanvas', `Expected one effectively visible simulation canvas plus approved presentation layers: ${JSON.stringify(result.visibleCanvases)}`);
     assert(result.forbiddenResources.length === 0, `Frozen or retired root resources loaded: ${result.forbiddenResources.join(', ')}`);
-    assert(result.modules.length === 5 && result.modules.at(-1) === 'runtime.procedural-living-planet', `Unexpected root module graph: ${result.modules.join(', ')}`);
+    assert(result.modules.join('|') === expectedModules.join('|'), `Unexpected root module graph: ${result.modules.join(', ')}`);
     assert(result.snapshot.presentation.renderer === 'pixi-single-canvas' && result.snapshot.coupling.waterSource === 'core/water-cycle.js', 'The renderer is not coupled to the living-planet state.');
     assert(result.inspector && pageErrors.length === 0, `Inspector missing or browser error: ${pageErrors.join(' | ')}`);
   } finally {
