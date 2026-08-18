@@ -1,28 +1,51 @@
-const SURFACE_GLOBE_BUILD = 'surface-globe-v73a';
-const GROUND_GLOBE_ZOOM = 1.10;
+const SURFACE_GLOBE_BUILD = 'surface-globe-v73b-continuous';
+const GROUND_GLOBE_ZOOM = 1.16;
 const HIGH_ALTITUDE_GLOBE_ZOOM = 0.78;
 const ALTITUDE_ZOOM_REFERENCE = 5000;
+const ENTER_TRANSITION_MS = 900;
+const EXIT_TRANSITION_MS = 700;
+const FOLLOW_HALF_LIFE_MS = 90;
 const CAMERA_EPSILON = 1e-5;
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const wrap01 = value => ((value % 1) + 1) % 1;
+const smoothstep = value => {
+  const t = clamp(value, 0, 1);
+  return t * t * (3 - 2 * t);
+};
+
+function wrappedDelta01(from, to) {
+  let delta = to - from;
+  if (delta > 0.5) delta -= 1;
+  else if (delta < -0.5) delta += 1;
+  return delta;
+}
+
+function blendCamera(from, to, amount) {
+  const t = clamp(amount, 0, 1);
+  return {
+    centerX: wrap01(from.centerX + wrappedDelta01(from.centerX, to.centerX) * t),
+    centerY: from.centerY + (to.centerY - from.centerY) * t,
+    zoom: from.zoom + (to.zoom - from.zoom) * t,
+  };
+}
 
 function installPresentationStyle() {
   if (document.getElementById('surfaceGlobePresentationStyleV73')) return;
   const style = document.createElement('style');
   style.id = 'surfaceGlobePresentationStyleV73';
   style.textContent = `
-    html[data-surface-presentation="globe"][data-surface-mode="active"] #surfaceModeLayer {
+    html[data-surface-presentation^="globe"][data-surface-mode="active"] #surfaceModeLayer {
       background: transparent !important;
     }
 
-    html[data-surface-presentation="globe"][data-surface-mode="active"] #lofiLivingCanvas {
+    html[data-surface-presentation^="globe"][data-surface-mode="active"] #lofiLivingCanvas {
       display: block !important;
       visibility: visible !important;
       opacity: 1 !important;
     }
 
-    html[data-surface-presentation="globe"][data-surface-mode="active"] #surfaceModeLayer canvas:not(#surfaceModeCanvas) {
+    html[data-surface-presentation^="globe"][data-surface-mode="active"] #surfaceModeLayer canvas:not(#surfaceModeCanvas) {
       display: none !important;
       visibility: hidden !important;
     }
@@ -71,6 +94,8 @@ function install({ runtime, planet, mode, sourceCanvas, layer }) {
   let activeFrames = 0;
   let cameraSyncs = 0;
   let lastZoom = 1;
+  let transition = null;
+  let lastFrameAt = performance.now();
 
   function updateHudLabel() {
     const label = document.querySelector('#surfaceModeHud b');
@@ -79,57 +104,103 @@ function install({ runtime, planet, mode, sourceCanvas, layer }) {
     }
   }
 
-  function syncGlobeCamera() {
+  function targetCameraForPlayer() {
     const player = mode.getPlayer();
     const current = runtime.getCamera();
-    const centerX = wrap01(player.x / Math.max(1, world.width));
-    const centerY = clamp(player.y / Math.max(1, world.height), 0.01, 0.99);
-    const zoom = altitudeToGlobeZoom(player.altitude, current);
-    lastZoom = zoom;
-
-    if (
-      Math.abs(current.centerX - centerX) > CAMERA_EPSILON ||
-      Math.abs(current.centerY - centerY) > CAMERA_EPSILON ||
-      Math.abs(current.zoom - zoom) > CAMERA_EPSILON
-    ) {
-      runtime.setCamera({ centerX, centerY, zoom });
-      cameraSyncs++;
-    }
+    return {
+      centerX: wrap01(player.x / Math.max(1, world.width)),
+      centerY: clamp(player.y / Math.max(1, world.height), 0.01, 0.99),
+      zoom: altitudeToGlobeZoom(player.altitude, current),
+    };
   }
 
-  function enterGlobePresentation() {
-    previousCamera = runtime.getCamera();
-    document.documentElement.dataset.surfacePresentation = 'globe';
+  function setCameraIfChanged(next) {
+    const current = runtime.getCamera();
+    if (
+      Math.abs(wrappedDelta01(current.centerX, next.centerX)) > CAMERA_EPSILON ||
+      Math.abs(current.centerY - next.centerY) > CAMERA_EPSILON ||
+      Math.abs(current.zoom - next.zoom) > CAMERA_EPSILON
+    ) {
+      runtime.setCamera(next);
+      cameraSyncs++;
+    }
+    lastZoom = next.zoom;
+  }
+
+  function startTransition(kind, from, to, duration, now = performance.now()) {
+    transition = { kind, from: { ...from }, to: { ...to }, startedAt: now, duration };
+    document.documentElement.dataset.surfaceCameraTransition = kind;
+  }
+
+  function runTransition(now) {
+    if (!transition) return false;
+    const progress = smoothstep((now - transition.startedAt) / Math.max(1, transition.duration));
+    setCameraIfChanged(blendCamera(transition.from, transition.to, progress));
+    if (progress >= 1) {
+      const finishedKind = transition.kind;
+      transition = null;
+      document.documentElement.dataset.surfaceCameraTransition = 'none';
+      if (finishedKind === 'exit') {
+        previousCamera = null;
+        document.documentElement.dataset.surfacePresentation = 'globe-ready';
+        document.documentElement.dataset.surfaceModeRenderer = 'gpu-controller-spherical-topology';
+      }
+    }
+    return true;
+  }
+
+  function followPlayer(now) {
+    const target = targetCameraForPlayer();
+    const current = runtime.getCamera();
+    const dt = Math.max(0, now - lastFrameAt);
+    const amount = 1 - Math.pow(0.5, dt / FOLLOW_HALF_LIFE_MS);
+    setCameraIfChanged(blendCamera(current, target, amount));
+  }
+
+  function enterGlobePresentation(now) {
+    const current = runtime.getCamera();
+    previousCamera = { ...current };
+    document.documentElement.dataset.surfacePresentation = 'globe-entering';
     document.documentElement.dataset.surfacePresentationBuild = SURFACE_GLOBE_BUILD;
     document.documentElement.dataset.surfaceModeRenderer = 'pixi-globe-surface';
     document.body.dataset.worldGeometry = 'sphere';
     layer.style.background = 'transparent';
     sourceCanvas.style.visibility = 'visible';
     sourceCanvas.style.opacity = '1';
-    syncGlobeCamera();
     updateHudLabel();
+    startTransition('enter', current, targetCameraForPlayer(), ENTER_TRANSITION_MS, now);
   }
 
-  function leaveGlobePresentation() {
-    if (previousCamera) runtime.setCamera(previousCamera);
-    previousCamera = null;
-    document.documentElement.dataset.surfacePresentation = 'globe-ready';
-    document.documentElement.dataset.surfaceModeRenderer = 'gpu-controller-spherical-topology';
+  function beginExitGlobePresentation(now) {
+    const current = runtime.getCamera();
+    const destination = previousCamera || current;
+    document.documentElement.dataset.surfacePresentation = 'globe-exiting';
+    startTransition('exit', current, destination, EXIT_TRANSITION_MS, now);
   }
 
-  function loop() {
+  function loop(now) {
     requestAnimationFrame(loop);
     const active = Boolean(mode.isActive?.() && document.documentElement.dataset.surfaceMode === 'active');
 
-    if (active && !wasActive) enterGlobePresentation();
-    if (!active && wasActive) leaveGlobePresentation();
+    if (active && !wasActive) enterGlobePresentation(now);
+    if (!active && wasActive) beginExitGlobePresentation(now);
+
+    if (active) {
+      activeFrames++;
+      updateHudLabel();
+      if (transition?.kind === 'enter') {
+        transition.to = targetCameraForPlayer();
+        if (!runTransition(now)) followPlayer(now);
+      } else {
+        document.documentElement.dataset.surfacePresentation = 'globe';
+        followPlayer(now);
+      }
+    } else if (transition?.kind === 'exit') {
+      runTransition(now);
+    }
 
     wasActive = active;
-    if (!active) return;
-
-    activeFrames++;
-    syncGlobeCamera();
-    updateHudLabel();
+    lastFrameAt = now;
   }
   requestAnimationFrame(loop);
 
@@ -145,6 +216,10 @@ function install({ runtime, planet, mode, sourceCanvas, layer }) {
       localTangentRendererVisible: false,
       playerCoordinatesDriveGlobeCamera: true,
       altitudeControlsGlobeScale: true,
+      continuousCameraTransition: true,
+      transition: transition?.kind || 'none',
+      enterTransitionMs: ENTER_TRANSITION_MS,
+      exitTransitionMs: EXIT_TRANSITION_MS,
       activeFrames,
       cameraSyncs,
       globeZoom: lastZoom,
@@ -154,6 +229,7 @@ function install({ runtime, planet, mode, sourceCanvas, layer }) {
   window.realitySandboxSurfaceGlobeV73 = api;
   document.documentElement.dataset.surfacePresentation = 'globe-ready';
   document.documentElement.dataset.surfacePresentationBuild = SURFACE_GLOBE_BUILD;
+  document.documentElement.dataset.surfaceCameraTransition = 'none';
 
   const previousDiagnostics = window.realitySandboxPresentationDiagnostics;
   window.realitySandboxPresentationDiagnostics = () => ({
