@@ -30,6 +30,7 @@ import './runevale-wall-runs-v70.js?v=20260811-runevale-wall-runs-v70a';
 import './runevale-gatehouse-retrofits-v71.js?v=20260811-runevale-gatehouse-retrofits-v71a';
 import './runevale-corner-towers-v72.js?v=20260811-runevale-corner-towers-v72a';
 import './runevale-settlement-sphere-gpu-v68a.js?v=20260811-runevale-settlement-sphere-gpu-v68a';
+import './surface-globe-presentation-v73.js?v=20260817-surface-globe-v73a';
 
 const SURFACE_BUILD = 'surface-v48-morphogenesis-body-plans';
 window.realitySandboxSurfaceBuild = SURFACE_BUILD;
