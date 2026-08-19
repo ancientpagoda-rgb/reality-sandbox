@@ -207,9 +207,12 @@ function install({ v69, settlement, surface, world }) {
     return true;
   }
 
-  const hudTimer = setInterval(() => {
-    if (installHudButton()) clearInterval(hudTimer);
-  }, 120);
+  // v68 can rebuild its HUD as Surface presentation state changes. A one-shot
+  // timer loses this extension control after that rebuild, so keep the button
+  // invariant attached to whichever current HUD panel owns the build controls.
+  installHudButton();
+  const hudObserver = new MutationObserver(() => installHudButton());
+  hudObserver.observe(document.documentElement, { childList:true, subtree:true });
 
   window.addEventListener('keydown', event => {
     if (!surface.isActive?.() || event.repeat) return;
