@@ -49,6 +49,7 @@ function installSurfaceMode({ runtime, planet, sourceCanvas }) {
   let dragX = 0;
   let dragY = 0;
   let shellDisplay = '';
+  let shellHiddenForSurface = false;
 
   const layer = document.createElement('div');
   layer.id = 'surfaceModeLayer';
@@ -210,9 +211,12 @@ function installSurfaceMode({ runtime, planet, sourceCanvas }) {
     layer.style.opacity = '1';
     enterButton.style.display = 'none';
     const shell = document.querySelector('.planet-shell');
-    if (shell) {
+    const usesGlobePresentation = (document.documentElement.dataset.surfacePresentation || '').startsWith('globe');
+    shellHiddenForSurface = false;
+    if (shell && !usesGlobePresentation) {
       shellDisplay = shell.style.display;
       shell.style.display = 'none';
+      shellHiddenForSurface = true;
     }
     updateHud(true);
     canvas.focus({ preventScroll: true });
@@ -229,7 +233,8 @@ function installSurfaceMode({ runtime, planet, sourceCanvas }) {
     layer.style.pointerEvents = 'none';
     enterButton.style.display = '';
     const shell = document.querySelector('.planet-shell');
-    if (shell) shell.style.display = shellDisplay;
+    if (shell && shellHiddenForSurface) shell.style.display = shellDisplay;
+    shellHiddenForSurface = false;
   }
 
   function enterFromCameraCenter() {
