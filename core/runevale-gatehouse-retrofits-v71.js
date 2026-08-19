@@ -211,9 +211,12 @@ function install({ settlement, v69, surface, planet }) {
     return true;
   }
 
-  const hudTimer = setInterval(() => {
-    if (installHudButton()) clearInterval(hudTimer);
-  }, 120);
+  // v68 can replace the build HUD during presentation/reload lifecycle changes.
+  // Keep this extension control attached to the current HUD instead of stopping
+  // after the first successful insertion and losing it on a later rebuild.
+  installHudButton();
+  const hudObserver = new MutationObserver(() => installHudButton());
+  hudObserver.observe(document.documentElement, { childList:true, subtree:true });
 
   window.addEventListener('keydown', event => {
     if (!surface.isActive?.() || event.repeat || event.code !== 'KeyU') return;
