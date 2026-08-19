@@ -190,7 +190,14 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(pageErrors.length === 0, `Browser errors: ${pageErrors.join(' | ')}`);
 
     fs.writeFileSync(path.join(artifactDir, 'runevale-castle-perimeters-v69.json'), JSON.stringify({ shoreline, site, harvest, founded, placed, built, pageErrors }, null, 2));
-    await page.screenshot({ path:path.join(artifactDir, 'runevale-castle-perimeters-v69.png'), fullPage:true });
+    try {
+      await page.screenshot({ path:path.join(artifactDir, 'runevale-castle-perimeters-v69.png'), fullPage:true, timeout:30000 });
+    } catch (error) {
+      // The screenshot is diagnostic only. All physical perimeter assertions
+      // above have already passed, so a slow headless capture must not turn a
+      // successful simulation proof into a false negative.
+      fs.writeFileSync(path.join(artifactDir, 'screenshot-error.txt'), `${error.stack || error.message}\n`);
+    }
   } finally {
     await browser.close();
   }
