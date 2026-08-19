@@ -41,7 +41,11 @@ async function installPresentationInvariantCompat() {
         return { ...original, ok: failures.length === 0, failures };
       };
       runtime.__presentationInvariantCompatInstalled = true;
-      document.documentElement.dataset.presentationInvariantCompat = 'active-v3-plants';
+      // Keep the long-standing public/test contract stable while exposing the
+      // plant-overlay capability separately. Consumers that only need to know
+      // the invariant shim is ready can continue to wait for active-v2.
+      document.documentElement.dataset.presentationInvariantCompat = 'active-v2';
+      document.documentElement.dataset.presentationInvariantCompatFeatures = 'plants-v3';
       return;
     }
     await new Promise(resolve => setTimeout(resolve, 25));
