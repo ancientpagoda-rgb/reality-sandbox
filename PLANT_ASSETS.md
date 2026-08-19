@@ -7,7 +7,7 @@ Reality Sandbox uses selected models from **Kenney Nature Kit 2.1** for the Surf
 - Runtime role: visual representations of real simulated vegetation/resource entities on Nysa
 - Selected models: `tree_default.glb`, `tree_oak.glb`, `cactus_short.glb`, `cactus_tall.glb`
 - Production delivery: vendored during `npm run build`; no runtime hotlink to Kenney
-- Archive SHA-256: `fa797807cae9c3f434db849178bbc44109eee32533f07a9ae606ece46acad94c`
+- Archive SHA-256: `fa7974a0d342bfe63c38664ba9f8ec1a4aab8ea25f099bdc56870e33588c4d9d`
 
 The vendoring step is implemented by `scripts/vendor-cc0-plants.mjs`. It downloads the pinned upstream Nature Kit archive, verifies the archive hash, extracts only the selected GLB files, and writes a same-origin manifest and source/license note into `public/vendor/kenney-nature-kit/` before Vite builds `dist/`.
 
