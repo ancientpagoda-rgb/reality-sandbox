@@ -281,9 +281,12 @@ function install({ settlement, v69, surface, planet }) {
     return true;
   }
 
-  const hudTimer = setInterval(() => {
-    if (installHudButton()) clearInterval(hudTimer);
-  }, 120);
+  // Keep the extension control alive when v68 refreshes/rebuilds its build HUD.
+  // The physical tower API is independent of presentation; this observer only
+  // restores the affordance into the current owner panel when DOM nodes change.
+  installHudButton();
+  const hudObserver = new MutationObserver(() => installHudButton());
+  hudObserver.observe(document.documentElement, { childList:true, subtree:true });
 
   window.addEventListener('keydown', event => {
     if (!surface.isActive?.() || event.repeat || event.code !== 'KeyT') return;
