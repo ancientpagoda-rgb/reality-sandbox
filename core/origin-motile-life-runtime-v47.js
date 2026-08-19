@@ -6,8 +6,11 @@ async function waitForRuntime() {
   while (true) {
     const planet = window.realitySandboxPlanet;
     const modules = window.realitySandboxModules;
-    const surface = window.realitySandboxSurfaceSphereV37;
-    if (planet?.world?.ecs?.components && planet?.living && modules?.step && surface?.installed) {
+    // v47 is core living-planet biology and must not depend on the optional
+    // legacy Surface-detail renderer. The v37 sphere can be lazy-loaded later;
+    // when it installs it wraps the then-current module step and preserves this
+    // v47 fixed-step wrapper outside Surface mode.
+    if (planet?.world?.ecs?.components && planet?.living && modules?.step) {
       return { planet, modules };
     }
     await wait(60);
@@ -77,9 +80,9 @@ function install({ planet, modules }) {
   window.realitySandboxOriginMotileLifeV47 = { installed: false, _rngState: { value: (window.realitySandboxSeed?.numericSeed || 734221) >>> 0 } };
   const origin = createOriginOfMotileLife(world, living, seededRandom);
 
-  // v37 already wrapped moduleHost.step before this module installs. Wrapping it
-  // now keeps v47 on the authoritative fixed timestep and also lets origin-life
-  // continue evolving while v37 suppresses older expensive world modules in Surface.
+  // Keep v47 on the authoritative fixed timestep. If the optional v37 Surface
+  // sphere is loaded later, it wraps this step function and suppresses the whole
+  // chain only while its legacy Surface renderer is active.
   const previousModuleStep = modules.step.bind(modules);
   modules.step = function v47FixedStep(dt) {
     const result = previousModuleStep(dt);
