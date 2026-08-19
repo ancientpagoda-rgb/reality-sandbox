@@ -65,6 +65,13 @@ fs.mkdirSync(artifactDir, { recursive:true });
     assert(founded.settlement.ok, `Visual settlement founding failed: ${founded.settlement.reason || 'unknown'}.`);
     assert(founded.blueprint.ok, `Visual palisade placement failed: ${founded.blueprint.reason || 'unknown'}.`);
 
+    // v37 intentionally pauses authoritative module stepping while its legacy
+    // Surface presentation is active. Construction belongs to the simulation
+    // clock, so leave Surface while workers physically haul/build, then re-enter
+    // at the known settlement location for the actual spherical visibility proof.
+    await page.evaluate(() => window.realitySandboxSurfaceMode.exit());
+    await page.waitForFunction(() => document.documentElement.dataset.surfaceMode === 'inactive', null, { timeout:10000 });
+
     let built = null;
     for (let chunk = 0; chunk < 24; chunk++) {
       await page.evaluate(() => window.realitySandboxDebug.advance(60));
