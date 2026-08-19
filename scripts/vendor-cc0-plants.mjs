@@ -5,7 +5,7 @@ import { basename, join } from 'node:path';
 import { inflateRawSync } from 'node:zlib';
 
 const ARCHIVE_URL = 'https://kenney.nl/media/pages/assets/nature-kit/37ac38a37b-1677698939/kenney_nature-kit.zip';
-const ARCHIVE_SHA256 = 'fa797807cae9c3f434db849178bbc44109eee32533f07a9ae606ece46acad94c';
+const ARCHIVE_SHA256 = 'fa7974a0d342bfe63c38664ba9f8ec1a4aab8ea25f099bdc56870e33588c4d9d';
 const OUTPUT_DIR = join(process.cwd(), 'public', 'vendor', 'kenney-nature-kit');
 const MANIFEST_PATH = join(OUTPUT_DIR, 'manifest.json');
 
