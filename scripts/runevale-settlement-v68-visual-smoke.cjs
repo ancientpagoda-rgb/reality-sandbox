@@ -17,6 +17,9 @@ fs.mkdirSync(artifactDir, { recursive:true });
 
   try {
     await page.goto(baseUrl, { waitUntil:'domcontentloaded', timeout:120000 });
+    await page.waitForFunction(() => typeof window.realitySandboxLoadLegacySurfaceDetail === 'function', null, { timeout:120000 });
+    const legacyLoaded = await page.evaluate(() => window.realitySandboxLoadLegacySurfaceDetail());
+    assert(legacyLoaded, `Lazy Surface detail failed to load (${await page.evaluate(() => document.documentElement.dataset.surfaceLegacyDetailError || 'unknown')}).`);
     await page.waitForFunction(() => Boolean(
       window.realitySandboxDebug?.ready &&
       window.realitySandboxSurfaceMode?.enterAt &&
